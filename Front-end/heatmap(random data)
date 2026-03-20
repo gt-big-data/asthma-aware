@@ -1,0 +1,193 @@
+import { useState, useEffect, useRef } from "react";
+
+// Atlanta MSA counties (29-county metro area)
+const ATLANTA_COUNTIES = {
+  13013: "Barrow",
+  13015: "Bartow",
+  13035: "Butts",
+  13045: "Carroll",
+  13057: "Cherokee",
+  13059: "Clarke",
+  13063: "Clayton",
+  13067: "Cobb",
+  13077: "Coweta",
+  13085: "Dawson",
+  13089: "DeKalb",
+  13097: "Douglas",
+  13113: "Fayette",
+  13117: "Forsyth",
+  13121: "Fulton",
+  13135: "Gwinnett",
+  13139: "Hall",
+  13143: "Haralson",
+  13149: "Heard",
+  13151: "Henry",
+  13157: "Jackson",
+  13159: "Jasper",
+  13171: "Lamar",
+  13199: "Meriwether",
+  13211: "Morgan",
+  13217: "Newton",
+  13223: "Paulding",
+  13227: "Pickens",
+  13231: "Pike",
+  13233: "Polk",
+  13255: "Spalding",
+  13297: "Walton",
+};
+
+function generate() {
+  const d = {};
+  Object.keys(ATLANTA_COUNTIES).forEach(id => {
+    // Urban core counties get higher risk
+    const urban = [13121, 13067, 13089, 13063, 13135].includes(Number(id));
+    const base = urban ? 0.55 : 0.25;
+    d[id] = Math.random() < 0.1 ? null : Math.min(1, base + Math.random() * 0.4);
+  });
+  return d;
+}
+
+function riskColor(v) {
+  if (v === null) return "#d0d0d0";
+  if (v < 0.25) return "#52b788";
+  if (v < 0.5)  return "#f9c74f";
+  if (v < 0.75) return "#f4845f";
+  return "#d62828";
+}
+
+function riskLabel(v) {
+  if (v === null) return "No data";
+  if (v < 0.25) return "Low";
+  if (v < 0.5)  return "Moderate";
+  if (v < 0.75) return "High";
+  return "Critical";
+}
+
+export default function App() {
+  const svgRef = useRef(null);
+  const [data, setData] = useState(generate);
+  const [tooltip, setTooltip] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const d3Script = document.createElement("script");
+    d3Script.src = "https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js";
+    d3Script.onload = () => {
+      const topoScript = document.createElement("script");
+      topoScript.src = "https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js";
+      topoScript.onload = () => setLoaded(true);
+      document.head.appendChild(topoScript);
+    };
+    document.head.appendChild(d3Script);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const d3 = window.d3;
+    const topojson = window.topojson;
+    const svg = d3.select(svgRef.current);
+    svg.selectAll("*").remove();
+
+    const W = svgRef.current.clientWidth || 600;
+    const H = 500;
+    svgRef.current.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+    d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json").then(us => {
+      const all = topojson.feature(us, us.objects.counties);
+      const metroIds = new Set(Object.keys(ATLANTA_COUNTIES).map(Number));
+      const metro = { ...all, features: all.features.filter(f => metroIds.has(Number(f.id))) };
+
+      const projection = d3.geoIdentity().reflectY(true).fitExtent([[20, 20], [W - 20, H - 20]], metro);
+      const path = d3.geoPath(projection);
+
+      // County fills
+      svg.selectAll("path.county")
+        .data(metro.features)
+        .join("path")
+        .attr("class", "county")
+        .attr("d", path)
+        .attr("fill", d => riskColor(data[d.id] ?? null))
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 0.8)
+        .style("cursor", "pointer")
+        .on("mousemove", (event, d) => {
+          const v = data[d.id] ?? null;
+          setTooltip({ name: ATLANTA_COUNTIES[d.id] || d.id, v, x: event.clientX, y: event.clientY });
+        })
+        .on("mouseleave", () => setTooltip(null));
+
+      // County name labels
+      svg.selectAll("text.label")
+        .data(metro.features)
+        .join("text")
+        .attr("class", "label")
+        .attr("transform", d => `translate(${path.centroid(d)})`)
+        .attr("text-anchor", "middle")
+        .attr("dy", "0.35em")
+        .attr("font-size", d => {
+          // Larger counties get bigger labels
+          const big = [13121, 13067, 13089, 13135, 13057, 13015].includes(Number(d.id));
+          return big ? "7px" : "6px";
+        })
+        .attr("fill", d => {
+          const v = data[d.id] ?? null;
+          return (v !== null && v >= 0.5) ? "#fff" : "#333";
+        })
+        .attr("pointer-events", "none")
+        .text(d => ATLANTA_COUNTIES[d.id] || "");
+    });
+  }, [loaded, data]);
+
+  return (
+    <div style={{ fontFamily: "sans-serif", padding: 20, maxWidth: 680, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div>
+          <div style={{ fontSize: 17, fontWeight: 500 }}>Atlanta Metro Asthma Risk</div>
+          <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>
+            32-county metro area · null = missing data
+          </div>
+        </div>
+        <button onClick={() => setData(generate())} style={{ fontSize: 13, padding: "6px 14px", cursor: "pointer" }}>
+          ↻ Resample
+        </button>
+      </div>
+
+      <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", background: "var(--color-background-secondary)" }}>
+        <svg ref={svgRef} width="100%" style={{ display: "block" }} />
+        {!loaded && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "var(--color-text-secondary)" }}>
+            Loading map…
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
+        {[
+          { c: "#52b788", label: "Low" },
+          { c: "#f9c74f", label: "Moderate" },
+          { c: "#f4845f", label: "High" },
+          { c: "#d62828", label: "Critical" },
+          { c: "#d0d0d0", label: "No data" },
+        ].map(l => (
+          <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--color-text-secondary)" }}>
+            <div style={{ width: 12, height: 12, borderRadius: 2, background: l.c }} />
+            {l.label}
+          </div>
+        ))}
+      </div>
+
+      {tooltip && (
+        <div style={{
+          position: "fixed", left: tooltip.x + 12, top: tooltip.y - 48,
+          background: "var(--color-background-primary)",
+          border: "0.5px solid var(--color-border-primary)",
+          borderRadius: 6, padding: "6px 10px", fontSize: 12,
+          pointerEvents: "none", zIndex: 999,
+        }}>
+          <strong>{tooltip.name} County</strong><br />
+          {tooltip.v === null ? "No data" : `Risk: ${Math.round(tooltip.v * 100)}% — ${riskLabel(tooltip.v)}`}
+        </div>
+      )}
+    </div>
+  );
+}
