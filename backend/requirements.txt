@@ -1,5 +1,9 @@
 fastapi
-uvicorn[standard]
+uvicorn
 pydantic
 pytest
 httpx
+numpy
+torch
+rasterio
+scikit-learn
