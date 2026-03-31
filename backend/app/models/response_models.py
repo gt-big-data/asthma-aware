@@ -1,7 +1,5 @@
-# Defines the data models for API responses, including the structure of map cells and the overall response format for both current and forecasted map data.
-
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 
 
 class MapCell(BaseModel):
@@ -10,10 +8,8 @@ class MapCell(BaseModel):
     lat: float
     lon: float
     so2: float
-    no2: float
-    ozone: float
     ndvi: float
-    pollen: float
+    no2: float
 
 
 class MapResponse(BaseModel):

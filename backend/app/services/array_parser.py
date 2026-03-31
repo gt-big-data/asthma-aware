@@ -1,22 +1,20 @@
-# Parses a 2D grid of feature values into a structured list of cell dictionaries, 
-# each containing geographic coordinates and feature values for that cell.
-
-from app.constants import FEATURE_ORDER
 from app.utils.geo import get_lat_lon_for_cell
-from app.utils.validators import validate_grid_shape
 
 
-def parse_grid_to_cells(grid, bounds):
-    validate_grid_shape(grid)
+def parse_model_output_to_cells(grid, bounds):
+    """
+    grid shape: (3, 56, 96)
+    feature order: [so2, ndvi, no2]
+    """
+    channels, rows, cols = grid.shape
 
-    rows = len(grid)
-    cols = len(grid[0])
+    if channels != 3:
+        raise ValueError(f"Expected 3 channels, got {channels}")
+
     cells = []
 
     for row in range(rows):
         for col in range(cols):
-            values = grid[row][col]
-
             lat, lon = get_lat_lon_for_cell(
                 row=row,
                 col=col,
@@ -30,11 +28,9 @@ def parse_grid_to_cells(grid, bounds):
                 "col": col,
                 "lat": lat,
                 "lon": lon,
-                FEATURE_ORDER[0]: values[0],
-                FEATURE_ORDER[1]: values[1],
-                FEATURE_ORDER[2]: values[2],
-                FEATURE_ORDER[3]: values[3],
-                FEATURE_ORDER[4]: values[4],
+                "so2": float(grid[0, row, col]),
+                "ndvi": float(grid[1, row, col]),
+                "no2": float(grid[2, row, col]),
             }
             cells.append(cell)
 
