@@ -1,0 +1,17 @@
+[
+    {
+        "zipcode": "30301",
+        "population_density": 5000,
+        "average_household_age": 50
+    },
+    {
+        "zipcode": "30302",
+        "population_density": 3000,
+        "average_household_age": 40
+    },
+    {
+        "zipcode": "30303",
+        "population_density": 7000,
+        "average_household_age": 60
+    }
+]
