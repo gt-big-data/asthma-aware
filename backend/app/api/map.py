@@ -22,3 +22,8 @@ def get_forecast_48h(city: str = Query(default="atlanta")):
 @router.get("/forecast/72h")
 def get_forecast_72h(city: str = Query(default="atlanta")):
     return get_forecast_data("72h", city)
+
+@router.get("/socioeconomic")
+def get_socioeconomic_data(city: str = Query(default="atlanta")):
+    #TODO: Implement this endpoint to return socioeconomic data for the city
+    return {"message": "Socioeconomic data endpoint not implemented yet"}
