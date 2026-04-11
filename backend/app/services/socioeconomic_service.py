@@ -31,7 +31,7 @@ CURRENT_YEAR = 2026
 def get_socioeconomic_data(city: str):
     zcta_list = ",".join(ATLANTA_ZCTAS)
     params = {
-        "get": "B01001_001E,B25035_001E",
+        "get": "B01001_001E,B25035_001E,B19013_001E",
         "for": f"zip code tabulation area:{zcta_list}",
         "key": CENSUS_API_KEY,
     }
@@ -58,10 +58,14 @@ def get_socioeconomic_data(city: str):
         area = ZCTA_LAND_AREA.get(zcta)
         density = round(population / area, 2) if population and area else None
 
+        income_raw = row[col["B19013_001E"]]
+        median_household_income = int(income_raw) if income_raw and income_raw != "-666666666" else None
+
         results.append({
             "zipcode": zcta,
             "population_density": density,
             "average_household_age": house_age,
+            "median_household_income": median_household_income,
         })
 
     return results
