@@ -85,11 +85,11 @@ const MAP_HTML = `
     }
 
     // Fade out the overlay as the user zooms in so the base map stays readable.
-    // zoom 11 (default fit) → 0.82 opacity; each extra zoom level drops ~0.10.
+    // zoom 11 (default fit) → 0.57 opacity; each extra zoom level drops ~0.10.
     function updateLayerOpacity() {
       if (!renderer._container) return;
       const z = map.getZoom();
-      const opacity = Math.max(0.20, Math.min(0.82, 0.82 - (z - 11) * 0.10));
+      const opacity = Math.max(0.14, Math.min(0.57, 0.57 - (z - 11) * 0.10));
       renderer._container.style.opacity = opacity;
     }
     map.on("zoomend", updateLayerOpacity);
