@@ -9,7 +9,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import HeatmapView from "../components/HeatmapView";
+import HeatmapView from "../../components/HeatmapView";
 import {
   VARIABLES,
   TIME_STEPS,
@@ -18,7 +18,7 @@ import {
   LatLngIntensity,
   initializeHeatmapData,
   HEATMAP_DATA,
-} from "../constants/data";
+} from "../../constants/data";
 
 export default function Index() {
   const [activeVariable, setActiveVariable] = useState<Variable>(VARIABLES[0]);
@@ -98,7 +98,7 @@ export default function Index() {
 
       <SafeAreaView style={styles.overlay} pointerEvents="box-none">
         {/* ── Variable selector (top) ── */}
-        <View style={styles.topBar} pointerEvents="auto">
+        <View style={styles.topBar} pointerEvents="box-none">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
