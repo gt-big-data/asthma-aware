@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from app.services.array_parser import parse_model_output_to_cells
 from app.constants import ATLANTA_BOUNDS
 
@@ -18,6 +19,6 @@ def test_parse_model_output_to_cells():
     assert first["col"] == 0
     assert "lat" in first
     assert "lon" in first
-    assert first["so2"] == 1.1
-    assert first["ndvi"] == 2.2
-    assert first["no2"] == 3.3
+    assert first["so2"] == pytest.approx(1.1)
+    assert first["ndvi"] == pytest.approx(2.2)
+    assert first["no2"] == pytest.approx(3.3)
