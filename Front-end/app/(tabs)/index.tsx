@@ -98,7 +98,7 @@ export default function Index() {
 
       <SafeAreaView style={styles.overlay} pointerEvents="box-none">
         {/* ── Variable selector (top) ── */}
-        <View style={styles.topBar} pointerEvents="auto">
+        <View style={styles.topBar} pointerEvents="box-none">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
