@@ -15,7 +15,7 @@ import {
   SocioVar,
   VARIABLE_META,
   SOCIO_DATA,
-  CountyDataPoint,
+  ZipcodeDataPoint,
   initializeSocioData,
 } from "../../constants/socioeconomicData";
 
@@ -44,7 +44,7 @@ export default function Socioeconomic() {
   }
 
   // ── Derived state ─────────────────────────────────────────────────────────
-  const currentData: CountyDataPoint[] = dataLoaded
+  const currentData: ZipcodeDataPoint[] = dataLoaded
     ? SOCIO_DATA[activeVar] ?? []
     : [];
   const currentMeta = VARIABLE_META[activeVar];
@@ -126,7 +126,7 @@ export default function Socioeconomic() {
 
             <View style={styles.descFooter}>
               <Text style={styles.descUnit}>Unit: {currentMeta.unit}</Text>
-              <Text style={styles.descCount}>{currentData.length} counties</Text>
+              <Text style={styles.descCount}>{currentData.length} ZIP codes</Text>
             </View>
           </View>
         )}
