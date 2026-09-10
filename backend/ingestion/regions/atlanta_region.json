@@ -1,0 +1,10 @@
+{
+  "region_id": "atlanta",
+  "name": "Atlanta Metro Study Area",
+  "bounding_box": {
+    "min_lat": 33.39,
+    "max_lat": 33.64,
+    "min_lon": -84.550,
+    "max_lon": -84.280
+  }
+}
