@@ -10,6 +10,29 @@ The backend sits between the ML team and the frontend team.
 
 ---
 
+## Database
+
+Everything the ingestion pipelines fetch is stored in a shared Postgres +
+PostGIS instance: satellite rasters, ground observations, Census data, the
+model's normalisation constants, and its forecasts.
+
+**Setup, schema reference and how to add a pipeline: [`db/README.md`](db/README.md).**
+
+Short version for a new checkout:
+
+```bash
+cp .env.example .env          # then fill in DATABASE_URL
+pip install -r requirements.txt
+alembic upgrade head          # create the schema (one person, once)
+python scripts/seed_reference_data.py
+```
+
+The file-based flow documented below still works and is unchanged. The
+database is additive — `scripts/build_latest_sequence.py` and the
+`raw_rasters/` workflow continue to function exactly as before.
+
+---
+
 ## What the Backend Does
 
 The backend is responsible for:
