@@ -263,6 +263,38 @@ forecasts.save_forecast_frame(
 
 ## Adding a new pipeline
 
+This is the section to read if you have been handed a data source and
+told to get it into the database.
+
+### First, work out which kind of source you have
+
+| Your data looks like | It is | Write it to | Using |
+|---|---|---|---|
+| Readings from named monitoring sites, each at one lat/lon | **point** | `station_observations` | `stations.upsert_observations` |
+| A raster / image / array covering the whole area | **gridded** | `grid_observations` | `grid.upsert_frame` |
+| One value per ZIP code, county or tract | **areal** | `socioeconomic_records` | `socioeconomic.upsert_record` |
+
+Point is by far the most common — AirNow, PurpleAir, NWS stations, pollen
+counters are all point sources. If your API returns a list of sites with
+coordinates, it is point data.
+
+Both worked examples below are complete and runnable. Copy the one that
+matches, replace the fetch, keep the structure.
+
+### The shape every collector follows
+
+```
+open a session
+  look up the region, the data source, and the variables
+  open a run_scope          <- gives you status, timing, failure capture
+    fetch from the API
+    convert units, convert timestamps to UTC
+    upsert
+    record anything you could not get
+```
+
+### Example A — a point source
+
 The `air_quality`, `nws` and `pollen` collectors are empty placeholder
 files on `origin/backend_data_ingestion`. The tables and the write API
 they need already exist. Here is a complete working collector — adapt the
@@ -333,24 +365,118 @@ if __name__ == "__main__":
     main()
 ```
 
-Checklist for a new pipeline:
+### Example B — a gridded source
+
+Anything that arrives as a raster covering the whole area: another
+satellite product, gridded weather reanalysis, a modelled surface.
+
+The work is getting the data onto the canonical 56×96 grid. If your
+source is a georeferenced file, `resample_to_grid` does it. If you
+already have a correctly-shaped array, pass it straight to
+`upsert_frame`.
+
+```python
+"""ingestion/myproduct/collector.py"""
+from __future__ import annotations
+
+import datetime as dt
+from pathlib import Path
+
+from db.repositories import grid, ingestion as ingestion_repo, reference
+from db.session import session_scope
+from ingestion import grid_resample
+
+
+def main(date: dt.date, downloaded: Path) -> None:
+    with session_scope() as session:
+        region = reference.get_region(session, "atlanta")
+        source = reference.upsert_data_source(
+            session, "myproduct", name="My Gridded Product",
+        )
+        # Add the variable to VARIABLES in scripts/seed_reference_data.py
+        # first, then look it up here.
+        variable = reference.get_variable(session, "my_variable")
+
+        with ingestion_repo.run_scope(
+            session, "myproduct", region=region, source=source,
+            start=date, end=date,
+        ) as run:
+            # Warps onto the model grid. Masked and uncovered pixels come
+            # back as NaN, which upsert_frame stores as NULL.
+            values = grid_resample.resample_to_grid(
+                downloaded,
+                bounds={
+                    "min_lat": region.min_lat, "max_lat": region.max_lat,
+                    "min_lon": region.min_lon, "max_lon": region.max_lon,
+                },
+                rows=region.grid_rows,
+                cols=region.grid_cols,
+                method="nearest",   # "average" only when coarsening a dense field
+            )
+
+            # Optional but recommended: keep the original file on record.
+            raster = ingestion_repo.record_raster_file(
+                session, region=region, variable=variable,
+                observation_date=date, path=str(downloaded),
+                run=run, source=source, unit="my_unit", crs="EPSG:4326",
+            )
+
+            run.rows_written = grid.upsert_frame(
+                session, region, variable, date, values,
+                raster_file_id=raster.id, run_id=run.id,
+            )
+```
+
+Two things specific to gridded sources:
+
+- **Check the resampling warning.** `resample_to_grid` logs a warning if
+  your source barely overlaps the target grid. That almost always means a
+  wrong or mis-declared CRS, and the warp will otherwise succeed and hand
+  you a correctly-shaped, silently wrong array. Read the module docstring
+  in `ingestion/grid_resample.py` before trusting the output.
+- **Already have an array?** Skip the resample and call `upsert_frame`
+  directly with any `(56, 96)` NumPy array. Use `np.nan` for missing
+  values, or pass `nodata_value=` if your data uses a sentinel.
+
+### Checklist for either kind
 
 1. **Convert to the canonical unit** before writing. `variables.canonical_unit`
    is the contract; NWS reports °F, so convert to °C.
 2. **Reuse the seeded variable slugs.** Add new ones to `VARIABLES` in
    `scripts/seed_reference_data.py` rather than calling `upsert_variable`
-   ad hoc, so there is one list to read.
+   ad hoc, so there is one list to read. Inventing a second slug for
+   something that already exists means the two never join.
 3. **Wrap everything in `run_scope`.** You get run status, timing, params
    and failure capture for free.
 4. **Record what you could not fetch** with `record_issue`. A silent gap
    is the thing most likely to break the sequence builder later.
-5. **Make it re-runnable.** Both upsert helpers handle conflicts, so
+5. **Make it re-runnable.** Every upsert helper handles conflicts, so
    overlapping windows are fine — most hourly feeds publish a rolling one.
+6. **Missing means NULL.** Never write `0` or `-9999` for absent data.
 
-For a *gridded* source, write to `grid_observations` via
-`grid.upsert_frame` instead, and resample with
-`ingestion.grid_resample.resample_to_grid` — but read its module
-docstring first.
+### Checking your work
+
+```bash
+python -m ingestion.myproduct.collector --date 2026-09-10
+```
+
+Then confirm it landed:
+
+```sql
+-- Did the run complete, and how much did it write?
+SELECT pipeline, status, started_at, finished_at, rows_written, error
+FROM ingestion_runs ORDER BY started_at DESC LIMIT 5;
+
+-- Anything it could not fetch?
+SELECT v.slug, i.observation_date, i.kind, i.reason
+FROM ingestion_issues i
+LEFT JOIN variables v ON v.id = i.variable_id
+WHERE i.run_id = (SELECT max(id) FROM ingestion_runs);
+```
+
+A run showing `partial` is normal for satellite data — it means some
+variables had no usable observation that day. `failed` means an exception
+escaped, and the message is in `error`.
 
 ---
 
