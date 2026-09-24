@@ -21,7 +21,9 @@ CENSUS_URL = f"https://api.census.gov/data/{ACS_DATASET_YEAR}/acs/acs5"
 SUPPORTED_CITY_ZCTAS = {
     "atlanta": (
         "30303",
-        "30304",
+        # 30304 deliberately omitted: it is a PO-Box-only USPS ZIP, and the
+        # Census does not publish a ZCTA for it. Including it made this
+        # list claim 21 areas while the API only ever returns 20.
         "30305",
         "30306",
         "30307",
@@ -166,8 +168,21 @@ def _load_sample_data(city: str) -> List[Dict[str, Any]]:
     with SAMPLE_DATA_PATH.open("r", encoding="utf-8") as file:
         sample = json.load(file)
 
+    # The sample file is stored in full API-response shape --
+    # {city, dataset_year, source, zipcodes: [...]} -- but this function
+    # returns just the records. Accept the bare list too, so the file can
+    # be regenerated in either form without breaking the fallback.
+    if isinstance(sample, dict):
+        sample = sample.get("zipcodes")
+
     if not isinstance(sample, list):
-        raise HTTPException(status_code=500, detail="Sample socioeconomic data must be a list.")
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Sample socioeconomic data must be a list of records, or an "
+                "object with a 'zipcodes' list."
+            ),
+        )
 
     requested_zctas = set(SUPPORTED_CITY_ZCTAS[city])
     filtered = [row for row in sample if row.get("zipcode") in requested_zctas]
@@ -182,9 +197,22 @@ def _fetch_census_rows() -> List[List[str]]:
         "for": "zip code tabulation area:*",
     }
 
+    # The Census API now rejects unauthenticated requests for a query this
+    # large: it answers 302 to /missing_key.html rather than an error
+    # status, which surfaces as an opaque "Redirect response '302'".
+    # Failing early with the signup link is far more useful.
     census_api_key = os.getenv("CENSUS_API_KEY")
-    if census_api_key:
-        params["key"] = census_api_key
+    if not census_api_key:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "CENSUS_API_KEY is not set. The Census API requires a key for "
+                "this request and redirects to missing_key.html without one. "
+                "Get a free key at https://api.census.gov/data/key_signup.html "
+                "and add it to backend/.env."
+            ),
+        )
+    params["key"] = census_api_key
 
     try:
         with httpx.Client(timeout=20.0) as client:
