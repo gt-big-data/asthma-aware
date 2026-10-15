@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
 
   // Transparent overlay that sits on top of the map
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     flexDirection: "column",
   },
 

@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
 
   // ── Overlay ──────────────────────────────────────────────────────────────
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     flexDirection: "column",
   },
 
