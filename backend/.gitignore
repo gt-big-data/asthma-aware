@@ -4,3 +4,4 @@ __pycache__/
 .env
 .pytest_cache/
 data/satellite/
+data/geos_cf/
