@@ -1,0 +1,1100 @@
+{
+  "_comment": "MOCK DATA. Hourly standardized environmental features (0 = typical, +1 = one standard deviation above typical) and the general population symptom prediction, by local (America/New_York) hour of day. Keyed by dashboard grid cell id; 'default' is used for any Georgia cell not listed. Replace with the real forecast tiles when they exist.",
+  "cells": {
+    "ga_02424": {
+      "name": "Downtown Atlanta",
+      "hours": [
+        {
+          "hour": 0,
+          "general_prediction": 1.5,
+          "features": {
+            "pm25": -0.1,
+            "o3": -0.6,
+            "no2": -0.1,
+            "temperature": -0.29,
+            "humidity": 0.72,
+            "precipitation": -0.3,
+            "wind": -0.4,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 1,
+          "general_prediction": 1.5,
+          "features": {
+            "pm25": -0.1,
+            "o3": -0.6,
+            "no2": -0.1,
+            "temperature": -0.41,
+            "humidity": 0.82,
+            "precipitation": -0.3,
+            "wind": -0.4,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 2,
+          "general_prediction": 1.5,
+          "features": {
+            "pm25": -0.1,
+            "o3": -0.6,
+            "no2": -0.1,
+            "temperature": -0.48,
+            "humidity": 0.88,
+            "precipitation": -0.3,
+            "wind": -0.4,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 3,
+          "general_prediction": 1.5,
+          "features": {
+            "pm25": -0.1,
+            "o3": -0.6,
+            "no2": -0.1,
+            "temperature": -0.5,
+            "humidity": 0.9,
+            "precipitation": -0.3,
+            "wind": -0.4,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 4,
+          "general_prediction": 1.51,
+          "features": {
+            "pm25": -0.09,
+            "o3": -0.6,
+            "no2": -0.1,
+            "temperature": -0.48,
+            "humidity": 0.88,
+            "precipitation": -0.3,
+            "wind": -0.4,
+            "pollen": 0.21,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 5,
+          "general_prediction": 1.54,
+          "features": {
+            "pm25": -0.02,
+            "o3": -0.6,
+            "no2": -0.04,
+            "temperature": -0.41,
+            "humidity": 0.82,
+            "precipitation": -0.3,
+            "wind": -0.4,
+            "pollen": 0.24,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 6,
+          "general_prediction": 1.65,
+          "features": {
+            "pm25": 0.19,
+            "o3": -0.6,
+            "no2": 0.23,
+            "temperature": -0.29,
+            "humidity": 0.72,
+            "precipitation": -0.3,
+            "wind": -0.39,
+            "pollen": 0.3,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 7,
+          "general_prediction": 1.81,
+          "features": {
+            "pm25": 0.52,
+            "o3": -0.6,
+            "no2": 0.71,
+            "temperature": -0.15,
+            "humidity": 0.6,
+            "precipitation": -0.3,
+            "wind": -0.37,
+            "pollen": 0.42,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 8,
+          "general_prediction": 1.9,
+          "features": {
+            "pm25": 0.7,
+            "o3": -0.59,
+            "no2": 0.71,
+            "temperature": 0.02,
+            "humidity": 0.46,
+            "precipitation": -0.3,
+            "wind": -0.33,
+            "pollen": 0.58,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 9,
+          "general_prediction": 1.82,
+          "features": {
+            "pm25": 0.52,
+            "o3": -0.58,
+            "no2": 0.23,
+            "temperature": 0.2,
+            "humidity": 0.3,
+            "precipitation": -0.3,
+            "wind": -0.25,
+            "pollen": 0.74,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 10,
+          "general_prediction": 1.66,
+          "features": {
+            "pm25": 0.19,
+            "o3": -0.52,
+            "no2": -0.04,
+            "temperature": 0.38,
+            "humidity": 0.14,
+            "precipitation": -0.3,
+            "wind": -0.14,
+            "pollen": 0.8,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 11,
+          "general_prediction": 1.6,
+          "features": {
+            "pm25": -0.02,
+            "o3": -0.38,
+            "no2": -0.1,
+            "temperature": 0.55,
+            "humidity": -0.0,
+            "precipitation": -0.3,
+            "wind": -0.0,
+            "pollen": 0.74,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 12,
+          "general_prediction": 1.66,
+          "features": {
+            "pm25": -0.08,
+            "o3": -0.12,
+            "no2": -0.1,
+            "temperature": 0.69,
+            "humidity": -0.12,
+            "precipitation": -0.3,
+            "wind": 0.15,
+            "pollen": 0.58,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 13,
+          "general_prediction": 1.83,
+          "features": {
+            "pm25": -0.09,
+            "o3": 0.23,
+            "no2": -0.1,
+            "temperature": 0.81,
+            "humidity": -0.22,
+            "precipitation": -0.3,
+            "wind": 0.26,
+            "pollen": 0.42,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 14,
+          "general_prediction": 2.08,
+          "features": {
+            "pm25": -0.05,
+            "o3": 0.56,
+            "no2": -0.09,
+            "temperature": 0.88,
+            "humidity": -0.28,
+            "precipitation": -0.3,
+            "wind": 0.3,
+            "pollen": 0.3,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 15,
+          "general_prediction": 2.31,
+          "features": {
+            "pm25": 0.07,
+            "o3": 0.7,
+            "no2": -0.02,
+            "temperature": 0.9,
+            "humidity": -0.3,
+            "precipitation": -0.28,
+            "wind": 0.26,
+            "pollen": 0.24,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 16,
+          "general_prediction": 2.4,
+          "features": {
+            "pm25": 0.27,
+            "o3": 0.56,
+            "no2": 0.19,
+            "temperature": 0.88,
+            "humidity": -0.28,
+            "precipitation": 0.1,
+            "wind": 0.15,
+            "pollen": 0.21,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 17,
+          "general_prediction": 2.31,
+          "features": {
+            "pm25": 0.5,
+            "o3": 0.23,
+            "no2": 0.52,
+            "temperature": 0.81,
+            "humidity": -0.22,
+            "precipitation": 0.8,
+            "wind": -0.0,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 18,
+          "general_prediction": 2.08,
+          "features": {
+            "pm25": 0.6,
+            "o3": -0.12,
+            "no2": 0.7,
+            "temperature": 0.69,
+            "humidity": -0.12,
+            "precipitation": 0.1,
+            "wind": -0.14,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 19,
+          "general_prediction": 1.83,
+          "features": {
+            "pm25": 0.5,
+            "o3": -0.38,
+            "no2": 0.52,
+            "temperature": 0.55,
+            "humidity": -0.0,
+            "precipitation": -0.28,
+            "wind": -0.25,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 20,
+          "general_prediction": 1.65,
+          "features": {
+            "pm25": 0.27,
+            "o3": -0.52,
+            "no2": 0.19,
+            "temperature": 0.38,
+            "humidity": 0.14,
+            "precipitation": -0.3,
+            "wind": -0.33,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 21,
+          "general_prediction": 1.56,
+          "features": {
+            "pm25": 0.07,
+            "o3": -0.58,
+            "no2": -0.02,
+            "temperature": 0.2,
+            "humidity": 0.3,
+            "precipitation": -0.3,
+            "wind": -0.37,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 22,
+          "general_prediction": 1.52,
+          "features": {
+            "pm25": -0.05,
+            "o3": -0.59,
+            "no2": -0.09,
+            "temperature": 0.02,
+            "humidity": 0.46,
+            "precipitation": -0.3,
+            "wind": -0.39,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        },
+        {
+          "hour": 23,
+          "general_prediction": 1.5,
+          "features": {
+            "pm25": -0.09,
+            "o3": -0.6,
+            "no2": -0.1,
+            "temperature": -0.15,
+            "humidity": 0.6,
+            "precipitation": -0.3,
+            "wind": -0.4,
+            "pollen": 0.2,
+            "ndvi": -0.4
+          }
+        }
+      ]
+    },
+    "ga_05658": {
+      "name": "Savannah",
+      "hours": [
+        {
+          "hour": 0,
+          "general_prediction": 1.4,
+          "features": {
+            "pm25": -0.2,
+            "o3": -0.5,
+            "no2": -0.3,
+            "temperature": -0.02,
+            "humidity": 1.08,
+            "precipitation": -0.2,
+            "wind": 0.1,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 1,
+          "general_prediction": 1.4,
+          "features": {
+            "pm25": -0.2,
+            "o3": -0.5,
+            "no2": -0.3,
+            "temperature": -0.12,
+            "humidity": 1.15,
+            "precipitation": -0.2,
+            "wind": 0.1,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 2,
+          "general_prediction": 1.4,
+          "features": {
+            "pm25": -0.2,
+            "o3": -0.5,
+            "no2": -0.3,
+            "temperature": -0.18,
+            "humidity": 1.19,
+            "precipitation": -0.2,
+            "wind": 0.1,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 3,
+          "general_prediction": 1.4,
+          "features": {
+            "pm25": -0.2,
+            "o3": -0.5,
+            "no2": -0.3,
+            "temperature": -0.2,
+            "humidity": 1.2,
+            "precipitation": -0.2,
+            "wind": 0.1,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 4,
+          "general_prediction": 1.4,
+          "features": {
+            "pm25": -0.19,
+            "o3": -0.5,
+            "no2": -0.3,
+            "temperature": -0.18,
+            "humidity": 1.19,
+            "precipitation": -0.2,
+            "wind": 0.1,
+            "pollen": 0.51,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 5,
+          "general_prediction": 1.41,
+          "features": {
+            "pm25": -0.15,
+            "o3": -0.5,
+            "no2": -0.27,
+            "temperature": -0.12,
+            "humidity": 1.15,
+            "precipitation": -0.2,
+            "wind": 0.11,
+            "pollen": 0.53,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 6,
+          "general_prediction": 1.43,
+          "features": {
+            "pm25": -0.02,
+            "o3": -0.5,
+            "no2": -0.12,
+            "temperature": -0.02,
+            "humidity": 1.08,
+            "precipitation": -0.2,
+            "wind": 0.13,
+            "pollen": 0.58,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 7,
+          "general_prediction": 1.51,
+          "features": {
+            "pm25": 0.19,
+            "o3": -0.5,
+            "no2": 0.15,
+            "temperature": 0.1,
+            "humidity": 1.0,
+            "precipitation": -0.2,
+            "wind": 0.16,
+            "pollen": 0.68,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 8,
+          "general_prediction": 1.64,
+          "features": {
+            "pm25": 0.3,
+            "o3": -0.48,
+            "no2": 0.15,
+            "temperature": 0.24,
+            "humidity": 0.9,
+            "precipitation": -0.2,
+            "wind": 0.23,
+            "pollen": 0.82,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 9,
+          "general_prediction": 1.71,
+          "features": {
+            "pm25": 0.19,
+            "o3": -0.44,
+            "no2": -0.12,
+            "temperature": 0.4,
+            "humidity": 0.8,
+            "precipitation": -0.2,
+            "wind": 0.32,
+            "pollen": 0.95,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 10,
+          "general_prediction": 1.67,
+          "features": {
+            "pm25": -0.02,
+            "o3": -0.35,
+            "no2": -0.27,
+            "temperature": 0.56,
+            "humidity": 0.7,
+            "precipitation": -0.2,
+            "wind": 0.44,
+            "pollen": 1.0,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 11,
+          "general_prediction": 1.61,
+          "features": {
+            "pm25": -0.15,
+            "o3": -0.17,
+            "no2": -0.3,
+            "temperature": 0.7,
+            "humidity": 0.6,
+            "precipitation": -0.2,
+            "wind": 0.57,
+            "pollen": 0.95,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 12,
+          "general_prediction": 1.65,
+          "features": {
+            "pm25": -0.19,
+            "o3": 0.08,
+            "no2": -0.3,
+            "temperature": 0.82,
+            "humidity": 0.52,
+            "precipitation": -0.2,
+            "wind": 0.66,
+            "pollen": 0.82,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 13,
+          "general_prediction": 1.79,
+          "features": {
+            "pm25": -0.19,
+            "o3": 0.31,
+            "no2": -0.3,
+            "temperature": 0.92,
+            "humidity": 0.45,
+            "precipitation": -0.18,
+            "wind": 0.7,
+            "pollen": 0.68,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 14,
+          "general_prediction": 1.94,
+          "features": {
+            "pm25": -0.17,
+            "o3": 0.4,
+            "no2": -0.29,
+            "temperature": 0.98,
+            "humidity": 0.41,
+            "precipitation": -0.03,
+            "wind": 0.66,
+            "pollen": 0.58,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 15,
+          "general_prediction": 2.0,
+          "features": {
+            "pm25": -0.11,
+            "o3": 0.31,
+            "no2": -0.26,
+            "temperature": 1.0,
+            "humidity": 0.4,
+            "precipitation": 0.44,
+            "wind": 0.57,
+            "pollen": 0.53,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 16,
+          "general_prediction": 1.94,
+          "features": {
+            "pm25": 0.01,
+            "o3": 0.08,
+            "no2": -0.15,
+            "temperature": 0.98,
+            "humidity": 0.41,
+            "precipitation": 0.8,
+            "wind": 0.44,
+            "pollen": 0.51,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 17,
+          "general_prediction": 1.78,
+          "features": {
+            "pm25": 0.14,
+            "o3": -0.17,
+            "no2": 0.01,
+            "temperature": 0.92,
+            "humidity": 0.45,
+            "precipitation": 0.44,
+            "wind": 0.32,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 18,
+          "general_prediction": 1.62,
+          "features": {
+            "pm25": 0.2,
+            "o3": -0.35,
+            "no2": 0.1,
+            "temperature": 0.82,
+            "humidity": 0.52,
+            "precipitation": -0.03,
+            "wind": 0.23,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 19,
+          "general_prediction": 1.5,
+          "features": {
+            "pm25": 0.14,
+            "o3": -0.44,
+            "no2": 0.01,
+            "temperature": 0.7,
+            "humidity": 0.6,
+            "precipitation": -0.18,
+            "wind": 0.16,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 20,
+          "general_prediction": 1.44,
+          "features": {
+            "pm25": 0.01,
+            "o3": -0.48,
+            "no2": -0.15,
+            "temperature": 0.56,
+            "humidity": 0.7,
+            "precipitation": -0.2,
+            "wind": 0.13,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 21,
+          "general_prediction": 1.41,
+          "features": {
+            "pm25": -0.11,
+            "o3": -0.5,
+            "no2": -0.26,
+            "temperature": 0.4,
+            "humidity": 0.8,
+            "precipitation": -0.2,
+            "wind": 0.11,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 22,
+          "general_prediction": 1.4,
+          "features": {
+            "pm25": -0.17,
+            "o3": -0.5,
+            "no2": -0.29,
+            "temperature": 0.24,
+            "humidity": 0.9,
+            "precipitation": -0.2,
+            "wind": 0.1,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        },
+        {
+          "hour": 23,
+          "general_prediction": 1.4,
+          "features": {
+            "pm25": -0.19,
+            "o3": -0.5,
+            "no2": -0.3,
+            "temperature": 0.1,
+            "humidity": 1.0,
+            "precipitation": -0.2,
+            "wind": 0.1,
+            "pollen": 0.5,
+            "ndvi": 0.3
+          }
+        }
+      ]
+    }
+  },
+  "default": {
+    "name": "Default Georgia profile",
+    "hours": [
+      {
+        "hour": 0,
+        "general_prediction": 1.2,
+        "features": {
+          "pm25": -0.2,
+          "o3": -0.4,
+          "no2": -0.3,
+          "temperature": -0.32,
+          "humidity": 0.55,
+          "precipitation": -0.2,
+          "wind": -0.1,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 1,
+        "general_prediction": 1.2,
+        "features": {
+          "pm25": -0.2,
+          "o3": -0.4,
+          "no2": -0.3,
+          "temperature": -0.42,
+          "humidity": 0.63,
+          "precipitation": -0.2,
+          "wind": -0.1,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 2,
+        "general_prediction": 1.2,
+        "features": {
+          "pm25": -0.2,
+          "o3": -0.4,
+          "no2": -0.3,
+          "temperature": -0.48,
+          "humidity": 0.68,
+          "precipitation": -0.2,
+          "wind": -0.1,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 3,
+        "general_prediction": 1.2,
+        "features": {
+          "pm25": -0.2,
+          "o3": -0.4,
+          "no2": -0.3,
+          "temperature": -0.5,
+          "humidity": 0.7,
+          "precipitation": -0.2,
+          "wind": -0.1,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 4,
+        "general_prediction": 1.2,
+        "features": {
+          "pm25": -0.19,
+          "o3": -0.4,
+          "no2": -0.3,
+          "temperature": -0.48,
+          "humidity": 0.68,
+          "precipitation": -0.2,
+          "wind": -0.1,
+          "pollen": 0.11,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 5,
+        "general_prediction": 1.22,
+        "features": {
+          "pm25": -0.16,
+          "o3": -0.4,
+          "no2": -0.28,
+          "temperature": -0.42,
+          "humidity": 0.63,
+          "precipitation": -0.2,
+          "wind": -0.1,
+          "pollen": 0.12,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 6,
+        "general_prediction": 1.27,
+        "features": {
+          "pm25": -0.05,
+          "o3": -0.4,
+          "no2": -0.15,
+          "temperature": -0.32,
+          "humidity": 0.55,
+          "precipitation": -0.2,
+          "wind": -0.09,
+          "pollen": 0.17,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 7,
+        "general_prediction": 1.36,
+        "features": {
+          "pm25": 0.11,
+          "o3": -0.4,
+          "no2": 0.06,
+          "temperature": -0.2,
+          "humidity": 0.45,
+          "precipitation": -0.2,
+          "wind": -0.08,
+          "pollen": 0.25,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 8,
+        "general_prediction": 1.4,
+        "features": {
+          "pm25": 0.2,
+          "o3": -0.4,
+          "no2": 0.06,
+          "temperature": -0.06,
+          "humidity": 0.33,
+          "precipitation": -0.2,
+          "wind": -0.05,
+          "pollen": 0.36,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 9,
+        "general_prediction": 1.36,
+        "features": {
+          "pm25": 0.11,
+          "o3": -0.39,
+          "no2": -0.15,
+          "temperature": 0.1,
+          "humidity": 0.2,
+          "precipitation": -0.2,
+          "wind": 0.0,
+          "pollen": 0.46,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 10,
+        "general_prediction": 1.28,
+        "features": {
+          "pm25": -0.05,
+          "o3": -0.36,
+          "no2": -0.28,
+          "temperature": 0.26,
+          "humidity": 0.07,
+          "precipitation": -0.2,
+          "wind": 0.08,
+          "pollen": 0.5,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 11,
+        "general_prediction": 1.25,
+        "features": {
+          "pm25": -0.16,
+          "o3": -0.28,
+          "no2": -0.3,
+          "temperature": 0.4,
+          "humidity": -0.05,
+          "precipitation": -0.2,
+          "wind": 0.18,
+          "pollen": 0.46,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 12,
+        "general_prediction": 1.29,
+        "features": {
+          "pm25": -0.19,
+          "o3": -0.14,
+          "no2": -0.3,
+          "temperature": 0.52,
+          "humidity": -0.15,
+          "precipitation": -0.2,
+          "wind": 0.29,
+          "pollen": 0.36,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 13,
+        "general_prediction": 1.38,
+        "features": {
+          "pm25": -0.19,
+          "o3": 0.05,
+          "no2": -0.3,
+          "temperature": 0.62,
+          "humidity": -0.23,
+          "precipitation": -0.2,
+          "wind": 0.37,
+          "pollen": 0.25,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 14,
+        "general_prediction": 1.52,
+        "features": {
+          "pm25": -0.18,
+          "o3": 0.23,
+          "no2": -0.29,
+          "temperature": 0.68,
+          "humidity": -0.28,
+          "precipitation": -0.2,
+          "wind": 0.4,
+          "pollen": 0.17,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 15,
+        "general_prediction": 1.65,
+        "features": {
+          "pm25": -0.13,
+          "o3": 0.3,
+          "no2": -0.27,
+          "temperature": 0.7,
+          "humidity": -0.3,
+          "precipitation": -0.2,
+          "wind": 0.37,
+          "pollen": 0.12,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 16,
+        "general_prediction": 1.7,
+        "features": {
+          "pm25": -0.04,
+          "o3": 0.23,
+          "no2": -0.19,
+          "temperature": 0.68,
+          "humidity": -0.28,
+          "precipitation": -0.2,
+          "wind": 0.29,
+          "pollen": 0.11,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 17,
+        "general_prediction": 1.65,
+        "features": {
+          "pm25": 0.06,
+          "o3": 0.05,
+          "no2": -0.07,
+          "temperature": 0.62,
+          "humidity": -0.23,
+          "precipitation": -0.2,
+          "wind": 0.18,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 18,
+        "general_prediction": 1.52,
+        "features": {
+          "pm25": 0.1,
+          "o3": -0.14,
+          "no2": 0.0,
+          "temperature": 0.52,
+          "humidity": -0.15,
+          "precipitation": -0.2,
+          "wind": 0.08,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 19,
+        "general_prediction": 1.38,
+        "features": {
+          "pm25": 0.06,
+          "o3": -0.28,
+          "no2": -0.07,
+          "temperature": 0.4,
+          "humidity": -0.05,
+          "precipitation": -0.2,
+          "wind": 0.0,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 20,
+        "general_prediction": 1.28,
+        "features": {
+          "pm25": -0.04,
+          "o3": -0.36,
+          "no2": -0.19,
+          "temperature": 0.26,
+          "humidity": 0.07,
+          "precipitation": -0.2,
+          "wind": -0.05,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 21,
+        "general_prediction": 1.23,
+        "features": {
+          "pm25": -0.13,
+          "o3": -0.39,
+          "no2": -0.27,
+          "temperature": 0.1,
+          "humidity": 0.2,
+          "precipitation": -0.2,
+          "wind": -0.08,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 22,
+        "general_prediction": 1.21,
+        "features": {
+          "pm25": -0.18,
+          "o3": -0.4,
+          "no2": -0.29,
+          "temperature": -0.06,
+          "humidity": 0.33,
+          "precipitation": -0.2,
+          "wind": -0.09,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      },
+      {
+        "hour": 23,
+        "general_prediction": 1.2,
+        "features": {
+          "pm25": -0.19,
+          "o3": -0.4,
+          "no2": -0.3,
+          "temperature": -0.2,
+          "humidity": 0.45,
+          "precipitation": -0.2,
+          "wind": -0.1,
+          "pollen": 0.1,
+          "ndvi": 0.2
+        }
+      }
+    ]
+  }
+}
