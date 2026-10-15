@@ -26,6 +26,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="socioeconomic"
         options={{
+          href: null,
           title: "Equity",
           tabBarIcon: ({ color }) => (
             <Ionicons name="people-outline" size={22} color={color} />
