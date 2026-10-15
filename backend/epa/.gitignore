@@ -1,0 +1,6 @@
+.env
+
+# Keep the data folder layout in git, but not the collected files.
+data/raw/air_quality/airnow/*
+data/normalized/air_quality/airnow/*
+!.gitkeep
