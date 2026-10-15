@@ -1,0 +1,16 @@
+{
+  "_comment": "MOCK DATA. Per-user sensitivity weights w_u, one per standardized feature. A positive weight means a higher-than-typical value raises that user's risk; a negative weight means it lowers it (e.g. wind and rain clear the air). Replace with the real personalization store.",
+  "users": {
+    "demo-user": {
+      "pm25": 0.40,
+      "o3": 0.20,
+      "no2": 0.10,
+      "temperature": 0.05,
+      "humidity": 0.15,
+      "precipitation": -0.05,
+      "wind": -0.10,
+      "pollen": 0.30,
+      "ndvi": 0.05
+    }
+  }
+}
