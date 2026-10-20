@@ -9,7 +9,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import ChoroplethView from "../../components/ChoroplethView";
+import ChoroplethView from "../../app-archive/ChoroplethView";
 import {
   SOCIO_VARIABLES,
   SocioVar,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
 
   // ── Overlay ──────────────────────────────────────────────────────────────
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     flexDirection: "column",
   },
 
