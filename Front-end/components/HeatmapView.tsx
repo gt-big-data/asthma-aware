@@ -1,25 +1,23 @@
 import { useRef, useEffect, useCallback } from "react";
 import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
-import { WebView, WebViewMessageEvent } from "react-native-webview";
+import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { LatLngIntensity } from "../constants/data";
 
 interface HeatmapViewProps {
   points: LatLngIntensity[];
+  visualization?: "cells" | "heat";
 }
 
-// Atlanta grid constants (must match backend constants.py):
-//   lat: 33.39 – 33.64  (56 rows)   → lat_step = 0.25 / 56
-//   lon: -84.55 – -84.28 (96 cols)  → lon_step = 0.27 / 96
 const MAP_HTML = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css"/>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #map { width: 100%; height: 100%; }
-    .leaflet-control-attribution { display: none; }
     body { background: #1a1a2e; }
   </style>
 </head>
@@ -27,6 +25,9 @@ const MAP_HTML = `
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
   <script>
     const STOPS = [
@@ -59,52 +60,60 @@ const MAP_HTML = `
 
     const LAT_STEP = 0.25 / 56;
     const LON_STEP = 0.27 / 96;
-
     let map = null;
     let cellLayer = null;
+    let heatLayer = null;
     const renderer = L.canvas({ padding: 0.5 });
 
     try {
       map = L.map("map", {
         zoomControl: false,
-        attributionControl: false,
+        attributionControl: true,
+        minZoom: 5,
+        maxZoom: 15,
         dragging: true,
         touchZoom: true,
         scrollWheelZoom: true,
         doubleClickZoom: true,
+        zoomAnimation: true,
         tap: true,
       });
 
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        maxZoom: 18,
+      MaplibreGLLeaflet.maplibreGL({
+        style: "https://tiles.openfreemap.org/styles/positron",
       }).addTo(map);
+      map.attributionControl.addAttribution(
+        '<a href="https://openfreemap.org">OpenFreeMap</a> | <a href="https://www.openmaptiles.org/">© OpenMapTiles</a> | Data from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      );
 
-      map.setView([33.515, -84.415], 11);
+      map.setView([33.75, -84.39], 6);
     } catch (err) {
       console.error("Map init failed:", err.message);
     }
 
-    // Fade out the overlay as the user zooms in so the base map stays readable.
-    // zoom 11 (default fit) → 0.57 opacity; each extra zoom level drops ~0.10.
     function updateLayerOpacity() {
-      if (!renderer._container) return;
       const z = map.getZoom();
-      const opacity = Math.max(0.14, Math.min(0.57, 0.57 - (z - 11) * 0.10));
-      renderer._container.style.opacity = opacity;
+      if (renderer._container) {
+        renderer._container.style.opacity =
+          Math.max(0.14, Math.min(0.57, 0.57 - (z - 11) * 0.10));
+      }
     }
     map.on("zoomend", updateLayerOpacity);
 
-    // Called by React Native zoom buttons
     window.mapZoomIn  = function() { map && map.zoomIn();  };
     window.mapZoomOut = function() { map && map.zoomOut(); };
 
-    window.updateHeatmap = function(points) {
+    window.updateHeatmap = function(points, showAsHeatmap) {
       try {
-        if (!points || points.length === 0) return;
+        if (!points || points.length === 0 || !map) return;
 
         if (cellLayer) {
           map.removeLayer(cellLayer);
           cellLayer = null;
+        }
+        if (heatLayer) {
+          map.removeLayer(heatLayer);
+          heatLayer = null;
         }
 
         const vals   = points.map(p => p[2]);
@@ -112,14 +121,33 @@ const MAP_HTML = `
         const maxVal = Math.max(...vals);
         const range  = maxVal - minVal;
 
+        if (showAsHeatmap) {
+          const heatPoints = points.map(point => [
+            point[0],
+            point[1],
+            range > 0.0001 ? (point[2] - minVal) / range : 0.5,
+          ]);
+          heatLayer = L.heatLayer(heatPoints, {
+            radius: 22,
+            blur: 24,
+            maxZoom: 15,
+            minOpacity: 0.28,
+            gradient: {
+              0.15: "#2547a8",
+              0.35: "#20b9c7",
+              0.55: "#69cf71",
+              0.75: "#f4d84a",
+              1: "#e53935",
+            },
+          }).addTo(map);
+          updateLayerOpacity();
+          return;
+        }
+
         cellLayer = L.layerGroup();
-
         for (let i = 0; i < points.length; i++) {
-          const lat = points[i][0];
-          const lon = points[i][1];
-          const raw = points[i][2];
-          const t   = range > 0.0001 ? (raw - minVal) / range : 0.5;
-
+          const [lat, lon, raw] = points[i];
+          const t = range > 0.0001 ? (raw - minVal) / range : 0.5;
           const [r, g, b] = getColor(t);
 
           L.rectangle(
@@ -132,7 +160,6 @@ const MAP_HTML = `
             }
           ).addTo(cellLayer);
         }
-
         cellLayer.addTo(map);
 
         const lats = points.map(p => p[0]);
@@ -140,10 +167,11 @@ const MAP_HTML = `
         map.fitBounds(
           L.latLngBounds(
             L.latLng(Math.min(...lats) - LAT_STEP, Math.min(...lngs)),
-            L.latLng(Math.max(...lats),             Math.max(...lngs) + LON_STEP)
+            L.latLng(Math.max(...lats), Math.max(...lngs) + LON_STEP)
           ),
           { padding: [20, 20], maxZoom: 11, animate: false }
         );
+        updateLayerOpacity();
       } catch (err) {
         console.error("updateHeatmap error:", err.message);
       }
@@ -155,16 +183,19 @@ const MAP_HTML = `
 </html>
 `;
 
-export default function HeatmapView({ points }: HeatmapViewProps) {
-  const webviewRef   = useRef<WebView>(null);
+export default function HeatmapView({
+  points,
+  visualization = "cells",
+}: HeatmapViewProps) {
+  const webviewRef   = useRef<WebView<object>>(null);
   const webviewReady = useRef(false);
   const pendingPts   = useRef<LatLngIntensity[] | null>(null);
 
   const injectHeatmap = useCallback((pts: LatLngIntensity[]) => {
     webviewRef.current?.injectJavaScript(
-      `window.updateHeatmap(${JSON.stringify(pts)}); true;`
+      `window.updateHeatmap(${JSON.stringify(pts)}, ${visualization === "heat"}); true;`
     );
-  }, []);
+  }, [visualization]);
 
   const zoomIn  = useCallback(() => {
     webviewRef.current?.injectJavaScript("window.mapZoomIn(); true;");
@@ -195,7 +226,7 @@ export default function HeatmapView({ points }: HeatmapViewProps) {
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <WebView
+      <WebView<object>
         ref={webviewRef}
         source={{ html: MAP_HTML }}
         style={StyleSheet.absoluteFill}

@@ -1,10 +1,2 @@
-earthengine-api==1.6.11  # pinned: 1.6.12+ CLI uses `str | None` syntax that breaks on Python 3.9
-httpx
-rasterio
-xarray
-netCDF4
-numpy
-pandas
-zarr<3  # zarr 3 requires Python 3.11+
-fsspec
-aiohttp
+# Compatibility entry point for collector setup.
+-r ../requirements/satellite.txt

@@ -151,6 +151,11 @@ def lead_slice(init: pd.Timestamp, window: Optional[TimeWindow] = None, hours: i
     return slice(first, stop)
 
 
+def first_valid_time(init: pd.Timestamp, lead: slice) -> np.datetime64:
+    """Valid time of the first step in lead (steps are stamped mid-hour)."""
+    return (init + TAVG_OFFSET + pd.Timedelta(hours=lead.start)).to_datetime64()
+
+
 def run_covers(init: pd.Timestamp, window: TimeWindow) -> bool:
     lead = lead_slice(init, window)
     return 0 <= lead.start and lead.stop <= MAX_FORECAST_HOURS
@@ -443,6 +448,8 @@ def build_forecast(init: pd.Timestamp, area: Area, lead: slice) -> xr.Dataset:
             raise ValidationError(f"Collections in run {run_id} have different valid times")
     # join="exact" refuses to silently realign mismatched lat/lon grids.
     ds = xr.merge(parts, join="exact", combine_attrs="override")
+    if not ds.sizes.get("time") or ds["time"].values[0] != first_valid_time(init, lead):
+        raise ValidationError(f"Run {run_id} does not begin at its expected valid time")
 
     ds = ds.assign_coords(lead_time=("time", ds["time"].values - init.to_datetime64()))
     ds["time"].attrs.update({"long_name": "forecast valid time (center of hourly averaging window)", "standard_name": "time"})
@@ -484,6 +491,8 @@ def validate_forecast(ds: xr.Dataset, expected_hours: int, specs: Sequence[Varia
             errors.append(f"'{spec.name}' has no units")
         elif units != spec.units:
             errors.append(f"'{spec.name}' units changed upstream: expected '{spec.units}', got '{units}'")
+        if var.size and bool(np.isinf(var).any()):
+            errors.append(f"'{spec.name}' contains infinite values")
         if var.size and bool(var.isnull().all()):
             errors.append(f"'{spec.name}' is entirely NaN")
         elif var.size and "time" in var.dims:
@@ -562,7 +571,9 @@ def write_outputs(ds: xr.Dataset, metadata: Dict[str, object], output_dir: Path)
     tmp_path = nc_path.with_suffix(".nc.tmp")
     ds.to_netcdf(tmp_path, encoding=encoding, format="NETCDF4")
     tmp_path.replace(nc_path)  # atomic, so readers never see a half-written file
-    json_path.write_text(json.dumps(metadata, indent=2) + "\n")
+    metadata_tmp = json_path.with_suffix(".json.tmp")
+    metadata_tmp.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    metadata_tmp.replace(json_path)
     return nc_path, json_path
 
 
@@ -593,8 +604,21 @@ def run(
 
     nc_path = output_dir / f"{output_stem(area.name, run_id, lead)}.nc"
     if nc_path.exists() and not overwrite:
-        logger.info("%s already exists; skipping download (use --overwrite to refetch)", nc_path)
-        return nc_path
+        try:
+            sidecar = json.loads(nc_path.with_suffix(".metadata.json").read_text(encoding="utf-8"))
+            if (sidecar.get("forecast_run") != run_id
+                    or sidecar.get("region_bbox") != area.bbox
+                    or sidecar.get("lead_hour_range") != [lead.start, lead.stop]):
+                raise ValidationError("cached metadata does not match the requested forecast")
+            with xr.open_dataset(nc_path) as cached:
+                validate_forecast(cached, lead.stop - lead.start)
+                if cached["time"].values[0] != first_valid_time(init, lead):
+                    raise ValidationError("cached valid times do not match the requested run")
+        except (OSError, ValueError, ValidationError) as exc:
+            logger.warning("Rebuilding unusable cached forecast %s: %s", nc_path, exc)
+        else:
+            logger.info("%s is complete and matches the request; reusing", nc_path)
+            return nc_path
 
     logger.info("Area %s, run %s, forecast hours %d-%d", area.name, run_id, lead.start, lead.stop)
     downloaded_at = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
@@ -683,6 +707,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     hours = MAX_FORECAST_HOURS if args.hours is None else args.hours
     if not 1 <= hours <= MAX_FORECAST_HOURS:
         parser.error(f"--hours must be between 1 and {MAX_FORECAST_HOURS}")
+    if args.lookback_days < 0:
+        parser.error("--lookback-days must be nonnegative")
 
     try:
         run(area, args.output, args.run, args.lookback_days, args.overwrite, hours, window)
