@@ -1,9 +1,10 @@
-# Defines the API router for health check endpoints, allowing clients to verify that the server is running and responsive.
+"""Process liveness; deliberately independent of external services."""
 
 from fastapi import APIRouter
 
-router = APIRouter(tags=["Health"])
+router = APIRouter(tags=["Operations"])
+
 
 @router.get("/health")
-def health_check():
+def health() -> dict[str, str]:
     return {"status": "ok"}

@@ -100,7 +100,7 @@ class ModelRun(TimestampMixin, Base):
     """One inference pass that produced a set of forecasts.
 
     ``feature_order`` is stored per-run rather than read from
-    ``app/constants.py`` at display time. The channel order (so2, ndvi,
+    ``ingestion/grid_definition.py`` at display time. The channel order (so2, ndvi,
     no2) is load-bearing -- the model's output channels are meaningless
     without it -- and a run made under a different order must stay
     readable after the constant changes.

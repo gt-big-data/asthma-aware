@@ -11,6 +11,7 @@ no-database tests cannot catch a broken constraint, index or upsert.
 from __future__ import annotations
 
 import datetime as dt
+import os
 import sys
 from pathlib import Path
 
@@ -21,9 +22,10 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from tests.conftest import requires_db  # noqa: E402
-
-pytestmark = requires_db
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("TEST_DATABASE_URL", "").strip(),
+    reason="Set TEST_DATABASE_URL to a disposable Postgres+PostGIS database",
+)
 
 DAY = dt.date(2026, 3, 1)
 

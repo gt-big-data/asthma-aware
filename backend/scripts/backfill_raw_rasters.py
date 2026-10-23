@@ -51,7 +51,7 @@ from db.repositories import reference  # noqa: E402
 from db.session import session_scope  # noqa: E402
 from ingestion import grid_resample  # noqa: E402
 
-RASTER_DIR = BACKEND_DIR / "raw_rasters"
+RASTER_DIR = BACKEND_DIR / "legacy" / "raw_rasters"
 
 # MOD13Q1 is a 16-day composite. build_latest_sequence.py expands it to
 # daily with np.repeat(ndvi, 16, axis=0), and this mirrors that exactly so

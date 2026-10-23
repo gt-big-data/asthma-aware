@@ -78,7 +78,7 @@ class GridCell(Base):
     Coordinate convention
     ---------------------
     ``lat``/``lon`` are the cell's **upper-left corner**, matching
-    ``app/utils/geo.py:get_lat_lon_for_cell`` exactly::
+    ``ingestion/geometry.py:get_lat_lon_for_cell`` exactly::
 
         lat = max_lat - row * (max_lat - min_lat) / rows
         lon = min_lon + col * (max_lon - min_lon) / cols
