@@ -1,25 +1,25 @@
-# Starts the FastAPI application and includes the API routers for health and map endpoints.
+"""Single API entry point. Run from backend/: uvicorn app.main:app --reload."""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.dashboard import router as dashboard_router
 from app.api.health import router as health_router
-from app.api.map import router as map_router
-from app.config import settings
+from app.config import Settings
 
-app = FastAPI(
-    title=settings.APP_NAME,
-    version=settings.APP_VERSION
-)
+def create_app(settings: Settings | None = None) -> FastAPI:
+    application = FastAPI(title="AsthmaAware API", version="0.1.0")
+    application.state.settings = settings or Settings.from_env()
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(application.state.settings.cors_origins),
+        allow_methods=["GET"],
+        allow_headers=["Authorization", "Content-Type"],
+        expose_headers=["X-AsthmaAware-Data-Source"],
+    )
+    application.include_router(dashboard_router)
+    application.include_router(health_router)
+    return application
 
-# Expo Web runs on a different origin (e.g. localhost:8081) than the API; browsers block
-# cross-origin fetches unless the API sends Access-Control-Allow-Origin.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-app.include_router(health_router)
-app.include_router(map_router)
+app = create_app()

@@ -5,3 +5,6 @@ __pycache__/
 .pytest_cache/
 data/satellite/
 data/geos_cf/
+/data/
+.env.*
+!.env.example

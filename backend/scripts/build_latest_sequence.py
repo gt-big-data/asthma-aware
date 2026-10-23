@@ -4,8 +4,8 @@ from sklearn.preprocessing import MinMaxScaler
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "raw_rasters"
-OUTPUT_DIR = BASE_DIR / "app" / "data"
+DATA_DIR = BASE_DIR / "legacy" / "raw_rasters"
+OUTPUT_DIR = BASE_DIR / "legacy" / "map_prototype" / "data"
 
 NDVI_PATH = DATA_DIR / "ndvi_stack.tif"
 SO2_PATH = DATA_DIR / "SO2_stack_reprojected_ndvi_dims2.tif"

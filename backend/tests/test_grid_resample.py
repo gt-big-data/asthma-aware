@@ -17,10 +17,10 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app.constants import ATLANTA_BOUNDS  # noqa: E402
+from ingestion.grid_definition import ATLANTA_BOUNDS  # noqa: E402
 from ingestion import grid_resample  # noqa: E402
 
-RASTER_DIR = BACKEND_DIR / "raw_rasters"
+RASTER_DIR = BACKEND_DIR / "legacy" / "raw_rasters"
 NO2 = RASTER_DIR / "NO2_reprojected_stack.tif"
 SO2 = RASTER_DIR / "SO2_stack_reprojected_ndvi_dims2.tif"
 NDVI = RASTER_DIR / "ndvi_stack.tif"

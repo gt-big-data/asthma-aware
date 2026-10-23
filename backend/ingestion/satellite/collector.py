@@ -68,9 +68,11 @@ class DbSink:
 
         variable_slug = kwargs.get("variable_slug")
         try:
-            self.rows_written += db_writer.persist_raster(
-                self.session, run=self.run, region=self.region_row, **kwargs
-            )
+            with self.session.begin_nested():
+                written = db_writer.persist_raster(
+                    self.session, run=self.run, region=self.region_row, **kwargs
+                )
+            self.rows_written += written
             self.run.rows_written = self.rows_written
         except Exception as exc:  # noqa: BLE001
             logger.error("Failed to persist %s to the database: %s", variable_slug, exc)
@@ -250,7 +252,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--ee-project", type=str, default=None, help="Google Cloud project registered for Earth Engine (overrides EE_PROJECT_ID)")
     parser.add_argument("--output-dir", type=str, default=DEFAULT_OUTPUT_DIR, help="Root output directory (default: data/satellite)")
     parser.add_argument("--no-db", action="store_true", help="Write GeoTIFFs and metadata.json only; skip the database")
-    parser.add_argument("--region", type=str, default=REGION_NAME, help=f"Region slug to attribute observations to (default: {REGION_NAME})")
+    parser.add_argument("--region", choices=[REGION_NAME], default=REGION_NAME, help="Historical satellite grid region")
     args = parser.parse_args(argv)
 
     if args.date and (args.start_date or args.end_date):

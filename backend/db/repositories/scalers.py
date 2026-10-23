@@ -72,12 +72,12 @@ class Scaler:
             if span == 0:
                 # A constant variable carries no information; map it to
                 # zero rather than dividing by zero and producing inf.
-                return np.zeros_like(arr)
+                return np.where(np.isnan(arr), np.nan, 0.0).astype(np.float32)
             return (arr - self.fit_min) / span
         if self.method == "standard":
             std = self.fit_std or 0.0
             if std == 0:
-                return np.zeros_like(arr)
+                return np.where(np.isnan(arr), np.nan, 0.0).astype(np.float32)
             return (arr - (self.fit_mean or 0.0)) / std
         raise ValueError(f"Unknown scaler method {self.method!r}")
 
@@ -161,8 +161,9 @@ def fit_minmax(
         )
         session.add(params)
     else:
-        for key, value in fields.items():
-            setattr(params, key, value)
+        raise ValueError(
+            f"Scaler version {version!r} already exists; use a new version to refit."
+        )
     session.flush()
 
     if activate:
@@ -178,6 +179,15 @@ def activate_version(
     Done in two statements inside the caller's transaction, so there is
     never a moment where two versions are active or none is.
     """
+    target = session.scalar(
+        select(ScalerParams).where(
+            ScalerParams.region_id == region.id,
+            ScalerParams.variable_id == variable.id,
+            ScalerParams.version == version,
+        )
+    )
+    if target is None:
+        raise ValueError(f"Scaler version {version!r} does not exist")
     session.execute(
         update(ScalerParams)
         .where(

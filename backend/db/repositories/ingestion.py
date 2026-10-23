@@ -133,18 +133,17 @@ def record_issue(
 def run_scope(session: Session, pipeline: str, **kwargs) -> Iterator[IngestionRun]:
     """Start a run, and close it out however the block exits.
 
-    On an exception the run is marked ``failed`` with the message stored,
-    then the exception is re-raised -- the caller still sees the failure,
-    but there is now a record of it that outlives the terminal session.
+    Data written by the block is rolled back to a savepoint on failure.
+    Transaction ownership remains with the caller: this helper never commits.
+    A caller that rolls back the outer transaction also discards the audit row.
+    Durable failure auditing must use a separate job boundary/transaction.
     """
     run = start_run(session, pipeline, **kwargs)
     try:
-        yield run
+        with session.begin_nested():
+            yield run
     except Exception as exc:
         finish_run(session, run, status="failed", error=f"{type(exc).__name__}: {exc}")
-        # Commit the failure record before unwinding; session_scope would
-        # otherwise roll it back along with the partial data.
-        session.commit()
         raise
     else:
         finish_run(session, run)

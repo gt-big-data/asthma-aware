@@ -32,7 +32,7 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app.constants import FEATURE_ORDER  # noqa: E402
+from ingestion.grid_definition import FEATURE_ORDER  # noqa: E402
 from db.repositories import reference  # noqa: E402
 from db.repositories import scalers as scaler_repo  # noqa: E402
 from db.session import session_scope  # noqa: E402
