@@ -1,13 +1,15 @@
 """NASA GEOS-CF v2 forecast ingestion.
 
-Resolves the newest GEOS-CF v2 forecast run, pulls the air-quality and
-meteorology surface fields for a region (Georgia by default) through NASA's
-OPeNDAP server, validates the result, and writes a NetCDF file
-(time x lat x lon) plus a metadata.json sidecar.
+Resolves a GEOS-CF v2 forecast run (the newest by default), pulls the air-quality
+and meteorology surface fields for an area of Georgia through NASA's OPeNDAP server,
+validates the result, and writes a NetCDF file (time x lat x lon) plus a
+metadata.json sidecar.
 
 Usage:
     python -m ingestion.geos_cf.fetch_forecast --region georgia --hours 120 --output ./data/geos_cf
-    python -m ingestion.geos_cf.fetch_forecast --run 2026-10-14   # pin a specific run
+    python -m ingestion.geos_cf.fetch_forecast --run 2026-10-14                  # an earlier day's run
+    python -m ingestion.geos_cf.fetch_forecast --point 33.75,-84.39 --time 2026-10-23T15:00 --tz America/New_York
+    python -m ingestion.geos_cf.fetch_forecast --bbox 33.4,34.2,-84.9,-83.9 --start 2026-10-23 --end 2026-10-24
 
 Run from the backend/ directory so that `ingestion` resolves as a package.
 See ingestion/geos_cf/README.md for how GEOS-CF forecasts are published.
@@ -63,6 +65,104 @@ COLLECTIONS = (AQC_COLLECTION, MET_COLLECTION)
 REGIONS: Dict[str, Dict[str, float]] = {
     "georgia": {"min_lat": 30.36, "max_lat": 35.00, "min_lon": -85.61, "max_lon": -80.84},
 }
+GEORGIA_BBOX = REGIONS["georgia"]
+
+
+@dataclass(frozen=True)
+class Area:
+    """What part of the grid to download. `name` is used in output file names."""
+
+    name: str
+    bbox: Dict[str, float]  # the extent to subset; for a point, the containing grid cell's center
+    point: Optional[Tuple[float, float]] = None  # the (lat, lon) the user asked for, if a point
+
+
+def region_area(name: str) -> Area:
+    return Area(name, REGIONS[name])
+
+
+def _check_in_georgia(lat: float, lon: float) -> None:
+    g = GEORGIA_BBOX
+    if not (g["min_lat"] <= lat <= g["max_lat"] and g["min_lon"] <= lon <= g["max_lon"]):
+        raise ValueError(
+            f"({lat}, {lon}) is outside Georgia's extent "
+            f"({g['min_lat']}..{g['max_lat']} N, {g['min_lon']}..{g['max_lon']} E)"
+        )
+
+
+def _snap(value: float) -> float:
+    return round(value / NATIVE_RESOLUTION_DEG) * NATIVE_RESOLUTION_DEG
+
+
+def point_area(lat: float, lon: float) -> Area:
+    """The single 0.25 deg grid cell containing (lat, lon)."""
+    _check_in_georgia(lat, lon)
+    clat, clon = _snap(lat), _snap(lon)
+    name = f"point_{abs(lat):.2f}{'N' if lat >= 0 else 'S'}_{abs(lon):.2f}{'E' if lon >= 0 else 'W'}"
+    return Area(name, {"min_lat": clat, "max_lat": clat, "min_lon": clon, "max_lon": clon}, point=(lat, lon))
+
+
+def bbox_area(min_lat: float, max_lat: float, min_lon: float, max_lon: float) -> Area:
+    if min_lat > max_lat or min_lon > max_lon:
+        raise ValueError("bbox must be MIN_LAT,MAX_LAT,MIN_LON,MAX_LON with min <= max")
+    _check_in_georgia(min_lat, min_lon)
+    _check_in_georgia(max_lat, max_lon)
+    name = f"bbox_{min_lat:g}_{max_lat:g}_{min_lon:g}_{max_lon:g}"
+    return Area(name, {"min_lat": min_lat, "max_lat": max_lat, "min_lon": min_lon, "max_lon": max_lon})
+
+
+@dataclass(frozen=True)
+class TimeWindow:
+    """A requested span of valid times, as naive UTC timestamps.
+
+    end=None means "through the end of the run"; end == start means the single hour
+    containing start. Otherwise end is exclusive: 15:00-18:00 is the 15, 16 and 17 o'clock hours.
+    """
+
+    start: pd.Timestamp
+    end: Optional[pd.Timestamp] = None
+
+    def describe(self) -> str:
+        if self.end is None:
+            return f"from {self.start.isoformat()}Z"
+        if self.end == self.start:
+            return f"at {self.start.isoformat()}Z"
+        return f"{self.start.isoformat()}Z to {self.end.isoformat()}Z"
+
+
+def parse_time(value: str, tz: str = "UTC") -> pd.Timestamp:
+    """Parse an ISO time ('2026-10-23T15:00', '2026-10-23', or with an offset) to naive UTC."""
+    ts = pd.Timestamp(value)
+    if ts.tzinfo is None:
+        ts = ts.tz_localize(tz)
+    return ts.tz_convert("UTC").tz_localize(None)
+
+
+def lead_slice(init: pd.Timestamp, window: Optional[TimeWindow] = None, hours: int = MAX_FORECAST_HOURS) -> slice:
+    """Indices into a run's 120 hourly steps. Step k is the mean over [init + k h, init + (k+1) h)."""
+    if window is None:
+        return slice(0, hours)
+    hour = pd.Timedelta(hours=1)
+    first = int(np.floor((window.start - init) / hour))
+    if window.end is None:
+        stop = MAX_FORECAST_HOURS
+    else:
+        stop = max(int(np.ceil((window.end - init) / hour)), first + 1)
+    return slice(first, stop)
+
+
+def run_covers(init: pd.Timestamp, window: TimeWindow) -> bool:
+    lead = lead_slice(init, window)
+    return 0 <= lead.start and lead.stop <= MAX_FORECAST_HOURS
+
+
+def _run_span(init: pd.Timestamp) -> str:
+    end = init + pd.Timedelta(hours=MAX_FORECAST_HOURS)
+    return f"{init.isoformat()}Z to {end.isoformat()}Z"
+
+
+def latest_init_at_or_before(t: pd.Timestamp) -> pd.Timestamp:
+    return (t - pd.Timedelta(hours=INIT_HOUR_UTC)).normalize() + pd.Timedelta(hours=INIT_HOUR_UTC)
 
 
 @dataclass(frozen=True)
@@ -143,10 +243,10 @@ def _read_inventory(url: str) -> Tuple[Dict[str, str], np.ndarray, float]:
         return long_names, remote["time"].values, float(remote["lon"].max())
 
 
-def _read_variable(url: str, source_name: str, selection: Dict[str, slice], hours: int) -> xr.DataArray:
+def _read_variable(url: str, source_name: str, selection: Dict[str, slice], lead: slice) -> xr.DataArray:
     with open_remote(url) as remote:
         # OPeNDAP only transfers the constrained hyperslab, not the global field.
-        data = remote[source_name].sel(**selection).isel(time=slice(0, hours))
+        data = remote[source_name].sel(**selection).isel(time=lead)
         if "lev" in data.dims:
             data = data.isel(lev=0, drop=True)
         data = data.load()
@@ -223,8 +323,28 @@ def _run_available(run_id: str) -> bool:
     return True
 
 
-def resolve_forecast_run(run_date: Optional[dt.date] = None, lookback_days: int = DEFAULT_LOOKBACK_DAYS) -> pd.Timestamp:
-    """Return the initialization time of the newest run published for every collection we need.
+def _newest_run() -> pd.Timestamp:
+    try:
+        url = collection_url(AQC_COLLECTION)
+        _, times, _ = remote_call(_read_inventory, url, what=f"Opening {url}")
+        newest = infer_init_time(times)
+        logger.info("%s.latest points at run %s", AQC_COLLECTION, run_id_for(newest))
+    except OSError as exc:
+        now = pd.Timestamp.now(tz="UTC").tz_localize(None)
+        newest = latest_init_at_or_before(now)
+        logger.warning("Could not open .latest (%s); probing dated runs from %s", exc, run_id_for(newest))
+    return newest
+
+
+def resolve_forecast_run(
+    run_date: Optional[dt.date] = None,
+    lookback_days: int = DEFAULT_LOOKBACK_DAYS,
+    window: Optional[TimeWindow] = None,
+) -> pd.Timestamp:
+    """Return the initialization time of the run to download.
+
+    With run_date, that day's 09z run (which must cover `window`, if given). Otherwise the
+    newest run published for every collection we need that also covers `window`.
 
     `.latest` is a moving alias, so we only use it to discover the newest run and then pin
     each collection to that run's dated URL. That keeps AQ and met from the same run even if
@@ -233,31 +353,37 @@ def resolve_forecast_run(run_date: Optional[dt.date] = None, lookback_days: int 
     """
     if run_date is not None:
         init = pd.Timestamp(dt.datetime(run_date.year, run_date.month, run_date.day, INIT_HOUR_UTC))
+        if window is not None and not run_covers(init, window):
+            raise ForecastUnavailableError(
+                f"Run {run_id_for(init)} covers {_run_span(init)}, which does not include {window.describe()}"
+            )
         if not _run_available(run_id_for(init)):
             raise ForecastUnavailableError(f"GEOS-CF run {run_id_for(init)} is not available on {OPENDAP_ROOT}")
         return init
 
-    try:
-        url = collection_url(AQC_COLLECTION)
-        _, times, _ = remote_call(_read_inventory, url, what=f"Opening {url}")
-        newest = infer_init_time(times)
-        logger.info("%s.latest points at run %s", AQC_COLLECTION, run_id_for(newest))
-    except OSError as exc:
-        now = pd.Timestamp.now(tz="UTC").tz_localize(None)
-        newest = now.normalize() + pd.Timedelta(hours=INIT_HOUR_UTC)
-        if newest > now:
-            newest -= pd.Timedelta(days=1)
-        logger.warning("Could not open .latest (%s); probing dated runs from %s", exc, run_id_for(newest))
+    newest = _newest_run()
+    first = newest
+    if window is not None:
+        # The freshest forecast for a time is the newest run that started at or before it.
+        first = min(newest, latest_init_at_or_before(window.start))
+        if not run_covers(first, window):
+            raise ForecastUnavailableError(
+                f"No single run covers {window.describe()}: the newest run, {run_id_for(newest)}, "
+                f"covers {_run_span(newest)}, and each run is {MAX_FORECAST_HOURS} hours long"
+            )
 
     for days_back in range(lookback_days + 1):
-        candidate = newest - pd.Timedelta(days=days_back)
+        candidate = first - pd.Timedelta(days=days_back)
+        if window is not None and not run_covers(candidate, window):
+            break
         if _run_available(run_id_for(candidate)):
             if days_back:
                 logger.warning("Falling back %d day(s) to run %s", days_back, run_id_for(candidate))
             return candidate
 
     raise ForecastUnavailableError(
-        f"No GEOS-CF run available for all of {list(COLLECTIONS)} within {lookback_days} day(s) of {run_id_for(newest)}"
+        f"No GEOS-CF run available for all of {list(COLLECTIONS)} within {lookback_days} day(s) of {run_id_for(first)}"
+        + (f" that covers {window.describe()}" if window is not None else "")
     )
 
 
@@ -271,7 +397,7 @@ def _grid_selection(bbox: Dict[str, float]) -> Dict[str, slice]:
 
 
 def fetch_collection(
-    collection: str, run_id: str, specs: Sequence[VariableSpec], bbox: Dict[str, float], hours: int
+    collection: str, run_id: str, specs: Sequence[VariableSpec], bbox: Dict[str, float], lead: slice
 ) -> xr.Dataset:
     url = collection_url(collection, run_id)
     long_names, _, lon_max = remote_call(_read_inventory, url, what=f"Opening {url}")
@@ -286,7 +412,7 @@ def fetch_collection(
     for spec in specs:
         # One request per variable, so a failure retries just that variable.
         data = remote_call(
-            _read_variable, url, spec.source_name, _grid_selection(bbox), hours,
+            _read_variable, url, spec.source_name, _grid_selection(bbox), lead,
             what=f"Downloading {spec.source_name} from {url}",
         )
         source_long_name = long_names[spec.source_name]
@@ -304,13 +430,13 @@ def fetch_collection(
     return out
 
 
-def build_forecast(init: pd.Timestamp, bbox: Dict[str, float], hours: int) -> xr.Dataset:
+def build_forecast(init: pd.Timestamp, area: Area, lead: slice) -> xr.Dataset:
     run_id = run_id_for(init)
     parts = []
     for collection in COLLECTIONS:
         specs = [s for s in VARIABLES if s.collection == collection]
         logger.info("Fetching %d variables from %s (run %s)", len(specs), collection, run_id)
-        parts.append(fetch_collection(collection, run_id, specs, bbox, hours))
+        parts.append(fetch_collection(collection, run_id, specs, area.bbox, lead))
 
     for part in parts[1:]:
         if not np.array_equal(part["time"].values, parts[0]["time"].values):
@@ -370,7 +496,12 @@ def validate_forecast(ds: xr.Dataset, expected_hours: int, specs: Sequence[Varia
 
 
 def build_metadata(
-    ds: xr.Dataset, init: pd.Timestamp, region: str, bbox: Dict[str, float], downloaded_at: dt.datetime
+    ds: xr.Dataset,
+    init: pd.Timestamp,
+    area: Area,
+    lead: slice,
+    downloaded_at: dt.datetime,
+    window: Optional[TimeWindow] = None,
 ) -> Dict[str, object]:
     run_id = run_id_for(init)
     valid_times = [pd.Timestamp(t).isoformat() + "Z" for t in ds["time"].values]
@@ -382,13 +513,16 @@ def build_metadata(
         "initialization_time": init.isoformat() + "Z",
         "downloaded_at": downloaded_at.isoformat().replace("+00:00", "Z"),
         "forecast_hours": len(valid_times),
+        "lead_hour_range": [lead.start, lead.stop],
+        "requested_time_window": None if window is None else window.describe(),
         "valid_time_start": valid_times[0],
         "valid_time_end": valid_times[-1],
         "valid_times": valid_times,
         "time_convention": "hourly means stamped at the center of the hour (init+0.5h, init+1.5h, ...)",
         "native_spatial_resolution": NATIVE_SPATIAL_RESOLUTION,
-        "region": region,
-        "region_bbox": bbox,
+        "region": area.name,
+        "region_bbox": area.bbox,
+        "requested_point": None if area.point is None else {"lat": area.point[0], "lon": area.point[1]},
         "grid_extent": {
             "min_lat": float(ds["lat"].min()),
             "max_lat": float(ds["lat"].max()),
@@ -404,14 +538,23 @@ def build_metadata(
     }
 
 
+def output_stem(area_name: str, run_id: str, lead: slice) -> str:
+    stem = f"geos_cf_{area_name}_{run_id}"
+    if (lead.start, lead.stop) != (0, MAX_FORECAST_HOURS):
+        stem += f"_h{lead.start:03d}-{lead.stop:03d}"
+    return stem
+
+
 def write_outputs(ds: xr.Dataset, metadata: Dict[str, object], output_dir: Path) -> Tuple[Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    stem = f"geos_cf_{metadata['region']}_{metadata['forecast_run']}"
+    stem = output_stem(metadata["region"], metadata["forecast_run"], slice(*metadata["lead_hour_range"]))
     nc_path = output_dir / f"{stem}.nc"
     json_path = output_dir / f"{stem}.metadata.json"
 
     # NetCDF attributes must be flat; nested values are stored as JSON strings.
-    ds.attrs = {k: v if isinstance(v, (str, int, float, list)) else json.dumps(v) for k, v in metadata.items()}
+    ds.attrs = {
+        k: v if isinstance(v, (str, int, float, list)) else json.dumps(v) for k, v in metadata.items() if v is not None
+    }
     encoding = {name: {"zlib": True, "complevel": 4, "dtype": "float32"} for name in ds.data_vars}
     encoding["time"] = {"units": f"hours since {metadata['initialization_time'][:-1]}", "dtype": "float64"}
     encoding["lead_time"] = {"units": "hours", "dtype": "float32"}
@@ -431,31 +574,44 @@ def _format_bytes(n: float) -> str:
     return f"{n:.1f} TB"
 
 
-def run(region: str, hours: int, output_dir: Path, run_date: Optional[dt.date], lookback_days: int, overwrite: bool) -> Path:
-    bbox = REGIONS[region]
-    init = resolve_forecast_run(run_date, lookback_days)
+def run(
+    area: Area,
+    output_dir: Path,
+    run_date: Optional[dt.date] = None,
+    lookback_days: int = DEFAULT_LOOKBACK_DAYS,
+    overwrite: bool = False,
+    hours: int = MAX_FORECAST_HOURS,
+    window: Optional[TimeWindow] = None,
+) -> Path:
+    init = resolve_forecast_run(run_date, lookback_days, window)
     run_id = run_id_for(init)
+    lead = lead_slice(init, window, hours)
 
     age_hours = (pd.Timestamp.now(tz="UTC").tz_localize(None) - init) / pd.Timedelta(hours=1)
-    if age_hours > STALE_AFTER_HOURS:
+    if run_date is None and window is None and age_hours > STALE_AFTER_HOURS:
         logger.warning("Run %s is %.0f hours old; a newer daily run may be late or missing", run_id, age_hours)
 
-    nc_path = output_dir / f"geos_cf_{region}_{run_id}.nc"
+    nc_path = output_dir / f"{output_stem(area.name, run_id, lead)}.nc"
     if nc_path.exists() and not overwrite:
         logger.info("%s already exists; skipping download (use --overwrite to refetch)", nc_path)
         return nc_path
 
+    logger.info("Area %s, run %s, forecast hours %d-%d", area.name, run_id, lead.start, lead.stop)
     downloaded_at = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
-    ds = build_forecast(init, bbox, hours)
-    validate_forecast(ds, hours)
-    metadata = build_metadata(ds, init, region, bbox, downloaded_at)
+    ds = build_forecast(init, area, lead)
+    validate_forecast(ds, lead.stop - lead.start)
+    metadata = build_metadata(ds, init, area, lead, downloaded_at, window)
     nc_path, json_path = write_outputs(ds, metadata, output_dir)
 
     logger.info("GEOS-CF forecast ingested and validated")
     logger.info("  forecast run         %s (initialized %s)", run_id, metadata["initialization_time"])
+    if window is not None:
+        logger.info("  requested            %s", window.describe())
+    if area.point is not None:
+        logger.info("  point                %s -> grid cell %.2f, %.2f", area.point, area.bbox["min_lat"], area.bbox["min_lon"])
     logger.info("  first valid time     %s", metadata["valid_time_start"])
     logger.info("  last valid time      %s", metadata["valid_time_end"])
-    logger.info("  forecast hours       %d", metadata["forecast_hours"])
+    logger.info("  forecast hours       %d (lead hours %d-%d)", metadata["forecast_hours"], lead.start, lead.stop)
     logger.info("  grid                 %d lat x %d lon cells @ %.2f deg", ds.sizes["lat"], ds.sizes["lon"], NATIVE_RESOLUTION_DEG)
     logger.info("  variables            %s", ", ".join(metadata["variables"]))
     logger.info("  downloaded           %s (uncompressed)", _format_bytes(ds.nbytes))
@@ -464,21 +620,72 @@ def run(region: str, hours: int, output_dir: Path, run_date: Optional[dt.date], 
     return nc_path
 
 
+def _floats(text: str, count: int) -> List[float]:
+    try:
+        values = [float(v) for v in text.split(",")]
+    except ValueError:
+        values = []
+    if len(values) != count:
+        raise argparse.ArgumentTypeError(f"expected {count} comma-separated numbers, got '{text}'")
+    return values
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Download the latest NASA GEOS-CF v2 forecast for a region.")
-    parser.add_argument("--region", choices=sorted(REGIONS), default="georgia")
-    parser.add_argument("--hours", type=int, default=MAX_FORECAST_HOURS, help=f"forecast hours to keep (1-{MAX_FORECAST_HOURS})")
+    parser = argparse.ArgumentParser(
+        description="Download a NASA GEOS-CF v2 forecast for Georgia, or a point or box within it.",
+        epilog="Times are ISO 8601 (2026-10-23T15:00, 2026-10-23, or with an offset like 2026-10-23T15:00-04:00).",
+    )
+    where = parser.add_argument_group("location (default: all of Georgia)").add_mutually_exclusive_group()
+    where.add_argument("--region", choices=sorted(REGIONS), help="a named region")
+    where.add_argument("--point", type=lambda t: _floats(t, 2), metavar="LAT,LON", help="the grid cell containing this point")
+    where.add_argument(
+        "--bbox", type=lambda t: _floats(t, 4), metavar="MIN_LAT,MAX_LAT,MIN_LON,MAX_LON", help="a box within Georgia"
+    )
+
+    when = parser.add_argument_group("time (default: all 120 hours of the run)")
+    span = when.add_mutually_exclusive_group()
+    span.add_argument("--hours", type=int, help=f"the first N hours of the run (1-{MAX_FORECAST_HOURS})")
+    span.add_argument("--time", help="just the hour containing this time")
+    span.add_argument("--start", help="hours from this time ...")
+    when.add_argument("--end", help="... up to (not including) this time; default: end of the run")
+    when.add_argument("--tz", default="UTC", help="timezone for times without an offset, e.g. America/New_York (default UTC)")
+    when.add_argument(
+        "--run", type=dt.date.fromisoformat, metavar="YYYY-MM-DD",
+        help="use the 09z run from this day; default: the newest run (that covers --time/--start)",
+    )
+
     parser.add_argument("--output", type=Path, default=Path("data/geos_cf"), help="output directory")
-    parser.add_argument("--run", type=dt.date.fromisoformat, help="fetch the 09z run from this date (YYYY-MM-DD) instead of the latest")
     parser.add_argument("--lookback-days", type=int, default=DEFAULT_LOOKBACK_DAYS, help="how many earlier daily runs to try if the newest is incomplete")
-    parser.add_argument("--overwrite", action="store_true", help="refetch even if this run's output already exists")
+    parser.add_argument("--overwrite", action="store_true", help="refetch even if this output already exists")
     args = parser.parse_args(argv)
 
-    if not 1 <= args.hours <= MAX_FORECAST_HOURS:
+    try:
+        if args.point:
+            area = point_area(*args.point)
+        elif args.bbox:
+            area = bbox_area(*args.bbox)
+        else:
+            area = region_area(args.region or "georgia")
+
+        window = None
+        if args.time:
+            t = parse_time(args.time, args.tz)
+            window = TimeWindow(t, t)
+        elif args.start:
+            window = TimeWindow(parse_time(args.start, args.tz), parse_time(args.end, args.tz) if args.end else None)
+            if window.end is not None and window.end <= window.start:
+                parser.error("--end must be after --start")
+        elif args.end:
+            parser.error("--end requires --start")
+    except ValueError as exc:  # bad coordinates, unknown timezone, unparseable time
+        parser.error(str(exc))
+
+    hours = MAX_FORECAST_HOURS if args.hours is None else args.hours
+    if not 1 <= hours <= MAX_FORECAST_HOURS:
         parser.error(f"--hours must be between 1 and {MAX_FORECAST_HOURS}")
 
     try:
-        run(args.region, args.hours, args.output, args.run, args.lookback_days, args.overwrite)
+        run(area, args.output, args.run, args.lookback_days, args.overwrite, hours, window)
     except (ForecastUnavailableError, ValidationError) as exc:
         logger.error("%s", exc)
         return 1
