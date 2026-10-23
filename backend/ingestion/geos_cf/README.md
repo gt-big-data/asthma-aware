@@ -124,8 +124,9 @@ we don't need. The older `/gmao/geos-cf/fcast/…_v1` tree is v1 and should not 
 **Latest vs. dated runs.** Each collection is published in two forms:
 
 - `<collection>.latest`: a moving alias for the newest run.
-- `<collection>/<collection>.YYYYMMDD_09z`: one dataset per run. Runs go back to
-  2025-08 and the archive has gaps (for example, 2025-08-06 through 08-08 are missing).
+- `<collection>/<collection>.YYYYMMDD_09z`: one dataset per run. Air-quality runs go back
+  to 2025-08, with gaps (for example, 2025-08-06 through 08-08 are missing). **Weather runs are
+  kept for only ~17 days**, so `--run` only works for about the last 2½ weeks.
 
 `.latest` does not report which run it is. The script works it out from the time axis:
 init = first timestamp − 30 min. It then **pins every collection to that run's dated
@@ -180,3 +181,44 @@ every failure together:
 
 The NetCDF file is written to a temp file and then renamed, so a reader never sees a
 half-written file.
+
+## Historical data: `fetch_analysis.py`
+
+The forecast archive can't supply a past year. Weather forecasts are kept for only ~17 days
+(air-quality forecasts go back to Aug 2025), and forecasts are predictions anyway.
+For history, use the **analysis**: GEOS-CF's continuous hourly reconstruction of past
+conditions, made by running the model alongside observations. Weather fields are tightly tied
+to observations. Pollutants are mostly model chemistry, with limited satellite constraints, so
+treat them as estimates and use EPA AirNow/AQS for measured values.
+
+```bash
+python -m ingestion.geos_cf.fetch_analysis --point 33.75,-84.39 \
+    --start 2025-10-01 --end 2026-10-01 --tz America/New_York
+```
+
+It takes the same `--point` / `--bbox` / `--region` and `--tz` options as the forecast script,
+and `--start` and `--end` are required. Output: `geos_cf_analysis_<area>_<start>-<end>.nc`, with
+the same variables and units as the forecast plus `missing_hours`, `hours_from_opendap` and
+`hours_from_cloud_copy` in the metadata.
+
+**Where the data comes from, and why:**
+
+1. **GMAO's Zarr copy on S3** (`s3://smce-geos-cf-public/geos-cf-v2-rpl.zarr`) is stored in
+   663-hour × 50 × 50-cell tiles, so a year at any area reads in about a minute. Where it has
+   data, it is identical to OPeNDAP. As of Oct 2026 it has **no specific humidity**, is
+   **missing Dec 2025 to Jan 2026**, stores **September 2025 twice** (the duplicates are
+   removed), and lags a day or so behind.
+2. **OPeNDAP** (`/dods/gmao/geos-cf/v2/ana/…`) fills whatever the Zarr copy lacks. It costs
+   about 0.1 s per variable per hour **regardless of area**: a week took 15 s for a point and
+   17 s for the whole continental US. Asking for several variables in one request doesn't
+   help. NCCS's proxy drops requests that run past about a minute, so the script requests
+   1 week at a time with 6 in parallel. Chunks are cached under `data/geos_cf/.cache/`, so
+   rerunning after a failure resumes where it stopped. Some hourly files around late Dec
+   2025 sometimes return an instant 502. Failing chunks are split in half repeatedly, and
+   only truly unreadable hours are left missing.
+
+Use `--no-cloud` to skip S3. Expect about 10 minutes for a year at one point. Most of that is
+specific humidity and the Dec–Jan gap coming from OPeNDAP; area adds little.
+
+The forecast archive also lives on that S3 bucket as `geos-cf-v2-fcst-latest.zarr`, but only
+for the latest run.
