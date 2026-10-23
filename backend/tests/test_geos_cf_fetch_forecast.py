@@ -148,3 +148,31 @@ def test_run_with_timeout_returns_results_and_reraises_errors():
     assert ff.run_with_timeout(abs, -3, timeout=60) == 3
     with pytest.raises(FileNotFoundError):
         ff.run_with_timeout(open, "/nonexistent/geos_cf", timeout=60)
+
+
+def test_validation_rejects_infinite_measurements(forecast):
+    forecast["pm25"][0, 0, 0] = np.inf
+    with pytest.raises(ff.ValidationError, match="infinite"):
+        ff.validate_forecast(forecast, 120)
+
+
+def test_short_cached_run_is_rebuilt_for_longer_request(forecast, tmp_path, monkeypatch):
+    short = forecast.isel(time=slice(0, 24)).copy()
+    downloaded_at = dt.datetime(2026, 10, 15, 22, tzinfo=dt.timezone.utc)
+    metadata = ff.build_metadata(short, INIT, "georgia", GEORGIA, downloaded_at)
+    ff.write_outputs(short, metadata, tmp_path)
+    monkeypatch.setattr(ff, "resolve_forecast_run", lambda *args: INIT)
+    calls = []
+
+    def build(*args):
+        calls.append(args)
+        return forecast
+
+    monkeypatch.setattr(ff, "build_forecast", build)
+    path = ff.run("georgia", 120, tmp_path, None, 3, False)
+    assert len(calls) == 1
+    with xr.open_dataset(path) as result:
+        assert result.sizes["time"] == 120
+    # A complete matching cache is reused on the next run.
+    ff.run("georgia", 120, tmp_path, None, 3, False)
+    assert len(calls) == 1

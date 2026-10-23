@@ -24,7 +24,8 @@ from db import config as db_config  # noqa: E402
 from db.models import Base  # noqa: E402  (registers every table)
 
 config = context.config
-config.set_main_option("sqlalchemy.url", db_config.get_database_url())
+# ConfigParser treats percent-encoded passwords as interpolation expressions.
+config.set_main_option("sqlalchemy.url", db_config.get_database_url().replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

@@ -42,6 +42,11 @@ def engine():
     """Engine bound to the test database, with the schema created fresh."""
     if not TEST_DATABASE_URL:
         pytest.skip("TEST_DATABASE_URL not set")
+    if os.environ.get("TEST_DATABASE_ALLOW_RESET", "").lower() != "true":
+        raise pytest.UsageError(
+            "Integration fixtures DROP TABLES. Set TEST_DATABASE_ALLOW_RESET=true "
+            "only for a disposable TEST_DATABASE_URL."
+        )
 
     from sqlalchemy import create_engine, text
 

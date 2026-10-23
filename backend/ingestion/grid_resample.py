@@ -72,7 +72,7 @@ def target_transform(bounds: Dict[str, float], rows: int, cols: int):
     """The affine transform of the model grid.
 
     Row 0 is the *northern* edge, matching both the GeoTIFF convention
-    and ``app/utils/geo.py`` (where ``lat = max_lat - row * step``). If
+    and ``ingestion/geometry.py`` (where ``lat = max_lat - row * step``). If
     this were flipped, every stored frame would be upside down relative
     to the frontend heatmap -- and it would still look plausible.
     """

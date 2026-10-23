@@ -16,8 +16,8 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app.constants import ATLANTA_BOUNDS  # noqa: E402
-from app.utils.geo import get_lat_lon_for_cell  # noqa: E402
+from ingestion.grid_definition import ATLANTA_BOUNDS  # noqa: E402
+from ingestion.geometry import get_lat_lon_for_cell  # noqa: E402
 from scripts.seed_reference_data import GRID_COLS, GRID_ROWS, compute_cell_rows  # noqa: E402
 
 
