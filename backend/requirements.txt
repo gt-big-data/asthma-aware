@@ -1,9 +1,3 @@
-fastapi
-uvicorn
-pydantic
-pytest
-httpx
-numpy
-torch
-rasterio
-scikit-learn
+# API and database foundation; collectors and tests are separate.
+-r requirements/api.txt
+-r requirements/database.txt

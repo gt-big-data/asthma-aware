@@ -1,0 +1,2 @@
+-r ingestion.txt
+earthengine-api==1.6.11

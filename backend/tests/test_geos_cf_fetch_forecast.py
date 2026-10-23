@@ -249,3 +249,33 @@ def test_cli_rejects_bad_location_and_time(capsys):
         with pytest.raises(SystemExit) as exc:
             ff.main(argv)
         assert exc.value.code == 2
+
+
+def test_validation_rejects_infinite_measurements(forecast):
+    forecast["pm25"][0, 0, 0] = np.inf
+    with pytest.raises(ff.ValidationError, match="infinite"):
+        ff.validate_forecast(forecast, 120)
+
+
+def test_short_cached_run_is_rebuilt_for_longer_request(forecast, tmp_path, monkeypatch):
+    # A truncated file under the full-run name (e.g. from an interrupted older version).
+    short = forecast.isel(time=slice(0, 24)).copy()
+    downloaded_at = dt.datetime(2026, 10, 15, 22, tzinfo=dt.timezone.utc)
+    georgia = ff.region_area("georgia")
+    metadata = ff.build_metadata(short, INIT, georgia, FULL_RUN, downloaded_at)
+    ff.write_outputs(short, metadata, tmp_path)
+    monkeypatch.setattr(ff, "resolve_forecast_run", lambda *args: INIT)
+    calls = []
+
+    def build(*args):
+        calls.append(args)
+        return forecast
+
+    monkeypatch.setattr(ff, "build_forecast", build)
+    path = ff.run(georgia, tmp_path)
+    assert len(calls) == 1
+    with xr.open_dataset(path) as result:
+        assert result.sizes["time"] == 120
+    # A complete matching cache is reused on the next run.
+    ff.run(georgia, tmp_path)
+    assert len(calls) == 1
