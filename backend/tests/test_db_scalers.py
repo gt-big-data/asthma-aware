@@ -76,6 +76,14 @@ def test_constant_variable_does_not_divide_by_zero():
     assert np.all(np.isfinite(out))
 
 
+@pytest.mark.parametrize("method", ["minmax", "standard"])
+def test_constant_scaler_preserves_missing_cells(method):
+    scaler = Scaler("no2", method, "v1", 4.2, 4.2, 4.2, 0.0)
+    result = scaler.transform(np.array([4.2, np.nan]))
+    assert result[0] == 0.0
+    assert np.isnan(result[1])
+
+
 def test_negative_minimum_is_handled():
     """S5P SO2 legitimately retrieves negative column densities."""
     scaler = minmax(-0.00085, 0.00332)
@@ -145,3 +153,29 @@ def test_inverse_transform_frame_round_trips_model_output():
 def test_inverse_transform_frame_rejects_wrong_rank():
     with pytest.raises(ValueError, match=r"\(C, H, W\)"):
         inverse_transform_frame(np.zeros((4, 3, 56, 96), dtype=np.float32), [minmax(0, 1)])
+
+
+def test_existing_scaler_version_cannot_be_refitted(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from db.repositories import scalers
+
+    session = Mock()
+    existing = SimpleNamespace(fit_min=1.0, fit_max=2.0)
+    session.scalar.return_value = existing
+    monkeypatch.setattr(scalers.grid, "value_bounds", lambda *args, **kwargs: (0.0, 10.0, 10))
+    with pytest.raises(ValueError, match="already exists"):
+        scalers.fit_minmax(session, SimpleNamespace(id=1), SimpleNamespace(id=2), version="v1")
+    assert (existing.fit_min, existing.fit_max) == (1.0, 2.0)
+
+
+def test_unknown_scaler_activation_does_not_deactivate_existing_version():
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from db.repositories import scalers
+
+    session = Mock()
+    session.scalar.return_value = None
+    with pytest.raises(ValueError, match="does not exist"):
+        scalers.activate_version(session, SimpleNamespace(id=1), SimpleNamespace(id=2), "missing")
+    session.execute.assert_not_called()

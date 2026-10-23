@@ -26,7 +26,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from sqlalchemy import func, select  # noqa: E402
 
-from app.constants import ATLANTA_BOUNDS  # noqa: E402
+from ingestion.grid_definition import ATLANTA_BOUNDS  # noqa: E402
 from db.models import GridCell, Region  # noqa: E402
 from db.repositories import reference  # noqa: E402
 from db.session import session_scope  # noqa: E402
@@ -291,7 +291,7 @@ def compute_cell_rows(
     """Build the grid_cells rows for a region. Pure, so it can be tested.
 
     The ``lat``/``lon`` returned are the cell's **upper-left corner**,
-    computed identically to ``app/utils/geo.py:get_lat_lon_for_cell``.
+    computed identically to ``ingestion/geometry.py:get_lat_lon_for_cell``.
     The frontend heatmap is already positioned against that convention,
     so any drift here would silently move every cell on the map.
     ``tests/test_grid_geometry.py`` asserts the two agree.

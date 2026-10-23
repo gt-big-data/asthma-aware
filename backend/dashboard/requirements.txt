@@ -1,5 +1,0 @@
-fastapi
-uvicorn
-httpx2  # required by FastAPI's TestClient
-pytest
-tzdata  # time zone database; built into macOS/Linux, needed on Windows

@@ -29,11 +29,13 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import ee
 import httpx
 import rasterio
+from dotenv import load_dotenv
 
 S5P_NO2_COLLECTION = "COPERNICUS/S5P/OFFL/L3_NO2"
 S5P_NO2_BAND = "tropospheric_NO2_column_number_density"
@@ -98,6 +100,7 @@ def initialize(project_id: Optional[str] = None) -> None:
     global _initialized
     if _initialized:
         return
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
     project_id = project_id or os.environ.get("EE_PROJECT_ID")
     if not project_id:
         raise RuntimeError(

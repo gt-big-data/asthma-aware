@@ -152,7 +152,7 @@ def load_sequence(
     """Return a ``(len(dates), len(variables), rows, cols)`` array.
 
     ``variables`` order is the channel order -- for the current model that
-    is ``[so2, ndvi, no2]`` from ``app.constants.FEATURE_ORDER``. Getting
+    is ``[so2, ndvi, no2]`` from ``ingestion.grid_definition.FEATURE_ORDER``. Getting
     it wrong silently feeds the model transposed channels, so pass the
     constant rather than hardcoding a list.
 

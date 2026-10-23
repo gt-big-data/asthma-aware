@@ -1,20 +1,3 @@
-fastapi
-uvicorn
-pydantic
-pytest
-httpx
-numpy
-torch
-rasterio
-scikit-learn
-
-# --- database (see db/README.md) ---
-SQLAlchemy>=2.0
-alembic
-# psycopg 3. The [binary] extra ships prebuilt wheels so nobody needs
-# local Postgres headers to install it.
-psycopg[binary]
-# PostGIS geometry column types for SQLAlchemy.
-GeoAlchemy2
-# Loads backend/.env so DATABASE_URL does not have to be exported by hand.
-python-dotenv
+# API and database foundation; collectors and tests are separate.
+-r requirements/api.txt
+-r requirements/database.txt

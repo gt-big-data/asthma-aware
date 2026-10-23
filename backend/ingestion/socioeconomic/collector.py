@@ -11,13 +11,8 @@ ACS 5-year estimates are published annually, so this is a once-a-year
 job, not a scheduled one. Re-running is safe: records are keyed on
 (ZCTA, dataset_year) and updated in place.
 
-The fetch and transform logic is imported from
-``app.services.socioeconomic_service`` rather than reimplemented. That
-module already handles the parts that are easy to get wrong -- the ACS
-sentinel values (-666666666 and friends) that mean "not available" and
-must become NULL rather than a number, and the derived-rate arithmetic
-that has to tolerate a missing numerator or denominator. Duplicating it
-here would mean two copies drifting apart.
+The fetch and transform logic lives in ingestion.socioeconomic.client.
+No HTTP routes or sample fallback are used by the collector.
 
 Run from the backend/ directory.
 """
@@ -34,7 +29,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app.services import socioeconomic_service as acs  # noqa: E402
+from ingestion.socioeconomic import client as acs  # noqa: E402
 from db.repositories import ingestion as ingestion_repo  # noqa: E402
 from db.repositories import reference  # noqa: E402
 from db.repositories import socioeconomic as socio_repo  # noqa: E402
@@ -73,8 +68,8 @@ def collect(
     dataset_year: int,
     city: str,
 ) -> int:
-    raw_rows = acs._fetch_census_rows()
-    indicators = acs._transform_rows(raw_rows, city)
+    raw_rows = acs.fetch_rows()
+    indicators = acs.transform_rows(raw_rows, city)
     logger.info("Census returned %d ZCTA rows for %s", len(indicators), city)
 
     written = 0
@@ -136,7 +131,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             f"Unsupported city {city!r}. Known: "
             f"{', '.join(sorted(acs.SUPPORTED_CITY_ZCTAS))}.\n"
             f"Add its ZCTA list to SUPPORTED_CITY_ZCTAS in "
-            f"app/services/socioeconomic_service.py first."
+            f"ingestion/socioeconomic/client.py first."
         )
 
     # The ACS vintage is baked into the URL in the service module, so a
@@ -145,7 +140,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     if args.year != acs.ACS_DATASET_YEAR:
         raise SystemExit(
             f"--year {args.year} does not match ACS_DATASET_YEAR "
-            f"({acs.ACS_DATASET_YEAR}) in app/services/socioeconomic_service.py, "
+            f"({acs.ACS_DATASET_YEAR}) in ingestion/socioeconomic/client.py, "
             f"which is what determines the URL actually queried. Update that "
             f"constant instead so the fetch and the label cannot disagree."
         )
