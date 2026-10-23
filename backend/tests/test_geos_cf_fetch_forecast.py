@@ -11,6 +11,7 @@ from ingestion.geos_cf import fetch_forecast as ff
 
 INIT = pd.Timestamp("2026-10-15T09:00")
 GEORGIA = ff.REGIONS["georgia"]
+FULL_RUN = slice(0, 120)
 
 
 def fake_remote(collection, hours=120):
@@ -42,7 +43,7 @@ def offline(monkeypatch):
 
 @pytest.fixture
 def forecast(offline):
-    return ff.build_forecast(INIT, GEORGIA, hours=120)
+    return ff.build_forecast(INIT, ff.region_area("georgia"), FULL_RUN)
 
 
 def test_parse_units_reads_trailing_parenthetical():
@@ -98,7 +99,7 @@ def test_validation_flags_hours_that_are_all_nan(forecast):
 
 def test_write_outputs_round_trip(forecast, tmp_path):
     downloaded_at = dt.datetime(2026, 10, 15, 22, tzinfo=dt.timezone.utc)
-    metadata = ff.build_metadata(forecast, INIT, "georgia", GEORGIA, downloaded_at)
+    metadata = ff.build_metadata(forecast, INIT, ff.region_area("georgia"), FULL_RUN, downloaded_at)
     nc_path, json_path = ff.write_outputs(forecast, metadata, tmp_path)
 
     assert nc_path.name == "geos_cf_georgia_20261015_09z.nc"
@@ -150,6 +151,106 @@ def test_run_with_timeout_returns_results_and_reraises_errors():
         ff.run_with_timeout(open, "/nonexistent/geos_cf", timeout=60)
 
 
+def utc(text):
+    return pd.Timestamp(text)
+
+
+def test_point_area_snaps_to_containing_grid_cell(offline):
+    area = ff.point_area(33.75, -84.39)  # downtown Atlanta
+    assert area.name == "point_33.75N_84.39W"
+    assert area.bbox == {"min_lat": 33.75, "max_lat": 33.75, "min_lon": -84.5, "max_lon": -84.5}
+    ds = ff.build_forecast(INIT, area, FULL_RUN)
+    assert dict(ds.sizes) == {"time": 120, "lat": 1, "lon": 1}
+    assert float(ds.lat) == 33.75 and float(ds.lon) == -84.5
+
+
+def test_point_and_bbox_must_be_in_georgia():
+    with pytest.raises(ValueError, match="outside Georgia"):
+        ff.point_area(40.7, -74.0)
+    with pytest.raises(ValueError, match="outside Georgia"):
+        ff.bbox_area(33.0, 36.0, -85.0, -84.0)
+    with pytest.raises(ValueError, match="min <= max"):
+        ff.bbox_area(34.0, 33.0, -85.0, -84.0)
+
+
+def test_bbox_area_subsets_cells_touching_box(offline):
+    ds = ff.build_forecast(INIT, ff.bbox_area(33.4, 34.2, -84.9, -83.9), FULL_RUN)
+    assert ds["lat"].values.tolist() == [33.5, 33.75, 34.0, 34.25]
+    assert ds["lon"].values.tolist() == [-85.0, -84.75, -84.5, -84.25, -84.0]
+
+
+def test_parse_time_converts_to_utc():
+    assert ff.parse_time("2026-10-16T15:00", "America/New_York") == utc("2026-10-16T19:00")
+    assert ff.parse_time("2026-10-16T15:00-04:00") == utc("2026-10-16T19:00")
+    assert ff.parse_time("2026-10-16") == utc("2026-10-16T00:00")
+
+
+def test_lead_slice_for_times_and_intervals():
+    # Step k is the mean over [09:00 + k h, 10:00 + k h) on the run day.
+    assert ff.lead_slice(INIT) == slice(0, 120)
+    assert ff.lead_slice(INIT, hours=24) == slice(0, 24)
+    assert ff.lead_slice(INIT, ff.TimeWindow(utc("2026-10-15T09:00"), utc("2026-10-15T09:00"))) == slice(0, 1)
+    assert ff.lead_slice(INIT, ff.TimeWindow(utc("2026-10-15T19:45"), utc("2026-10-15T19:45"))) == slice(10, 11)
+    # 15:00-18:00 local is 19:00-22:00 UTC -> three hourly means
+    assert ff.lead_slice(INIT, ff.TimeWindow(utc("2026-10-15T19:00"), utc("2026-10-15T22:00"))) == slice(10, 13)
+    assert ff.lead_slice(INIT, ff.TimeWindow(utc("2026-10-15T19:30"), utc("2026-10-15T21:10"))) == slice(10, 13)
+    assert ff.lead_slice(INIT, ff.TimeWindow(utc("2026-10-17T09:00"))) == slice(48, 120)
+
+
+def test_run_covers():
+    assert ff.run_covers(INIT, ff.TimeWindow(utc("2026-10-20T08:59"), utc("2026-10-20T08:59")))
+    assert not ff.run_covers(INIT, ff.TimeWindow(utc("2026-10-20T09:00"), utc("2026-10-20T09:00")))
+    assert not ff.run_covers(INIT, ff.TimeWindow(utc("2026-10-15T08:00"), utc("2026-10-15T08:00")))
+    assert ff.latest_init_at_or_before(utc("2026-10-12T08:00")) == utc("2026-10-11T09:00")
+    assert ff.latest_init_at_or_before(utc("2026-10-12T09:00")) == utc("2026-10-12T09:00")
+
+
+def test_resolve_picks_freshest_run_covering_a_past_time(offline, monkeypatch):
+    monkeypatch.setattr(ff, "_run_available", lambda run_id: True)
+    t = utc("2026-10-12T19:00")
+    assert ff.resolve_forecast_run(window=ff.TimeWindow(t, t)) == utc("2026-10-12T09:00")
+    # .latest (fake) is 20261015_09z, so a time inside it uses it.
+    t = utc("2026-10-17T19:00")
+    assert ff.resolve_forecast_run(window=ff.TimeWindow(t, t)) == INIT
+
+
+def test_resolve_falls_back_to_older_run_that_still_covers_window(offline, monkeypatch):
+    monkeypatch.setattr(ff, "_run_available", lambda run_id: run_id == "20261011_09z")
+    t = utc("2026-10-12T19:00")
+    assert ff.resolve_forecast_run(window=ff.TimeWindow(t, t)) == utc("2026-10-11T09:00")
+
+
+def test_resolve_rejects_windows_no_run_covers(offline, monkeypatch):
+    monkeypatch.setattr(ff, "_run_available", lambda run_id: True)
+    beyond = utc("2026-10-21T00:00")
+    with pytest.raises(ff.ForecastUnavailableError, match="No single run covers"):
+        ff.resolve_forecast_run(window=ff.TimeWindow(beyond, beyond))
+    with pytest.raises(ff.ForecastUnavailableError, match="No single run covers"):
+        ff.resolve_forecast_run(window=ff.TimeWindow(utc("2026-10-10T12:00"), utc("2026-10-16T12:00")))
+    with pytest.raises(ff.ForecastUnavailableError, match="does not include"):
+        ff.resolve_forecast_run(dt.date(2026, 10, 15), window=ff.TimeWindow(beyond, beyond))
+
+
+def test_run_point_and_interval_end_to_end(offline, tmp_path):
+    window = ff.TimeWindow(ff.parse_time("2026-10-16T15:00", "America/New_York"), ff.parse_time("2026-10-16T18:00", "America/New_York"))
+    nc_path = ff.run(ff.point_area(33.75, -84.39), tmp_path, window=window)
+
+    assert nc_path.name == "geos_cf_point_33.75N_84.39W_20261015_09z_h034-037.nc"
+    with xr.open_dataset(nc_path) as ds:
+        assert dict(ds.sizes) == {"time": 3, "lat": 1, "lon": 1}
+        assert [str(t)[:16] for t in ds["time"].values] == ["2026-10-16T19:30", "2026-10-16T20:30", "2026-10-16T21:30"]
+        assert json.loads(ds.attrs["requested_point"]) == {"lat": 33.75, "lon": -84.39}
+        assert ds.attrs["lead_hour_range"].tolist() == [34, 37]
+
+
+def test_cli_rejects_bad_location_and_time(capsys):
+    for argv in (["--point", "40.7,-74.0"], ["--point", "33.7"], ["--end", "2026-10-16"],
+                 ["--start", "2026-10-16T12:00", "--end", "2026-10-16T10:00"], ["--time", "x", "--hours", "3"]):
+        with pytest.raises(SystemExit) as exc:
+            ff.main(argv)
+        assert exc.value.code == 2
+
+
 def test_validation_rejects_infinite_measurements(forecast):
     forecast["pm25"][0, 0, 0] = np.inf
     with pytest.raises(ff.ValidationError, match="infinite"):
@@ -157,9 +258,11 @@ def test_validation_rejects_infinite_measurements(forecast):
 
 
 def test_short_cached_run_is_rebuilt_for_longer_request(forecast, tmp_path, monkeypatch):
+    # A truncated file under the full-run name (e.g. from an interrupted older version).
     short = forecast.isel(time=slice(0, 24)).copy()
     downloaded_at = dt.datetime(2026, 10, 15, 22, tzinfo=dt.timezone.utc)
-    metadata = ff.build_metadata(short, INIT, "georgia", GEORGIA, downloaded_at)
+    georgia = ff.region_area("georgia")
+    metadata = ff.build_metadata(short, INIT, georgia, FULL_RUN, downloaded_at)
     ff.write_outputs(short, metadata, tmp_path)
     monkeypatch.setattr(ff, "resolve_forecast_run", lambda *args: INIT)
     calls = []
@@ -169,10 +272,10 @@ def test_short_cached_run_is_rebuilt_for_longer_request(forecast, tmp_path, monk
         return forecast
 
     monkeypatch.setattr(ff, "build_forecast", build)
-    path = ff.run("georgia", 120, tmp_path, None, 3, False)
+    path = ff.run(georgia, tmp_path)
     assert len(calls) == 1
     with xr.open_dataset(path) as result:
         assert result.sizes["time"] == 120
     # A complete matching cache is reused on the next run.
-    ff.run("georgia", 120, tmp_path, None, 3, False)
+    ff.run(georgia, tmp_path)
     assert len(calls) == 1
