@@ -5,3 +5,6 @@ xarray
 netCDF4
 numpy
 pandas
+zarr<3  # zarr 3 requires Python 3.11+
+fsspec
+aiohttp
