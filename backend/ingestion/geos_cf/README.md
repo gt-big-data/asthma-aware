@@ -9,14 +9,59 @@ pip install -r ingestion/requirements.txt
 python -m ingestion.geos_cf.fetch_forecast --region georgia --hours 120 --output ./data/geos_cf
 ```
 
+### Choosing where, when, and which run
+
+**Where** (pick one; default is all of Georgia):
+
+| Flag | Gets you |
+|---|---|
+| `--region georgia` | The whole state (20 × 20 cells) |
+| `--point LAT,LON` | The single 0.25° (~25 km) cell containing that point |
+| `--bbox MIN_LAT,MAX_LAT,MIN_LON,MAX_LON` | Every cell that touches that box |
+
+Points and boxes must be inside Georgia's bounding box.
+
+**When** (pick one; default is all 120 hours):
+
+| Flag | Gets you |
+|---|---|
+| `--hours N` | The first N hours of the run (1–120) |
+| `--time T` | The one hourly value whose hour contains `T` |
+| `--start T [--end T]` | Every hour from `--start` up to, but not including, `--end`. Leave out `--end` to go to the end of the run |
+| `--tz ZONE` | The timezone for times written without an offset. Default `UTC`; use `America/New_York` for Georgia local time |
+
+Times are ISO 8601: `2026-10-23T15:00`, `2026-10-23`, or with an offset such as `2026-10-23T15:00-04:00`.
+For example, `--start 2026-10-23T15:00 --end 2026-10-23T18:00 --tz America/New_York` returns
+3 values, the 3, 4 and 5 pm hours.
+
+**Which run:**
+
 | Flag | Default | Purpose |
 |---|---|---|
-| `--region` | `georgia` | Named bounding box from `REGIONS` |
-| `--hours` | `120` | Forecast hours to keep (1–120) |
+| `--run YYYY-MM-DD` | newest | Use the 09z run from that day. The run must cover `--time`/`--start` if you give one |
+| `--lookback-days` | `3` | How many earlier runs to try if the best run is missing |
+
+Without `--run`, a time request uses the **freshest forecast that covers it**: the newest
+run that started at or before `--start`/`--time`. A time in the next few days therefore
+uses today's run, and a past time uses the run from that day. One run spans 120 hours, so a
+window that is longer than that or past the newest run's end is rejected with a message
+saying what the newest run covers.
+
+**Other:**
+
+| Flag | Default | Purpose |
+|---|---|---|
 | `--output` | `data/geos_cf` | Output directory |
-| `--run YYYY-MM-DD` | latest | Fetch that date's 09z run instead of the newest one |
-| `--lookback-days` | `3` | How many earlier daily runs to try if the newest one is incomplete |
-| `--overwrite` | off | Download again even if this run's file already exists |
+| `--overwrite` | off | Download again even if this output file already exists |
+
+```bash
+# Atlanta, tomorrow 3–6 pm Eastern, from the newest run
+python -m ingestion.geos_cf.fetch_forecast --point 33.75,-84.39 --start 2026-10-23T15:00 --end 2026-10-23T18:00 --tz America/New_York
+# The full 5-day forecast issued on Oct 10
+python -m ingestion.geos_cf.fetch_forecast --run 2026-10-10
+# Metro Atlanta box, all of Oct 23 (UTC)
+python -m ingestion.geos_cf.fetch_forecast --bbox 33.4,34.2,-84.9,-83.9 --start 2026-10-23 --end 2026-10-24
+```
 
 The script exits with status 1 and lists every problem it found if no complete run is
 available or if validation fails. A full Georgia pull takes about 2–3 minutes and writes
@@ -24,7 +69,14 @@ about 1 MB.
 
 ## Output
 
-`data/geos_cf/geos_cf_georgia_<YYYYMMDD>_09z.nc` and `…metadata.json`
+`data/geos_cf/geos_cf_<area>_<YYYYMMDD>_09z[_hSSS-EEE].nc` and `…metadata.json`.
+`<area>` is `georgia`, `point_33.75N_84.39W` or `bbox_…`. The `_hSSS-EEE` suffix (lead
+hours, end exclusive) is added only when you ask for less than the full run. For example,
+`geos_cf_point_33.75N_84.39W_20261022_09z_h034-037.nc`.
+
+The example below describes the default full-state, full-run file. A point request gives
+`lat: 1, lon: 1`. The metadata also records `requested_point`, `requested_time_window` and
+`lead_hour_range`.
 
 - Dimensions: `time: 120, lat: 20, lon: 20`. Coordinates are grid-cell centers, lat
   30.25–35.0 and lon -85.5 to -80.75. The grid keeps every 0.25° cell that overlaps
