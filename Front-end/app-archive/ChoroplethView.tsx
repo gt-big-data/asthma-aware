@@ -222,21 +222,21 @@ export default function ChoroplethView({ data, meta, variableLabel }: Choropleth
     webviewRef.current?.injectJavaScript(js);
   }, [data, meta, variableLabel, isWebViewReady]);
 
-  return (
-    <WebView
-      ref={webviewRef}
-      source={{ html: MAP_HTML }}
-      style={StyleSheet.absoluteFill}
-      javaScriptEnabled
-      onMessage={(event) => {
-        try {
-          const msg = JSON.parse(event.nativeEvent.data);
-          if (msg.type === 'ready') setIsWebViewReady(true);
-          if (msg.type === 'log') console.log("[WebView Diagnostic]", msg.message);
-        } catch (e) {
-          if (event.nativeEvent.data === 'ready') setIsWebViewReady(true);
-        }
-      }}
-    />
-  );
+  // return (
+  //   <WebView
+  //     ref={webviewRef}
+  //     source={{ html: MAP_HTML }}
+  //     style={StyleSheet.absoluteFill}
+  //     javaScriptEnabled
+  //     onMessage={(event) => {
+  //       try {
+  //         const msg = JSON.parse(event.nativeEvent.data);
+  //         if (msg.type === 'ready') setIsWebViewReady(true);
+  //         if (msg.type === 'log') console.log("[WebView Diagnostic]", msg.message);
+  //       } catch (e) {
+  //         if (event.nativeEvent.data === 'ready') setIsWebViewReady(true);
+  //       }
+  //     }}
+  //   />
+  // );
 }
