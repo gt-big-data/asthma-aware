@@ -86,7 +86,13 @@ const MAP_HTML = `
         '<a href="https://openfreemap.org">OpenFreeMap</a> | <a href="https://www.openmaptiles.org/">© OpenMapTiles</a> | Data from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       );
 
-      map.setView([33.75, -84.39], 6);
+      // Start on metro Atlanta (roughly Marietta to Stockbridge,
+      // Douglasville to Lawrenceville). Fitting bounds instead of a fixed
+      // zoom keeps the same area in view on any screen size.
+      map.fitBounds(
+        [[33.45, -84.80], [34.05, -83.95]],
+        { animate: false }
+      );
     } catch (err) {
       console.error("Map init failed:", err.message);
     }
@@ -161,16 +167,6 @@ const MAP_HTML = `
           ).addTo(cellLayer);
         }
         cellLayer.addTo(map);
-
-        const lats = points.map(p => p[0]);
-        const lngs = points.map(p => p[1]);
-        map.fitBounds(
-          L.latLngBounds(
-            L.latLng(Math.min(...lats) - LAT_STEP, Math.min(...lngs)),
-            L.latLng(Math.max(...lats), Math.max(...lngs) + LON_STEP)
-          ),
-          { padding: [20, 20], maxZoom: 11, animate: false }
-        );
         updateLayerOpacity();
       } catch (err) {
         console.error("updateHeatmap error:", err.message);
