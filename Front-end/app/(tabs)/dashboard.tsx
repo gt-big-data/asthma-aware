@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import * as Location from "expo-location";
+import { useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -9,7 +10,60 @@ import {
 } from "react-native";
 
 const RISK_SCORE = 64;
-const FORECAST_SCORES = [64, 71, 58, 49, 55, 42, 36];
+const FORECAST_SCORES = [64, 71, 58, 49];
+const US_STATE_ABBREVIATIONS: Record<string, string> = {
+  alabama: "AL",
+  alaska: "AK",
+  arizona: "AZ",
+  arkansas: "AR",
+  california: "CA",
+  colorado: "CO",
+  connecticut: "CT",
+  delaware: "DE",
+  florida: "FL",
+  georgia: "GA",
+  hawaii: "HI",
+  idaho: "ID",
+  illinois: "IL",
+  indiana: "IN",
+  iowa: "IA",
+  kansas: "KS",
+  kentucky: "KY",
+  louisiana: "LA",
+  maine: "ME",
+  maryland: "MD",
+  massachusetts: "MA",
+  michigan: "MI",
+  minnesota: "MN",
+  mississippi: "MS",
+  missouri: "MO",
+  montana: "MT",
+  nebraska: "NE",
+  nevada: "NV",
+  "new hampshire": "NH",
+  "new jersey": "NJ",
+  "new mexico": "NM",
+  "new york": "NY",
+  "north carolina": "NC",
+  "north dakota": "ND",
+  ohio: "OH",
+  oklahoma: "OK",
+  oregon: "OR",
+  pennsylvania: "PA",
+  "rhode island": "RI",
+  "south carolina": "SC",
+  "south dakota": "SD",
+  tennessee: "TN",
+  texas: "TX",
+  utah: "UT",
+  vermont: "VT",
+  virginia: "VA",
+  washington: "WA",
+  "west virginia": "WV",
+  wisconsin: "WI",
+  wyoming: "WY",
+  "district of columbia": "DC",
+};
 
 const VARIABLE_TRENDS = [
   {
@@ -59,13 +113,24 @@ function getRiskLabel(score: number): string {
 }
 
 function getDayLabels(): string[] {
-  return Array.from({ length: 7 }, (_, offset) => {
+  return Array.from({ length: 4 }, (_, offset) => {
     const day = new Date();
     day.setDate(day.getDate() + offset);
     return offset === 0
       ? "Today"
       : day.toLocaleDateString("en-US", { weekday: "short" });
   });
+}
+
+function getCityAndState(address: Location.LocationGeocodedAddress): string | null {
+  const city = address.city?.trim();
+  const region = address.region?.trim();
+  if (!city || !region) return null;
+
+  const state = /^[A-Za-z]{2}$/.test(region)
+    ? region.toUpperCase()
+    : US_STATE_ABBREVIATIONS[region.toLowerCase()];
+  return state ? `${city}, ${state}` : null;
 }
 
 function RiskGauge() {
@@ -177,7 +242,40 @@ function Sparkline({
 
 export default function DashboardScreen() {
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
+  const [cityAndState, setCityAndState] = useState("Locating...");
   const dayLabels = getDayLabels();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadLocation() {
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status !== "granted") {
+          if (isMounted) setCityAndState("Location unavailable");
+          return;
+        }
+
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const [address] = await Location.reverseGeocodeAsync(position.coords);
+        const result = address ? getCityAndState(address) : null;
+
+        if (isMounted) {
+          setCityAndState(result ?? "Location unavailable");
+        }
+      } catch (error) {
+        console.error("Unable to retrieve the user's location.", error);
+        if (isMounted) setCityAndState("Location unavailable");
+      }
+    }
+
+    void loadLocation();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <ScrollView
@@ -192,30 +290,22 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.locationPill}>
           <Ionicons name="location-outline" size={15} color="#9aacc1" />
-          <Text style={styles.locationText}>Georgia</Text>
+          <Text style={styles.locationText}>{cityAndState}</Text>
         </View>
       </View>
 
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View>
-            <Text style={styles.cardTitle}>Today&apos;s respiratory risk</Text>
-            <Text style={styles.cardSubtitle}>Environmental conditions</Text>
-          </View>
-          <View style={styles.livePill}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>SAMPLE</Text>
+            <Text style={styles.cardTitle}>Today&apos;s Respiratory Risk</Text>
           </View>
         </View>
         <RiskGauge />
-        <Text style={styles.gaugeFootnote}>
-          Temporary score · Personalized insights coming soon
-        </Text>
       </View>
 
       <View style={styles.sectionHeading}>
         <View>
-          <Text style={styles.sectionTitle}>7-day forecast</Text>
+          <Text style={styles.sectionTitle}>4-day forecast</Text>
           <Text style={styles.sectionSubtitle}>Predicted respiratory risk</Text>
         </View>
         <Ionicons name="calendar-outline" size={19} color="#8192a7" />
@@ -258,13 +348,12 @@ export default function DashboardScreen() {
             </Text>
           </View>
         )}
-        <Text style={styles.sampleNote}>Forecast scores are temporary examples</Text>
       </View>
 
       <View style={styles.sectionHeading}>
         <View>
           <Text style={styles.sectionTitle}>Environmental trends</Text>
-          <Text style={styles.sectionSubtitle}>Past 7 days · sample data</Text>
+          <Text style={styles.sectionSubtitle}>Past 7 days</Text>
         </View>
         <Ionicons name="analytics-outline" size={20} color="#8192a7" />
       </View>
@@ -299,9 +388,6 @@ export default function DashboardScreen() {
           </View>
         ))}
       </View>
-      <Text style={styles.footerNote}>
-        Dashboard values shown are placeholders and are not health guidance.
-      </Text>
     </ScrollView>
   );
 }
@@ -353,6 +439,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   card: {
+    alignItems:'center',
     backgroundColor: "#121c2c",
     borderColor: "#25344a",
     borderWidth: 1,
@@ -365,6 +452,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   cardTitle: {
+    textAlign: 'center',
     color: "#edf3fa",
     fontSize: 16,
     fontWeight: "700",
