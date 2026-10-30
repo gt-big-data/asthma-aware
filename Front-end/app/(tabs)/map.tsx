@@ -1,7 +1,23 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import HeatmapView from "../../components/HeatmapView";
+import HeatmapView, {
+  ATLANTA_BOUNDS,
+  MapBounds,
+} from "../../components/HeatmapView";
 import { LatLngIntensity } from "../../constants/data";
+import {
+  Coords,
+  getCachedUserLocation,
+  getUserLocation,
+} from "../../constants/userLocation";
+
+// Same size of area as the metro Atlanta view (about 70 km across).
+const HALF_SPAN_LAT = 0.3;
+const HALF_SPAN_LON = 0.425;
+
+// If no location has been found yet, wait at most this long before opening
+// on Atlanta. Usually the dashboard has already found it by now.
+const LOCATION_WAIT_MS = 1000;
 
 const GEORGIA_BORDER: [number, number][] = [
   [34.98, -85.0],
@@ -84,12 +100,67 @@ function makeTemporaryGeorgiaData(): LatLngIntensity[] {
   return points;
 }
 
+// Is the location inside the area we have data for? If not (e.g. the user
+// is outside Georgia), there'd be nothing to see, so we open on Atlanta.
+function isInDataArea(coords: Coords, points: LatLngIntensity[]): boolean {
+  if (points.length === 0) return false;
+  const lats = points.map((p) => p[0]);
+  const lons = points.map((p) => p[1]);
+  return (
+    coords.latitude >= Math.min(...lats) &&
+    coords.latitude <= Math.max(...lats) &&
+    coords.longitude >= Math.min(...lons) &&
+    coords.longitude <= Math.max(...lons)
+  );
+}
+
+function boundsAround(coords: Coords): MapBounds {
+  return [
+    [coords.longitude - HALF_SPAN_LON, coords.latitude - HALF_SPAN_LAT],
+    [coords.longitude + HALF_SPAN_LON, coords.latitude + HALF_SPAN_LAT],
+  ];
+}
+
 export default function MapScreen() {
   const points = useMemo(() => makeTemporaryGeorgiaData(), []);
 
+  // undefined = still looking, null = no location (use Atlanta).
+  const [location, setLocation] = useState<Coords | null | undefined>(
+    () => getCachedUserLocation() ?? undefined,
+  );
+
+  useEffect(() => {
+    if (location !== undefined) return;
+    let active = true;
+    const timeout = setTimeout(() => {
+      if (active) setLocation(null);
+    }, LOCATION_WAIT_MS);
+
+    getUserLocation().then((coords) => {
+      if (active) setLocation(coords);
+    });
+
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
+  }, [location]);
+
+  // The map is only created once we know where to start, so it never jumps.
+  const startBounds =
+    location && isInDataArea(location, points)
+      ? boundsAround(location)
+      : ATLANTA_BOUNDS;
+
   return (
     <View style={styles.root}>
-      <HeatmapView points={points} visualization="heat" />
+      {location !== undefined && (
+        <HeatmapView
+          points={points}
+          visualization="heat"
+          startBounds={startBounds}
+        />
+      )}
     </View>
   );
 }
