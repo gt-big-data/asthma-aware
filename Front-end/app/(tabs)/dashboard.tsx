@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { getUserLocation } from "../../constants/userLocation";
 
 const RISK_SCORE = 64;
 const FORECAST_SCORES = [64, 71, 58, 49];
@@ -250,16 +251,14 @@ export default function DashboardScreen() {
 
     async function loadLocation() {
       try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status !== "granted") {
+        // Shared with the map, so the location is only looked up once.
+        const coords = await getUserLocation();
+        if (!coords) {
           if (isMounted) setCityAndState("Location unavailable");
           return;
         }
 
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        const [address] = await Location.reverseGeocodeAsync(position.coords);
+        const [address] = await Location.reverseGeocodeAsync(coords);
         const result = address ? getCityAndState(address) : null;
 
         if (isMounted) {
