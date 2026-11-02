@@ -88,6 +88,12 @@ def is_configured() -> bool:
     return bool(os.environ.get("DATABASE_URL", "").strip())
 
 
+def get_migration_database_url() -> str:
+    """Allow DDL credentials to differ from the restricted runtime login."""
+    url = os.environ.get("MIGRATION_DATABASE_URL", "").strip()
+    return _normalize_url(url) if url else get_database_url()
+
+
 # Echo every statement to stdout. Useful when debugging a slow upsert.
 SQL_ECHO = os.environ.get("SQL_ECHO", "").lower() in {"1", "true", "yes"}
 

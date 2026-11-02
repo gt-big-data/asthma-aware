@@ -1,10 +1,11 @@
-# Environmental database foundation
+# Database foundation
 
 This package provides SQLAlchemy models, repositories, session management, and
-one Alembic migration for the historical environmental research pipeline.
-It is **not yet the application database**. See [the assessment](../docs/backend-review.md)
-for missing application entities and implementation priorities. Earlier design
-notes are preserved in [the archive](../legacy/environment_db_README.md).
+Alembic migrations for the historical environmental research pipeline and a new
+private application schema. The [application contract](../docs/application-api.md)
+documents auth, role provisioning, logging semantics, and remaining worker work.
+The earlier [assessment](../docs/backend-review.md) is a historical cleanup review;
+its missing-application-table findings predate migration 0002.
 
 ## Existing tables
 
@@ -16,8 +17,10 @@ notes are preserved in [the archive](../legacy/environment_db_README.md).
 | Census | zctas, socioeconomic_records | Annual area statistics with raw payload |
 | Modeling | scaler_params, model_runs, forecasts | Versioned scaling and old model inference outputs |
 
-There are no user profiles, symptom logs, personal vectors, devices, outbox events,
-Supabase ownership policies, or production forecast manifests in this schema.
+Migration 0002 adds `app.profiles`, `app.symptom_logs`, immutable
+`app.symptom_log_revisions`, `app.exposure_snapshots`,
+`app.personalization_revisions`, and `app.outbox_events`, with restricted grants
+and forced user-scoped RLS. Devices and production forecast metadata remain future work.
 Bulk forecast tiles should follow the planned GCS architecture; the old
 `forecasts` table does not implement hourly issued/valid/publication semantics.
 
@@ -28,13 +31,15 @@ From `backend/`, using the project's virtual environment:
 ```powershell
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
-# Set DATABASE_URL to the intended Supabase Postgres connection.
+# Set MIGRATION_DATABASE_URL to an operator connection; review the target first.
 python -m alembic upgrade head
 python scripts/seed_reference_data.py
 ```
 
 Use a connection with the permissions needed for migrations and PostGIS setup.
-Runtime pooling, least-privilege roles, and Supabase RLS still need explicit design.
+Use a separate runtime login in the migration-created `asthmaaware_api` group;
+never use operator credentials in the deployed API. Set its `DATABASE_URL` and
+the HTTPS `SUPABASE_URL`. Validate pooling for your deployment separately.
 No migration is applied automatically. Do not create a second database provider
 as part of following historical examples; Supabase is the project direction.
 
@@ -46,8 +51,10 @@ future API grid. Add a versioned grid definition and a migration strategy instea
 
 Use `db.repositories` for queries/writes and `db.session.session_scope` for
 transactional scripts. The engine is lazy, so importing the API does not connect
-to Postgres. `get_session` is a FastAPI dependency that closes its session without
-committing; write handlers must establish their transaction explicitly.
+to Postgres. Historical `get_session` closes without committing. V1 instead uses
+`app.dependencies.get_user_session`, which sets a transaction-local restricted
+role/user context and commits before sending a response. The private schema is
+not intended for direct access through Supabase's Data API.
 
 Store observed values in their declared units; missing grid values are NULL
 and become NaN in arrays. Ground timestamps must be timezone-aware. Satellite
@@ -90,7 +97,7 @@ The PostGIS integration tests skip unless TEST_DATABASE_URL is set. The fixtures
 **drop tables** and require TEST_DATABASE_ALLOW_RESET=true. Use a disposable
 Postgres/PostGIS database, never the shared project database.
 
-Integration fixtures use metadata.create_all, so they do not prove the Alembic
-migration works. Validate an upgrade/downgrade round trip and schema parity on
-PostGIS before applying future migrations to a shared environment. The existing
-migration history was preserved by the cleanup.
+Integration fixtures now exercise Alembic upgrade/downgrade round trips, including
+application RLS/grants. Never point them at the shared project database. Review
+migrations and hosted-role compatibility before deploying to Supabase. The
+NOLOGIN group is retained on downgrade because external runtime logins may use it.

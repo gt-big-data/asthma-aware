@@ -8,20 +8,25 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@maplibre/maplibre-react-native": "^11.5.0",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
+    "@supabase/supabase-js": "^2.109.0",
     "expo": "~58.0.16",
     "expo-constants": "~58.0.12",
     "expo-font": "~58.0.8",
     "expo-haptics": "~58.0.7",
     "expo-image": "~58.0.16",
     "expo-linking": "~58.0.13",
+    "expo-location": "~58.0.20",
     "expo-router": "~58.0.24",
     "expo-splash-screen": "~58.0.10",
     "expo-status-bar": "~58.0.3",
@@ -35,15 +40,20 @@
     "react-native-reanimated": "4.7.1",
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",
+    "react-native-url-polyfill": "^4.0.0",
     "react-native-web": "~0.21.0",
     "react-native-webview": "14.0.1",
     "react-native-worklets": "0.13.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
     "@types/react": "~19.3.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~58.0.4",
     "typescript": "~6.0.3"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   },
   "private": true
 }

@@ -203,7 +203,7 @@ const MAP_HTML = `<!DOCTYPE html>
 </html>`;
 
 export default function ChoroplethView({ data, meta, variableLabel }: ChoroplethViewProps) {
-  const webviewRef = useRef<WebView>(null);
+  const webviewRef = useRef<WebView<object>>(null);
   const [isWebViewReady, setIsWebViewReady] = useState(false);
 
   useEffect(() => {
@@ -223,7 +223,7 @@ export default function ChoroplethView({ data, meta, variableLabel }: Choropleth
   }, [data, meta, variableLabel, isWebViewReady]);
 
   return (
-    <WebView
+    <WebView<object>
       ref={webviewRef}
       source={{ html: MAP_HTML }}
       style={StyleSheet.absoluteFill}

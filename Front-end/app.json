@@ -28,6 +28,7 @@
     },
     "plugins": [
       "expo-router",
+      ["expo-location", { "locationWhenInUsePermission": "Allow AsthmaAware to use your location as the representative location for a symptom entry." }],
       [
         "expo-splash-screen",
         {

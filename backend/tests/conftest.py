@@ -48,18 +48,23 @@ def engine():
             "only for a disposable TEST_DATABASE_URL."
         )
 
-    from sqlalchemy import create_engine, text
-
-    from db.models import Base
+    from sqlalchemy import create_engine
 
     eng = create_engine(TEST_DATABASE_URL, future=True)
-    with eng.begin() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-    Base.metadata.drop_all(eng)
-    Base.metadata.create_all(eng)
-    yield eng
-    Base.metadata.drop_all(eng)
-    eng.dispose()
+    from alembic import command
+    from alembic.config import Config
+
+    cfg = Config(str(BACKEND_DIR / "alembic.ini"))
+    cfg.attributes["database_url"] = TEST_DATABASE_URL
+    # An explicit opt-in disposable database is required. Exercise the actual
+    # upgrade path, including RLS, rather than metadata.create_all.
+    command.downgrade(cfg, "base")
+    command.upgrade(cfg, "head")
+    try:
+        yield eng
+    finally:
+        command.downgrade(cfg, "base")
+        eng.dispose()
 
 
 @pytest.fixture

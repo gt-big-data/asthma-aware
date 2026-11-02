@@ -1,5 +1,10 @@
 # Welcome to your Expo app 👋
 
+AsthmaAware now includes Supabase sign-in and a connected **Symptom Log** tab.
+Use Node 22.13+ and follow [authentication and logging setup](docs/auth-and-logging.md)
+for environment variables, the backend connection, and verification commands.
+The dashboard/map retain their existing demo data.
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started
