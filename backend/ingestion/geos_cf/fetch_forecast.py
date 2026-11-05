@@ -185,7 +185,6 @@ VARIABLES: Tuple[VariableSpec, ...] = (
     VariableSpec("pm10", "pm10_rh35", AQC_COLLECTION, "ug m-3", "PM10 mass concentration at 35% RH"),
     VariableSpec("no2", "no2", AQC_COLLECTION, "mol mol-1", "NO2 dry-air mole fraction"),
     VariableSpec("o3", "o3", AQC_COLLECTION, "mol mol-1", "O3 dry-air mole fraction"),
-    VariableSpec("so2", "so2", AQC_COLLECTION, "mol mol-1", "SO2 dry-air mole fraction"),
     VariableSpec("co", "co", AQC_COLLECTION, "mol mol-1", "CO dry-air mole fraction"),
     VariableSpec("air_temperature", "t", MET_COLLECTION, "k", "Air temperature, lowest model layer"),
     VariableSpec("specific_humidity", "q", MET_COLLECTION, "kg kg-1", "Specific humidity, lowest model layer"),
