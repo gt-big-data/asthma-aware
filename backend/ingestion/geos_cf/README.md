@@ -98,27 +98,30 @@ Units are left exactly as GEOS-CF reports them, and validation fails if they cha
 | `air_temperature` | `t` | met | K | Lowest model layer (~60 m), **not** 2 m temperature |
 | `specific_humidity` | `q` | met | kg kg-1 | Lowest model layer |
 | `relative_humidity` | `rh` | met | 1 | Fraction from 0 to 1, not percent |
-| `eastward_wind` / `northward_wind` | `u` / `v` | met | m s-1 | Lowest model layer, not 10 m |
 | `surface_pressure` | `ps` | met | Pa | |
 | `precipitation` | `tprec` | met | kg m-2 s-1 | Rate. Multiply by 3600 for mm/h |
 | `pbl_height` | `zpbl` | met | m | Boundary-layer height, a strong driver of surface pollution |
+| `tropcol_no2` | `tropcol_no2` | xgc | 1.0e15 molec cm-2 | Tropospheric NO₂ column: all the NO₂ between the ground and the tropopause, in the units satellites such as TROPOMI report. Not a surface concentration; use `no2` for that |
 
 ## How GEOS-CF v2 forecasts are published
 
 All of the following was checked against the live server on 2026-10-15.
 
 **Datasets.** The v2 forecasts are served by NASA NCCS's GrADS Data Server (OPeNDAP/DAP2)
-at `https://opendap.nccs.nasa.gov/dods/gmao/geos-cf/v2/fcst/`. This script uses two
+at `https://opendap.nccs.nasa.gov/dods/gmao/geos-cf/v2/fcst/`. This script uses three
 of its collections:
 
 - `aqc_tavg_1hr_glo_L1440x721_slv`: the surface air-quality product, with exactly six
   variables: `co, no2, o3, pm10_rh35, pm25_rh35, so2`.
 - `met_tavg_1hr_glo_L1440x721_slv`: surface/lowest-layer meteorology (`t, q, rh, u, v,
-  ps, slp, tprec, ts, zpbl, cldtt, troppb, zl, phis`).
+  ps, slp, tprec, ts, zpbl, cldtt, troppb, zl, phis`). Winds (`u, v`) are deliberately
+  not downloaded.
+- `xgc_tavg_1hr_glo_L1440x721_slv`: column amounts and aerosol optical depth
+  (`tropcol_no2`, `totcol_no2`, `pblcol_no2`, `tropcol_o3`, `aod550_*`, …). We take `tropcol_no2`.
 
 The naming scheme is `tavg` = hourly means, `glo_L1440x721` = global 0.25° grid,
 `slv` = a single level (the lowest model layer, `lev = 72`). The same directory also
-holds `chm`, `xgc`, `ems`, `met_inst…_p23` (pressure levels) and other collections that
+holds `chm`, `ems`, `met_inst…_p23` (pressure levels) and other collections that
 we don't need. The older `/gmao/geos-cf/fcast/…_v1` tree is v1 and should not be used.
 
 **Latest vs. dated runs.** Each collection is published in two forms:
@@ -130,7 +133,7 @@ we don't need. The older `/gmao/geos-cf/fcast/…_v1` tree is v1 and should not 
 
 `.latest` does not report which run it is. The script works it out from the time axis:
 init = first timestamp − 30 min. It then **pins every collection to that run's dated
-URL**, so the AQ and met data always come from the same run, even if `.latest` moves
+URL**, so the AQ, met and column data always come from the same run, even if `.latest` moves
 forward partway through a download.
 
 **Initialization and length.** There is one run per day, initialized at **09 UTC**, with

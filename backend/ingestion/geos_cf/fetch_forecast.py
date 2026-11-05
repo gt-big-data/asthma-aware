@@ -58,7 +58,8 @@ REQUEST_TIMEOUT_SECONDS = 180
 
 AQC_COLLECTION = "aqc_tavg_1hr_glo_L1440x721_slv"
 MET_COLLECTION = "met_tavg_1hr_glo_L1440x721_slv"
-COLLECTIONS = (AQC_COLLECTION, MET_COLLECTION)
+XGC_COLLECTION = "xgc_tavg_1hr_glo_L1440x721_slv"  # column amounts and AOD
+COLLECTIONS = (AQC_COLLECTION, MET_COLLECTION, XGC_COLLECTION)
 
 # Georgia's state extent. The subset keeps every grid cell whose 0.25 deg
 # footprint intersects this box (see _grid_selection).
@@ -189,11 +190,13 @@ VARIABLES: Tuple[VariableSpec, ...] = (
     VariableSpec("air_temperature", "t", MET_COLLECTION, "k", "Air temperature, lowest model layer"),
     VariableSpec("specific_humidity", "q", MET_COLLECTION, "kg kg-1", "Specific humidity, lowest model layer"),
     VariableSpec("relative_humidity", "rh", MET_COLLECTION, "1", "Relative humidity (fraction 0-1), lowest model layer"),
-    VariableSpec("eastward_wind", "u", MET_COLLECTION, "m s-1", "Eastward (U) wind, lowest model layer"),
-    VariableSpec("northward_wind", "v", MET_COLLECTION, "m s-1", "Northward (V) wind, lowest model layer"),
     VariableSpec("surface_pressure", "ps", MET_COLLECTION, "pa", "Surface pressure"),
     VariableSpec("precipitation", "tprec", MET_COLLECTION, "kg m-2 s-1", "Total precipitation rate (x3600 = mm/h)"),
     VariableSpec("pbl_height", "zpbl", MET_COLLECTION, "m", "Planetary boundary layer height"),
+    VariableSpec(
+        "tropcol_no2", "tropcol_no2", XGC_COLLECTION, "1.0e15 molec cm-2",
+        "Tropospheric NO2 column density (units of 1e15 molecules cm-2, as satellites report)",
+    ),
 )
 
 
