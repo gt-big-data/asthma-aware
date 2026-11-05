@@ -94,7 +94,7 @@ Units are left exactly as GEOS-CF reports them, and validation fails if they cha
 |---|---|---|---|---|
 | `pm25` | `pm25_rh35` | aqc | ug m-3 | At 35% RH (includes particle water), matching how monitors report |
 | `pm10` | `pm10_rh35` | aqc | ug m-3 | At 35% RH |
-| `no2`, `o3`, `so2`, `co` | same | aqc | mol mol-1 | Dry-air mole fraction. Multiply by 1e9 for ppb |
+| `no2`, `o3`, `co` | same | aqc | mol mol-1 | Dry-air mole fraction. Multiply by 1e9 for ppb |
 | `air_temperature` | `t` | met | K | Lowest model layer (~60 m), **not** 2 m temperature |
 | `specific_humidity` | `q` | met | kg kg-1 | Lowest model layer |
 | `relative_humidity` | `rh` | met | 1 | Fraction from 0 to 1, not percent |
@@ -112,7 +112,7 @@ at `https://opendap.nccs.nasa.gov/dods/gmao/geos-cf/v2/fcst/`. This script uses 
 of its collections:
 
 - `aqc_tavg_1hr_glo_L1440x721_slv`: the surface air-quality product, with exactly six
-  variables: `co, no2, o3, pm10_rh35, pm25_rh35, so2`.
+  variables: `co, no2, o3, pm10_rh35, pm25_rh35, so2`. We take all but `so2`.
 - `met_tavg_1hr_glo_L1440x721_slv`: surface/lowest-layer meteorology (`t, q, rh, u, v,
   ps, slp, tprec, ts, zpbl, cldtt, troppb, zl, phis`). Winds (`u, v`) are deliberately
   not downloaded.
@@ -195,14 +195,20 @@ to observations. Pollutants are mostly model chemistry, with limited satellite c
 treat them as estimates and use EPA AirNow/AQS for measured values.
 
 ```bash
+# Atlanta, every hour of a year
 python -m ingestion.geos_cf.fetch_analysis --point 33.75,-84.39 \
     --start 2025-10-01 --end 2026-10-01 --tz America/New_York
+# A box over most of Georgia, only the first 5 days of each month
+python -m ingestion.geos_cf.fetch_analysis --bbox 30.78,34.98,-85.60,-81.52 \
+    --start 2025-10-01 --end 2026-10-01 --tz America/New_York --first-days 5
 ```
 
 It takes the same `--point` / `--bbox` / `--region` and `--tz` options as the forecast script,
-and `--start` and `--end` are required. Output: `geos_cf_analysis_<area>_<start>-<end>.nc`, with
-the same variables and units as the forecast plus `missing_hours`, `hours_from_opendap` and
-`hours_from_cloud_copy` in the metadata.
+and `--start` and `--end` are required. `--first-days N` keeps only days 1 to N of each month,
+counted in `--tz`, so a day with a DST change has 23 or 25 hours. Output:
+`geos_cf_analysis_<area>_<start>-<end>[_first<N>days].nc`, with the same variables and units
+as the forecast plus `missing_hours`, `hours_from_opendap` and `hours_from_cloud_copy` in the
+metadata. With `--first-days`, `time` jumps between the monthly windows.
 
 **Where the data comes from, and why:**
 
@@ -215,8 +221,11 @@ the same variables and units as the forecast plus `missing_hours`, `hours_from_o
    about 0.1 s per variable per hour **regardless of area**: a week took 15 s for a point and
    17 s for the whole continental US. Asking for several variables in one request doesn't
    help. NCCS's proxy drops requests that run past about a minute, so the script requests
-   1 week at a time with 6 in parallel. Chunks are cached under `data/geos_cf/.cache/`, so
-   rerunning after a failure resumes where it stopped. Some hourly files around late Dec
+   1 week at a time with 6 in parallel, on a fixed weekly grid. Chunks are kept under
+   `data/geos_cf/.cache/analysis_<area>/` after the run, so a rerun after a failure resumes
+   where it stopped, and later requests for the same area reuse any chunk they overlap.
+   Delete that folder to force a fresh download. Each progress line shows how long its
+   chunk took, and a summary at the end gives the median and slowest. Some hourly files around late Dec
    2025 sometimes return an instant 502. Failing chunks are split in half repeatedly, and
    only truly unreadable hours are left missing.
 

@@ -97,7 +97,7 @@ def test_write_outputs_round_trip(forecast, tmp_path):
     with xr.open_dataset(nc_path) as ds:
         assert ds.attrs["forecast_run"] == "20261015_09z"
         assert json.loads(ds.attrs["region_bbox"]) == GEORGIA
-        assert ds["so2"].attrs["source_name"] == "so2"
+        assert ds["co"].attrs["source_name"] == "co"
         np.testing.assert_array_equal(ds["time"].values, forecast["time"].values)
         np.testing.assert_allclose(ds["pm25"].values, forecast["pm25"].values)
 
@@ -266,7 +266,7 @@ def test_short_cached_run_is_rebuilt_for_longer_request(forecast, tmp_path, monk
 
 def test_variable_list_has_tropospheric_no2_and_no_winds():
     names = {spec.name: spec for spec in ff.VARIABLES}
-    assert "eastward_wind" not in names and "northward_wind" not in names
+    assert "eastward_wind" not in names and "northward_wind" not in names and "so2" not in names
     assert names["tropcol_no2"].collection == ff.XGC_COLLECTION == "xgc_tavg_1hr_glo_L1440x721_slv"
     assert names["tropcol_no2"].units == "1.0e15 molec cm-2"
     assert ff.XGC_COLLECTION in ff.COLLECTIONS
