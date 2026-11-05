@@ -1,0 +1,3 @@
+# Synced samples are local runtime state, not source. Delete the file to
+# reset the store and regenerate the demo user's history.
+app/data/wearable_store.json
