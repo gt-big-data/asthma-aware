@@ -8,27 +8,10 @@ import pytest
 import xarray as xr
 
 from ingestion.geos_cf import fetch_forecast as ff
+from tests.geos_cf_fakes import INIT, fake_remote
 
-INIT = pd.Timestamp("2026-10-15T09:00")
 GEORGIA = ff.REGIONS["georgia"]
 FULL_RUN = slice(0, 120)
-
-
-def fake_remote(collection, hours=120):
-    """A small stand-in for a GEOS-CF OPeNDAP collection, shaped like the real one."""
-    times = pd.date_range(INIT + ff.TAVG_OFFSET, periods=hours, freq="h")
-    lat = np.arange(25.0, 40.01, 0.25)
-    lon = np.arange(-90.0, -75.01, 0.25)
-    shape = (hours, 1, lat.size, lon.size)
-    data_vars = {}
-    for spec in ff.VARIABLES:
-        if spec.collection == collection:
-            data_vars[spec.source_name] = (
-                ("time", "lev", "lat", "lon"),
-                np.random.default_rng(0).random(shape, dtype=np.float32),
-                {"long_name": f"{spec.source_name} thing ({spec.units}) "},
-            )
-    return xr.Dataset(data_vars, coords={"time": times, "lev": [72.0], "lat": lat, "lon": lon})
 
 
 @pytest.fixture
@@ -279,3 +262,11 @@ def test_short_cached_run_is_rebuilt_for_longer_request(forecast, tmp_path, monk
     # A complete matching cache is reused on the next run.
     ff.run(georgia, tmp_path)
     assert len(calls) == 1
+
+
+def test_variable_list_has_tropospheric_no2_and_no_winds():
+    names = {spec.name: spec for spec in ff.VARIABLES}
+    assert "eastward_wind" not in names and "northward_wind" not in names
+    assert names["tropcol_no2"].collection == ff.XGC_COLLECTION == "xgc_tavg_1hr_glo_L1440x721_slv"
+    assert names["tropcol_no2"].units == "1.0e15 molec cm-2"
+    assert ff.XGC_COLLECTION in ff.COLLECTIONS

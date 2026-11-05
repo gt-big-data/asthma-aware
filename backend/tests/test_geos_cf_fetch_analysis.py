@@ -4,7 +4,7 @@ import pytest
 
 from ingestion.geos_cf import fetch_analysis as fa
 from ingestion.geos_cf import fetch_forecast as ff
-from test_geos_cf_fetch_forecast import fake_remote
+from tests.geos_cf_fakes import fake_remote
 
 ATLANTA = ff.point_area(33.75, -84.39)
 WINDOW = ff.TimeWindow(pd.Timestamp("2026-10-15T12:00"), pd.Timestamp("2026-10-19T12:00"))
