@@ -21,13 +21,12 @@ import argparse
 import datetime as dt
 import json
 import logging
-import shutil
 import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -65,6 +64,22 @@ def time_indices(times: np.ndarray, window: ff.TimeWindow) -> slice:
     if window.end is None or window.end == window.start:
         stop = first + 1
     return slice(first, stop)
+
+
+def monthly_windows(start: str, end: str, days: int, tz: str = "UTC") -> List[ff.TimeWindow]:
+    """The first `days` days of every month in [start, end), counted in local time `tz`."""
+    lo, hi = pd.Timestamp(start), pd.Timestamp(end)
+    lo = lo.tz_localize(tz) if lo.tzinfo is None else lo.tz_convert(tz)
+    hi = hi.tz_localize(tz) if hi.tzinfo is None else hi.tz_convert(tz)
+    windows = []
+    month = lo.normalize().replace(day=1)
+    while month < hi:
+        next_month = month + pd.DateOffset(months=1)
+        w_start, w_end = max(month, lo), min(month + pd.DateOffset(days=days), next_month, hi)
+        if w_end > w_start:
+            windows.append(ff.TimeWindow(w_start.tz_convert("UTC").tz_localize(None), w_end.tz_convert("UTC").tz_localize(None)))
+        month = next_month
+    return windows
 
 
 def native_grid(area: ff.Area) -> Tuple[np.ndarray, np.ndarray]:
@@ -139,31 +154,53 @@ def _fetch_range(
     return xr.concat(halves, dim="time") if halves else None
 
 
+def _cached_cover(cache_dir: Path, source_name: str, lead: slice) -> Optional[Path]:
+    """A cached chunk of this variable whose index range contains lead, if any."""
+    for path in cache_dir.glob(f"{source_name}_*_*.nc"):
+        try:
+            a, b = (int(x) for x in path.stem[len(source_name) + 1:].split("_"))
+        except ValueError:
+            continue
+        if a <= lead.start and lead.stop <= b:
+            return path
+    return None
+
+
 def _fetch_chunk(
-    url: str, spec: ff.VariableSpec, selection: Dict[str, slice], lead: slice, cache_dir: Optional[Path]
-) -> Optional[xr.DataArray]:
-    """Download one variable x up to a week from OPeNDAP, reusing a cached copy from an earlier attempt."""
-    cache_path = None if cache_dir is None else cache_dir / f"{spec.source_name}_{lead.start}_{lead.stop}.nc"
-    if cache_path is not None and cache_path.exists():
-        with _NETCDF_LOCK, xr.open_dataarray(cache_path) as cached:
-            return cached.load()
+    url: str, spec: ff.VariableSpec, selection: Dict[str, slice], lead: slice,
+    lead_times: pd.DatetimeIndex, cache_dir: Optional[Path],
+) -> Tuple[Optional[xr.DataArray], Optional[float]]:
+    """One variable x up to a week from OPeNDAP, or from any cached chunk that covers it.
+
+    Returns (data, seconds spent downloading); seconds is None when it came from the cache.
+    Cache files are named by absolute OPeNDAP time index, so any run for the same area can
+    reuse them regardless of its own date window."""
+    if cache_dir is not None:
+        cover = _cached_cover(cache_dir, spec.source_name, lead)
+        if cover is not None:
+            with _NETCDF_LOCK, xr.open_dataarray(cover) as cached:
+                return cached.sel(time=cached["time"].isin(lead_times.values)).load(), None
+    started = time.monotonic()
     data = _fetch_range(url, spec, selection, lead, ff.OPEN_RETRIES)
-    if data is None:
-        return None
-    if cache_path is not None:
+    seconds = time.monotonic() - started
+    if data is not None and cache_dir is not None:
+        cache_path = cache_dir / f"{spec.source_name}_{lead.start}_{lead.stop}.nc"
         tmp = cache_path.with_suffix(".tmp")
         with _NETCDF_LOCK:
             data.to_netcdf(tmp)
         tmp.replace(cache_path)
-    return data
+    return data, seconds
 
 
 def _runs(indices: np.ndarray, max_len: int) -> List[slice]:
-    """Split sorted indices into contiguous slices of at most max_len."""
+    """Split sorted indices into contiguous slices that never cross a multiple of max_len.
+
+    Aligning chunks to a fixed grid on the absolute time axis means overlapping requests
+    (e.g. a year, then one month of it) ask for, and can reuse, the same cached chunks."""
     out: List[slice] = []
     for i in indices:
-        if out and out[-1].stop == i and out[-1].stop - out[-1].start < max_len:
-            out[-1] = slice(out[-1].start, i + 1)
+        if out and out[-1].stop == i and i % max_len != 0:
+            out[-1] = slice(out[-1].start, int(i) + 1)
         else:
             out.append(slice(int(i), int(i) + 1))
     return out
@@ -171,32 +208,37 @@ def _runs(indices: np.ndarray, max_len: int) -> List[slice]:
 
 def build_analysis(
     area: ff.Area,
-    window: ff.TimeWindow,
+    window: Union[ff.TimeWindow, Sequence[ff.TimeWindow]],
     workers: int = DEFAULT_WORKERS,
     cache_dir: Optional[Path] = None,
     use_cloud: bool = True,
 ) -> Tuple[xr.Dataset, List[str], Dict[str, int]]:
-    """Assemble the analysis for area/window: the cloud copy first, then OPeNDAP for whatever
-    it lacks. OPeNDAP chunks are cached in cache_dir so a rerun after a failure only fetches
-    what's missing; the cache is the caller's to clean up. Also returns, per variable, how
-    many hours came from OPeNDAP."""
+    """Assemble the analysis for area and one or more time windows: the cloud copy first, then OPeNDAP for whatever
+    it lacks. OPeNDAP chunks are cached in cache_dir (per area) and reused by later runs.
+    Also returns, per variable, how many hours came from OPeNDAP."""
     lat, lon = native_grid(area)
     long_names: Dict[str, str] = {}
     urls: List[str] = []
+    windows = [window] if isinstance(window, ff.TimeWindow) else list(window)
     times: Optional[pd.DatetimeIndex] = None
-    offset = 0  # index of the window's first hour on the OPeNDAP time axis
+    axis_times: Optional[pd.DatetimeIndex] = None  # the full OPeNDAP time axis
+    positions = np.array([], dtype=int)  # OPeNDAP time index of each requested hour
     for collection in ff.COLLECTIONS:
         url = analysis_url(collection)
         urls.append(url)
         names, axis, _ = ff.remote_call(ff._read_inventory, url, what=f"Opening {url}")
-        idx = time_indices(axis, window)
-        if idx.start >= len(axis) or idx.stop > len(axis) or idx.stop <= idx.start:
-            available = f"{pd.Timestamp(axis[0]).isoformat()}Z to {pd.Timestamp(axis[-1]).isoformat()}Z"
-            raise ff.ForecastUnavailableError(f"{window.describe()} is outside the analysis record ({available})")
-        window_times = pd.DatetimeIndex(axis[idx])
+        parts = []
+        for w in windows:
+            idx = time_indices(axis, w)
+            if idx.start >= len(axis) or idx.stop > len(axis) or idx.stop <= idx.start:
+                available = f"{pd.Timestamp(axis[0]).isoformat()}Z to {pd.Timestamp(axis[-1]).isoformat()}Z"
+                raise ff.ForecastUnavailableError(f"{w.describe()} is outside the analysis record ({available})")
+            parts.append(np.arange(idx.start, idx.stop))
+        collection_positions = np.unique(np.concatenate(parts))
+        window_times = pd.DatetimeIndex(axis[collection_positions])
         if times is not None and not window_times.equals(times):
-            raise ff.ValidationError("aqc and met analysis collections disagree on the time axis")
-        times, offset = window_times, idx.start
+            raise ff.ValidationError("the analysis collections disagree on the time axis")
+        times, positions, axis_times = window_times, collection_positions, pd.DatetimeIndex(axis)
         for spec in ff.VARIABLES:
             if spec.collection == collection:
                 if spec.source_name not in names:
@@ -211,7 +253,7 @@ def build_analysis(
     jobs = []  # (spec, url, OPeNDAP index slice)
     for spec in ff.VARIABLES:
         missing = np.where(np.isnan(grids[spec.name]).all(axis=(1, 2)))[0]
-        for run in _runs(missing + offset, CHUNK_HOURS):
+        for run in _runs(positions[missing], CHUNK_HOURS):
             jobs.append((spec, analysis_url(spec.collection), run))
     from_opendap = {spec.name: 0 for spec in ff.VARIABLES}
     if jobs:
@@ -221,20 +263,41 @@ def build_analysis(
             cache_dir.mkdir(parents=True, exist_ok=True)
         selection = ff._grid_selection(area.bbox)
         started = time.monotonic()
+        durations: List[float] = []
+        cached = 0
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {pool.submit(_fetch_chunk, url, spec, selection, lead, cache_dir): spec for spec, url, lead in jobs}
+            futures = {
+                pool.submit(_fetch_chunk, url, spec, selection, lead, axis_times[lead], cache_dir): (spec, lead)
+                for spec, url, lead in jobs
+            }
             for done, future in enumerate(as_completed(futures), 1):
-                spec = futures[future]
-                data = future.result()
+                spec, lead = futures[future]
+                data, seconds = future.result()
+                if seconds is None:
+                    cached += 1
+                    took = "cached"
+                else:
+                    durations.append(seconds)
+                    took = f"{seconds:.0f}s"
+                elapsed = time.monotonic() - started
+                downloads_left = len(jobs) - done
+                # Time left assumes the remaining chunks download at the pace seen so far.
+                eta = (elapsed / max(len(durations), 1)) * downloads_left if durations else 0
                 if data is None:
-                    logger.warning("[%3d/%d] %-18s chunk entirely unreadable on the server", done, len(jobs), spec.name)
+                    logger.warning("[%3d/%d] %-18s chunk entirely unreadable on the server (%s)", done, len(jobs), spec.name, took)
                     continue
                 from_opendap[spec.name] += _place(grids[spec.name], times, lat, lon, data)
-                elapsed = time.monotonic() - started
                 logger.info(
-                    "[%3d/%d] %-18s %s .. %s  (%.0fs elapsed, ~%.0fs left)", done, len(jobs), spec.name,
-                    str(data["time"].values[0])[:13], str(data["time"].values[-1])[:13], elapsed, elapsed / done * (len(jobs) - done),
+                    "[%3d/%d] %-18s %s .. %s  %7s  (%.0fs elapsed, ~%.0fs left)", done, len(jobs), spec.name,
+                    str(axis_times[lead.start])[:13], str(axis_times[lead.stop - 1])[:13], took, elapsed, eta,
                 )
+        if durations:
+            logger.info(
+                "OPeNDAP: %d chunks downloaded (median %.0fs, slowest %.0fs), %d reused from cache, %.0fs total",
+                len(durations), float(np.median(durations)), max(durations), cached, time.monotonic() - started,
+            )
+        else:
+            logger.info("OPeNDAP: all %d chunks reused from cache", cached)
     else:
         logger.info("The cloud copy covered everything; nothing to fetch from OPeNDAP")
 
@@ -259,8 +322,9 @@ def validate_analysis(ds: xr.Dataset, expected_hours: int) -> Dict[str, int]:
     if ds.sizes.get("time") != expected_hours:
         errors.append(f"expected {expected_hours} hours, got {ds.sizes.get('time')}")
     steps = np.diff(ds["time"].values)
-    if np.any(steps != np.timedelta64(1, "h")):
-        errors.append("valid times are not strictly increasing in 1-hour steps")
+    # Steps are 1 h within a window; sampled requests (e.g. --first-days) jump between windows.
+    if np.any(steps <= np.timedelta64(0, "s")) or np.any(steps % np.timedelta64(1, "h") != np.timedelta64(0, "s")):
+        errors.append("valid times are not strictly increasing on the hourly grid")
     for dim in ("lat", "lon"):
         if ds.sizes.get(dim, 0) == 0:
             errors.append(f"dimension '{dim}' is empty")
@@ -281,6 +345,8 @@ def write_analysis(ds: xr.Dataset, metadata: Dict[str, object], output_dir: Path
     output_dir.mkdir(parents=True, exist_ok=True)
     first, last = metadata["valid_time_start"], metadata["valid_time_end"]
     stem = f"geos_cf_analysis_{metadata['region']}_{first[:10].replace('-', '')}-{last[:10].replace('-', '')}"
+    if metadata.get("sampling"):
+        stem += f"_{metadata['sampling']}"
     nc_path, json_path = output_dir / f"{stem}.nc", output_dir / f"{stem}.metadata.json"
     ds.attrs = {k: v if isinstance(v, (str, int, float, list)) else json.dumps(v) for k, v in metadata.items() if v is not None}
     encoding = {name: {"zlib": True, "complevel": 4, "dtype": "float32"} for name in ds.data_vars}
@@ -293,12 +359,21 @@ def write_analysis(ds: xr.Dataset, metadata: Dict[str, object], output_dir: Path
 
 
 def run(
-    area: ff.Area, window: ff.TimeWindow, output_dir: Path, workers: int = DEFAULT_WORKERS, use_cloud: bool = True
+    area: ff.Area,
+    window: Union[ff.TimeWindow, Sequence[ff.TimeWindow]],
+    output_dir: Path,
+    workers: int = DEFAULT_WORKERS,
+    use_cloud: bool = True,
+    sampling: Optional[str] = None,
 ) -> Path:
-    logger.info("GEOS-CF analysis for %s, %s", area.name, window.describe())
+    """sampling labels a non-contiguous request (e.g. "first5days") in the file name and metadata."""
+    windows = [window] if isinstance(window, ff.TimeWindow) else list(window)
+    described = [w.describe() for w in windows]
+    logger.info("GEOS-CF analysis for %s, %s", area.name, described[0] if len(windows) == 1 else f"{len(windows)} windows ({sampling})")
     downloaded_at = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
-    cache_dir = output_dir / ".cache" / f"analysis_{area.name}_{window.start:%Y%m%dT%H}_{window.end:%Y%m%dT%H}"
-    ds, urls, from_opendap = build_analysis(area, window, workers, cache_dir, use_cloud)
+    # Kept after the run: later requests for the same area reuse any chunks they overlap.
+    cache_dir = output_dir / ".cache" / f"analysis_{area.name}"
+    ds, urls, from_opendap = build_analysis(area, windows, workers, cache_dir, use_cloud)
     missing = validate_analysis(ds, ds.sizes["time"])
     valid_times = [pd.Timestamp(t).isoformat() + "Z" for t in ds["time"].values]
     metadata = {
@@ -307,7 +382,8 @@ def run(
         "product": "analysis",
         "source_urls": urls,
         "downloaded_at": downloaded_at.isoformat().replace("+00:00", "Z"),
-        "requested_time_window": window.describe(),
+        "requested_time_window": described[0] if len(windows) == 1 else described,
+        "sampling": sampling,
         "hours": len(valid_times),
         "valid_time_start": valid_times[0],
         "valid_time_end": valid_times[-1],
@@ -324,7 +400,6 @@ def run(
         "hours_from_cloud_copy": {n: len(valid_times) - from_opendap[n] - missing[n] for n in ds.data_vars},
     }
     nc_path, json_path = write_analysis(ds, metadata, output_dir)
-    shutil.rmtree(cache_dir, ignore_errors=True)
 
     logger.info("GEOS-CF analysis ingested and validated")
     logger.info("  first valid time     %s", valid_times[0])
@@ -348,6 +423,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--start", required=True, help="first time (ISO 8601)")
     parser.add_argument("--end", required=True, help="end time, not included (ISO 8601)")
     parser.add_argument("--tz", default="UTC", help="timezone for times without an offset (default UTC)")
+    parser.add_argument(
+        "--first-days", type=int, metavar="N",
+        help="only the first N days of each month between --start and --end (days counted in --tz)",
+    )
     parser.add_argument("--output", type=Path, default=Path("data/geos_cf"))
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS, help="parallel requests to NASA")
     parser.add_argument("--no-cloud", action="store_true", help="skip the S3 cloud copy and use only OPeNDAP")
@@ -361,13 +440,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             area = ff.region_area(args.region or "georgia")
         window = ff.TimeWindow(ff.parse_time(args.start, args.tz), ff.parse_time(args.end, args.tz))
+        if window.end <= window.start:
+            parser.error("--end must be after --start")
+        windows: Union[ff.TimeWindow, List[ff.TimeWindow]] = window
+        sampling = None
+        if args.first_days is not None:
+            if not 1 <= args.first_days <= 31:
+                parser.error("--first-days must be between 1 and 31")
+            windows = monthly_windows(args.start, args.end, args.first_days, args.tz)
+            sampling = f"first{args.first_days}days"
     except ValueError as exc:
         parser.error(str(exc))
-    if window.end <= window.start:
-        parser.error("--end must be after --start")
 
     try:
-        run(area, window, args.output, args.workers, use_cloud=not args.no_cloud)
+        run(area, windows, args.output, args.workers, use_cloud=not args.no_cloud, sampling=sampling)
     except (ff.ForecastUnavailableError, ff.ValidationError) as exc:
         logger.error("%s", exc)
         return 1
