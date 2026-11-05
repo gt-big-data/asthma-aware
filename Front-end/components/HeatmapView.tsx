@@ -3,12 +3,23 @@ import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { LatLngIntensity } from "../constants/data";
 
+// [[west, south], [east, north]]
+export type MapBounds = [[number, number], [number, number]];
+
+// Metro Atlanta: roughly Marietta to Stockbridge, Douglasville to Lawrenceville.
+export const ATLANTA_BOUNDS: MapBounds = [[-84.80, 33.45], [-83.95, 34.05]];
+
 interface HeatmapViewProps {
   points: LatLngIntensity[];
   visualization?: "cells" | "heat";
+  // Area the map opens on. Only read on first render.
+  startBounds?: MapBounds;
 }
 
-const MAP_HTML = `
+// The map page is built with its starting area already in it, so the first
+// frame shown is the right place (no jump after loading).
+function buildMapHtml(startBounds: MapBounds): string {
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -29,8 +40,7 @@ const MAP_HTML = `
     // MapLibre draws both the base map and the data, so they move together
     // in the same frame while zooming (no drift between two map engines).
 
-    // Metro Atlanta: roughly Marietta to Stockbridge, Douglasville to Lawrenceville.
-    const ATLANTA_BOUNDS = [[-84.80, 33.45], [-83.95, 34.05]];
+    const START_BOUNDS = ${JSON.stringify(startBounds)};
 
     // Fallback cell size when the grid spacing can't be worked out from the data.
     const DEFAULT_LAT_STEP = 0.25 / 56;
@@ -198,7 +208,7 @@ const MAP_HTML = `
       map = new maplibregl.Map({
         container: "map",
         style: "https://tiles.openfreemap.org/styles/positron",
-        bounds: ATLANTA_BOUNDS,
+        bounds: START_BOUNDS,
         minZoom: 5,
         maxZoom: MAX_ZOOM,
         dragRotate: false,
@@ -212,7 +222,7 @@ const MAP_HTML = `
         // On phones the WebView can still be resizing when the map is created,
         // which makes the first fit zoom out too far. Fit again once loaded.
         map.resize();
-        map.fitBounds(ATLANTA_BOUNDS, { animate: false });
+        map.fitBounds(START_BOUNDS, { animate: false });
         mapLoaded = true;
         if (pending) {
           drawData(pending);
@@ -249,11 +259,15 @@ const MAP_HTML = `
 </body>
 </html>
 `;
+}
 
 export default function HeatmapView({
   points,
   visualization = "cells",
+  startBounds = ATLANTA_BOUNDS,
 }: HeatmapViewProps) {
+  // Built once: later changes to startBounds shouldn't reload the map.
+  const [mapHtml] = useState(() => buildMapHtml(startBounds));
   const webviewRef   = useRef<WebView<object>>(null);
   const webviewReady = useRef(false);
   const pendingPts   = useRef<LatLngIntensity[] | null>(null);
@@ -303,7 +317,7 @@ export default function HeatmapView({
     <View style={StyleSheet.absoluteFill}>
       <WebView<object>
         ref={webviewRef}
-        source={{ html: MAP_HTML }}
+        source={{ html: mapHtml }}
         style={StyleSheet.absoluteFill}
         originWhitelist={["*"]}
         javaScriptEnabled
