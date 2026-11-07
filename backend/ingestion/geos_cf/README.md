@@ -232,5 +232,29 @@ metadata. With `--first-days`, `time` jumps between the monthly windows.
 Use `--no-cloud` to skip S3. Expect about 10 minutes for a year at one point. Most of that is
 specific humidity and the Dec–Jan gap coming from OPeNDAP; area adds little.
 
+### Before Aug 2025: GEOS-CF v1
+
+The v2 record begins on 2025-08-04. Earlier dates (2018 to Jan 2, 2026) come from **GEOS-CF
+v1**, an earlier model version. The script switches automatically by date, and
+`--model-version v1|v2` overrides that choice. A request that crosses 2025-08-04 is rejected,
+so the two versions never end up in one file.
+
+- **Same output:** v1 files have the same 12 columns and units as v2, so code can read both
+  the same way. They are named `geos_cf_v1_analysis_…`, and the metadata says
+  `source_version: v1`.
+- **No PM10:** v1 has no PM10 in any collection. The `pm10` column is all-missing, and
+  `variables_not_available` in the metadata says so.
+- **PM2.5 source:** v1 PM2.5 is `pm25_rh35_gcc`, the GEOS-Chem PM2.5 at 35% RH.
+- **Sources:** OPeNDAP `/dods/gmao/geos-cf/assim/` (`aqc_tavg_1hr_g1440x721_v1`,
+  `met_tavg_1hr_g1440x721_x1`, `xgc_tavg_1hr_g1440x721_x1`) and `s3://smce-geos-cf-public/geos-cf-rpl.zarr`.
+  The Zarr copy has everything except `t` and `q`, which come from OPeNDAP. v1's OPeNDAP
+  doesn't publish units, so the code uses the v2 units, which v1's Zarr copy confirms. Where
+  both sources have data, they match.
+- **Not strictly comparable with v2.** For the Georgia box sampled on the first 5 days of each
+  month, v1 PM2.5 and NO₂ in 2023 average about twice v2's in 2025–26. Some of that may be
+  real, since fall 2023 had drought and wildfire smoke, but a gap that consistent points
+  mostly to the model change. Check both against monitors, for example AirNow, before
+  combining them.
+
 The forecast archive also lives on that S3 bucket as `geos-cf-v2-fcst-latest.zarr`, but only
 for the latest run.
