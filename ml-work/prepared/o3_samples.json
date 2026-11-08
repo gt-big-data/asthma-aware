@@ -1,0 +1,772 @@
+[
+  {
+    "target_time": "2025-11-01T12:30:00+00:00",
+    "band": 8,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 128,
+        "time": "2025-11-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2025-11-02T12:30:00+00:00",
+    "band": 9,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 152,
+        "time": "2025-11-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2025-11-03T12:30:00+00:00",
+    "band": 10,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 176,
+        "time": "2025-11-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2025-11-04T12:30:00+00:00",
+    "band": 11,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 200,
+        "time": "2025-11-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2025-11-05T12:30:00+00:00",
+    "band": 12,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 224,
+        "time": "2025-11-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2025-12-01T12:30:00+00:00",
+    "band": 38,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 248,
+        "time": "2025-12-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2025-12-02T12:30:00+00:00",
+    "band": 39,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 272,
+        "time": "2025-12-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2025-12-03T12:30:00+00:00",
+    "band": 40,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 296,
+        "time": "2025-12-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2025-12-04T12:30:00+00:00",
+    "band": 41,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 320,
+        "time": "2025-12-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2025-12-05T12:30:00+00:00",
+    "band": 42,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 344,
+        "time": "2025-12-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-01-01T12:30:00+00:00",
+    "band": 69,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 368,
+        "time": "2026-01-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-01-02T12:30:00+00:00",
+    "band": 70,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 392,
+        "time": "2026-01-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-01-03T12:30:00+00:00",
+    "band": 71,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 416,
+        "time": "2026-01-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-01-04T12:30:00+00:00",
+    "band": 72,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 440,
+        "time": "2026-01-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-01-05T12:30:00+00:00",
+    "band": 73,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 464,
+        "time": "2026-01-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-02-01T12:30:00+00:00",
+    "band": 100,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 488,
+        "time": "2026-02-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-02-02T12:30:00+00:00",
+    "band": 101,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 512,
+        "time": "2026-02-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-02-03T12:30:00+00:00",
+    "band": 102,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 536,
+        "time": "2026-02-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-02-04T12:30:00+00:00",
+    "band": 103,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 560,
+        "time": "2026-02-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-02-05T12:30:00+00:00",
+    "band": 104,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 584,
+        "time": "2026-02-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-03-01T12:30:00+00:00",
+    "band": 128,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 608,
+        "time": "2026-03-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-03-02T12:30:00+00:00",
+    "band": 129,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 632,
+        "time": "2026-03-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-03-03T12:30:00+00:00",
+    "band": 130,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 656,
+        "time": "2026-03-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-03-04T12:30:00+00:00",
+    "band": 131,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 680,
+        "time": "2026-03-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-03-05T12:30:00+00:00",
+    "band": 132,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 704,
+        "time": "2026-03-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-04-01T12:30:00+00:00",
+    "band": 159,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 729,
+        "time": "2026-04-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-04-02T12:30:00+00:00",
+    "band": 160,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 753,
+        "time": "2026-04-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-04-03T12:30:00+00:00",
+    "band": 161,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 777,
+        "time": "2026-04-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-04-04T12:30:00+00:00",
+    "band": 162,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 801,
+        "time": "2026-04-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-04-05T12:30:00+00:00",
+    "band": 163,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 825,
+        "time": "2026-04-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-05-01T12:30:00+00:00",
+    "band": 189,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 849,
+        "time": "2026-05-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-05-02T12:30:00+00:00",
+    "band": 190,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 873,
+        "time": "2026-05-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-05-03T12:30:00+00:00",
+    "band": 191,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 897,
+        "time": "2026-05-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-05-04T12:30:00+00:00",
+    "band": 192,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 921,
+        "time": "2026-05-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-05-05T12:30:00+00:00",
+    "band": 193,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 945,
+        "time": "2026-05-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-06-01T12:30:00+00:00",
+    "band": 220,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 969,
+        "time": "2026-06-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-06-02T12:30:00+00:00",
+    "band": 221,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 993,
+        "time": "2026-06-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-06-03T12:30:00+00:00",
+    "band": 222,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1017,
+        "time": "2026-06-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "train"
+  },
+  {
+    "target_time": "2026-06-04T12:30:00+00:00",
+    "band": 223,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1041,
+        "time": "2026-06-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "validation"
+  },
+  {
+    "target_time": "2026-06-05T12:30:00+00:00",
+    "band": 224,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1065,
+        "time": "2026-06-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "validation"
+  },
+  {
+    "target_time": "2026-07-01T12:30:00+00:00",
+    "band": 250,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1089,
+        "time": "2026-07-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "validation"
+  },
+  {
+    "target_time": "2026-07-02T12:30:00+00:00",
+    "band": 251,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1113,
+        "time": "2026-07-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "validation"
+  },
+  {
+    "target_time": "2026-07-03T12:30:00+00:00",
+    "band": 252,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1137,
+        "time": "2026-07-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "validation"
+  },
+  {
+    "target_time": "2026-07-04T12:30:00+00:00",
+    "band": 253,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1161,
+        "time": "2026-07-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "validation"
+  },
+  {
+    "target_time": "2026-07-05T12:30:00+00:00",
+    "band": 254,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1185,
+        "time": "2026-07-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "validation"
+  },
+  {
+    "target_time": "2026-08-01T12:30:00+00:00",
+    "band": 281,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1209,
+        "time": "2026-08-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "validation"
+  },
+  {
+    "target_time": "2026-08-02T12:30:00+00:00",
+    "band": 282,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1233,
+        "time": "2026-08-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "test"
+  },
+  {
+    "target_time": "2026-08-03T12:30:00+00:00",
+    "band": 283,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1257,
+        "time": "2026-08-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "test"
+  },
+  {
+    "target_time": "2026-08-04T12:30:00+00:00",
+    "band": 284,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1281,
+        "time": "2026-08-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "test"
+  },
+  {
+    "target_time": "2026-08-05T12:30:00+00:00",
+    "band": 285,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1305,
+        "time": "2026-08-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "test"
+  },
+  {
+    "target_time": "2026-09-01T12:30:00+00:00",
+    "band": 312,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1329,
+        "time": "2026-09-01T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "test"
+  },
+  {
+    "target_time": "2026-09-02T12:30:00+00:00",
+    "band": 313,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1353,
+        "time": "2026-09-02T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "test"
+  },
+  {
+    "target_time": "2026-09-03T12:30:00+00:00",
+    "band": 314,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1377,
+        "time": "2026-09-03T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "test"
+  },
+  {
+    "target_time": "2026-09-04T12:30:00+00:00",
+    "band": 315,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1401,
+        "time": "2026-09-04T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "test"
+  },
+  {
+    "target_time": "2026-09-05T12:30:00+00:00",
+    "band": 316,
+    "geos": [
+      {
+        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc",
+        "index": 1425,
+        "time": "2026-09-05T12:30:00+00:00"
+      }
+    ],
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval",
+    "split": "test"
+  }
+]
