@@ -1,4 +1,4 @@
-"""NASA GEOS-CF v2 analysis (historical) ingestion.
+"""NASA GEOS-CF analysis (historical) ingestion, v2 (Aug 2025 on) and v1 (2018 to Jan 2026).
 
 The analysis is GEOS-CF's continuous hourly reconstruction of past conditions: the model
 run alongside observations, as opposed to the 5-day forecasts in fetch_forecast. Same
@@ -7,6 +7,10 @@ metadata.json sidecar.
 
 Data comes from GMAO's Zarr copy on S3 where it has it (seconds for a year, any area) and
 from NASA's OPeNDAP server for the rest (slow: ~0.1 s per variable-hour).
+
+Dates before v2 began (2025-08-04) come from GEOS-CF v1, an earlier model version: same
+output columns and units, but no PM10 (kept as an all-missing column), and values are not
+strictly comparable with v2's.
 
 Usage:
     python -m ingestion.geos_cf.fetch_analysis --point 33.75,-84.39 \\
@@ -25,6 +29,7 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
@@ -50,8 +55,75 @@ DEFAULT_WORKERS = 6
 _NETCDF_LOCK = threading.Lock()
 
 
-def analysis_url(collection: str) -> str:
-    return f"{ANALYSIS_ROOT}/{collection}"
+@dataclass(frozen=True)
+class Product:
+    """One GEOS-CF analysis record: where it lives and how its variables map to our columns."""
+
+    version: str
+    opendap_root: str
+    zarr_url: str
+    specs: Tuple[ff.VariableSpec, ...]  # our column name -> this record's collection/variable
+    unavailable: Tuple[str, ...]  # our columns this record can't supply; written as all-NaN
+    units_in_long_name: bool  # v2's GrADS server puts units in long_name; v1's doesn't
+    record_start: pd.Timestamp
+
+
+V2 = Product("v2", ANALYSIS_ROOT, ZARR_URL, ff.VARIABLES, (), True, pd.Timestamp("2025-08-04T09:00"))
+
+V1_AQC = "aqc_tavg_1hr_g1440x721_v1"
+V1_MET = "met_tavg_1hr_g1440x721_x1"
+V1_XGC = "xgc_tavg_1hr_g1440x721_x1"
+
+
+def _v1_spec(name: str, source_name: str, collection: str) -> ff.VariableSpec:
+    """A v1 source for one of our columns, with the same output units as v2.
+
+    v1's OPeNDAP has no units, so they come from our v2 spec; the v1 Zarr copy (which does
+    carry units) is checked against them in read_zarr."""
+    v2 = next(s for s in ff.VARIABLES if s.name == name)
+    return ff.VariableSpec(name, source_name, collection, v2.units, f"{v2.description} (GEOS-CF v1)")
+
+
+V1 = Product(
+    "v1",
+    "https://opendap.nccs.nasa.gov/dods/gmao/geos-cf/assim",
+    "https://smce-geos-cf-public.s3.amazonaws.com/geos-cf-rpl.zarr",
+    (
+        _v1_spec("pm25", "pm25_rh35_gcc", V1_AQC),
+        _v1_spec("no2", "no2", V1_AQC),
+        _v1_spec("o3", "o3", V1_AQC),
+        _v1_spec("co", "co", V1_AQC),
+        _v1_spec("air_temperature", "t", V1_MET),
+        _v1_spec("specific_humidity", "q", V1_MET),
+        _v1_spec("relative_humidity", "rh", V1_MET),
+        _v1_spec("surface_pressure", "ps", V1_MET),
+        _v1_spec("precipitation", "tprec", V1_MET),
+        _v1_spec("pbl_height", "zpbl", V1_MET),
+        _v1_spec("tropcol_no2", "tropcol_no2", V1_XGC),
+    ),
+    ("pm10",),
+    False,
+    pd.Timestamp("2018-01-01T00:00"),
+)
+PRODUCTS = {"v1": V1, "v2": V2}
+
+
+def product_for(windows: Sequence[ff.TimeWindow]) -> Product:
+    """v2 where it exists, v1 for anything earlier. A request can't straddle the two."""
+    first = min(w.start for w in windows)
+    last = max(w.end or w.start for w in windows)
+    if first >= V2.record_start:
+        return V2
+    if last <= V2.record_start:
+        return V1
+    raise ValueError(
+        f"the request spans the switch from GEOS-CF v1 to v2 on {V2.record_start:%Y-%m-%d}; "
+        "split it there, since the two model versions aren't strictly comparable"
+    )
+
+
+def analysis_url(collection: str, product: Product = V2) -> str:
+    return f"{product.opendap_root}/{collection}"
 
 
 def time_indices(times: np.ndarray, window: ff.TimeWindow) -> slice:
@@ -103,21 +175,21 @@ def _place(target: np.ndarray, times: pd.DatetimeIndex, lat: np.ndarray, lon: np
     return int(present.sum())
 
 
-def _open_zarr() -> xr.Dataset:
-    ds = xr.open_zarr(ZARR_URL, consolidated=True)
-    # The store has repeated appends (September 2025 appears twice); keep each hour's last copy.
+def _open_zarr(url: str = ZARR_URL) -> xr.Dataset:
+    ds = xr.open_zarr(url, consolidated=True)
+    # Both stores have repeated appends (e.g. September 2025 twice); keep each hour's last copy.
     _, last = np.unique(ds["time"].values[::-1], return_index=True)
     return ds.isel(time=np.sort(ds.sizes["time"] - 1 - last))
 
 
-def read_zarr(area: ff.Area, times: pd.DatetimeIndex) -> Dict[str, xr.DataArray]:
+def read_zarr(area: ff.Area, times: pd.DatetimeIndex, product: Product = V2) -> Dict[str, xr.DataArray]:
     """Every variable the cloud copy has for area/times. Hours it lacks are simply absent or NaN."""
     try:
-        zds = _open_zarr()
+        zds = _open_zarr(product.zarr_url)
     except Exception as exc:  # noqa: BLE001 - the cloud copy is an accelerator; OPeNDAP still works
         logger.warning("Cloud copy unavailable (%s); downloading everything from OPeNDAP", exc)
         return {}
-    specs = [s for s in ff.VARIABLES if s.source_name in zds.data_vars]
+    specs = [s for s in product.specs if s.source_name in zds.data_vars]
     for spec in specs:
         units = zds[spec.source_name].attrs.get("units", "")
         if units.lower() != spec.units.lower():  # the Zarr copy writes "K" where OPeNDAP says "k"
@@ -212,10 +284,12 @@ def build_analysis(
     workers: int = DEFAULT_WORKERS,
     cache_dir: Optional[Path] = None,
     use_cloud: bool = True,
+    product: Product = V2,
 ) -> Tuple[xr.Dataset, List[str], Dict[str, int]]:
-    """Assemble the analysis for area and one or more time windows: the cloud copy first, then OPeNDAP for whatever
-    it lacks. OPeNDAP chunks are cached in cache_dir (per area) and reused by later runs.
-    Also returns, per variable, how many hours came from OPeNDAP."""
+    """Assemble the analysis for area and one or more time windows: the cloud copy first, then
+    OPeNDAP for whatever it lacks. OPeNDAP chunks are cached in cache_dir (per area and
+    product) and reused by later runs. Also returns, per variable, how many hours came from
+    OPeNDAP. Columns the product can't supply are all-NaN."""
     lat, lon = native_grid(area)
     long_names: Dict[str, str] = {}
     urls: List[str] = []
@@ -223,8 +297,9 @@ def build_analysis(
     times: Optional[pd.DatetimeIndex] = None
     axis_times: Optional[pd.DatetimeIndex] = None  # the full OPeNDAP time axis
     positions = np.array([], dtype=int)  # OPeNDAP time index of each requested hour
-    for collection in ff.COLLECTIONS:
-        url = analysis_url(collection)
+    collections = list(dict.fromkeys(spec.collection for spec in product.specs))
+    for collection in collections:
+        url = analysis_url(collection, product)
         urls.append(url)
         names, axis, _ = ff.remote_call(ff._read_inventory, url, what=f"Opening {url}")
         parts = []
@@ -239,7 +314,7 @@ def build_analysis(
         if times is not None and not window_times.equals(times):
             raise ff.ValidationError("the analysis collections disagree on the time axis")
         times, positions, axis_times = window_times, collection_positions, pd.DatetimeIndex(axis)
-        for spec in ff.VARIABLES:
+        for spec in product.specs:
             if spec.collection == collection:
                 if spec.source_name not in names:
                     raise ff.ValidationError(f"{url} is missing required variable {spec.source_name}")
@@ -247,14 +322,14 @@ def build_analysis(
 
     grids = {spec.name: np.full((len(times), lat.size, lon.size), np.nan, dtype="float32") for spec in ff.VARIABLES}
     if use_cloud:
-        for name, data in read_zarr(area, times).items():
+        for name, data in read_zarr(area, times, product).items():
             _place(grids[name], times, lat, lon, data)
 
     jobs = []  # (spec, url, OPeNDAP index slice)
-    for spec in ff.VARIABLES:
+    for spec in product.specs:
         missing = np.where(np.isnan(grids[spec.name]).all(axis=(1, 2)))[0]
         for run in _runs(positions[missing], CHUNK_HOURS):
-            jobs.append((spec, analysis_url(spec.collection), run))
+            jobs.append((spec, analysis_url(spec.collection, product), run))
     from_opendap = {spec.name: 0 for spec in ff.VARIABLES}
     if jobs:
         gap_hours = sum(r.stop - r.start for _, _, r in jobs)
@@ -302,22 +377,35 @@ def build_analysis(
         logger.info("The cloud copy covered everything; nothing to fetch from OPeNDAP")
 
     ds = xr.Dataset(coords={"time": times.values, "lat": lat, "lon": lon})
-    for spec in ff.VARIABLES:
-        ds[spec.name] = (("time", "lat", "lon"), grids[spec.name], {
-            "units": ff.parse_units(long_names[spec.name]) or "",
-            "long_name": spec.description,
-            "source_name": spec.source_name,
-            "source_collection": spec.collection,
-            "source_long_name": long_names[spec.name],
-        })
+    sources = {spec.name: spec for spec in product.specs}
+    for column in ff.VARIABLES:
+        spec = sources.get(column.name)
+        if spec is None:
+            attrs = {
+                "units": column.units,
+                "long_name": column.description,
+                "source_name": "",
+                "comment": f"not available in GEOS-CF {product.version}; all values are missing",
+            }
+        else:
+            units = ff.parse_units(long_names[spec.name]) if product.units_in_long_name else spec.units
+            attrs = {
+                "units": units or "",
+                "long_name": spec.description,
+                "source_name": spec.source_name,
+                "source_collection": spec.collection,
+                "source_long_name": long_names[spec.name],
+            }
+        ds[column.name] = (("time", "lat", "lon"), grids[column.name], attrs)
     ds["time"].attrs.update({"long_name": "valid time (center of hourly averaging window)", "standard_name": "time"})
     ds["lat"].attrs.update({"long_name": "latitude (grid cell center)", "units": "degrees_north", "standard_name": "latitude"})
     ds["lon"].attrs.update({"long_name": "longitude (grid cell center)", "units": "degrees_east", "standard_name": "longitude"})
-    return ds, ([ZARR_URL] if use_cloud else []) + urls, from_opendap
+    return ds, ([product.zarr_url] if use_cloud else []) + urls, from_opendap
 
 
-def validate_analysis(ds: xr.Dataset, expected_hours: int) -> Dict[str, int]:
-    """Like the forecast validation, but isolated missing hours are reported, not fatal."""
+def validate_analysis(ds: xr.Dataset, expected_hours: int, unavailable: Sequence[str] = ()) -> Dict[str, int]:
+    """Like the forecast validation, but isolated missing hours are reported, not fatal, and
+    columns the product can't supply (`unavailable`) are allowed to be entirely NaN."""
     errors: List[str] = []
     if ds.sizes.get("time") != expected_hours:
         errors.append(f"expected {expected_hours} hours, got {ds.sizes.get('time')}")
@@ -333,7 +421,7 @@ def validate_analysis(ds: xr.Dataset, expected_hours: int) -> Dict[str, int]:
         var = ds[spec.name]
         if var.attrs["units"] != spec.units:
             errors.append(f"'{spec.name}' units: expected '{spec.units}', got '{var.attrs['units']}'")
-        if bool(var.isnull().all()):
+        if bool(var.isnull().all()) and spec.name not in unavailable:
             errors.append(f"'{spec.name}' is entirely NaN")
         missing_hours[spec.name] = int(var.isnull().all(dim=["lat", "lon"]).sum())
     if errors:
@@ -347,6 +435,8 @@ def write_analysis(ds: xr.Dataset, metadata: Dict[str, object], output_dir: Path
     stem = f"geos_cf_analysis_{metadata['region']}_{first[:10].replace('-', '')}-{last[:10].replace('-', '')}"
     if metadata.get("sampling"):
         stem += f"_{metadata['sampling']}"
+    if metadata.get("source_version") != "v2":  # v2 files keep their original names
+        stem = stem.replace("geos_cf_analysis_", f"geos_cf_{metadata['source_version']}_analysis_", 1)
     nc_path, json_path = output_dir / f"{stem}.nc", output_dir / f"{stem}.metadata.json"
     ds.attrs = {k: v if isinstance(v, (str, int, float, list)) else json.dumps(v) for k, v in metadata.items() if v is not None}
     encoding = {name: {"zlib": True, "complevel": 4, "dtype": "float32"} for name in ds.data_vars}
@@ -365,20 +455,31 @@ def run(
     workers: int = DEFAULT_WORKERS,
     use_cloud: bool = True,
     sampling: Optional[str] = None,
+    product: Optional[Product] = None,
 ) -> Path:
-    """sampling labels a non-contiguous request (e.g. "first5days") in the file name and metadata."""
+    """sampling labels a non-contiguous request (e.g. "first5days") in the file name and metadata.
+    product defaults to v2, or v1 for dates before v2 began."""
     windows = [window] if isinstance(window, ff.TimeWindow) else list(window)
+    product = product or product_for(windows)
     described = [w.describe() for w in windows]
-    logger.info("GEOS-CF analysis for %s, %s", area.name, described[0] if len(windows) == 1 else f"{len(windows)} windows ({sampling})")
+    logger.info(
+        "GEOS-CF %s analysis for %s, %s", product.version, area.name,
+        described[0] if len(windows) == 1 else f"{len(windows)} windows ({sampling})",
+    )
+    if product.unavailable:
+        logger.warning("GEOS-CF %s has no %s; those columns will be empty", product.version, ", ".join(product.unavailable))
     downloaded_at = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
     # Kept after the run: later requests for the same area reuse any chunks they overlap.
-    cache_dir = output_dir / ".cache" / f"analysis_{area.name}"
-    ds, urls, from_opendap = build_analysis(area, windows, workers, cache_dir, use_cloud)
-    missing = validate_analysis(ds, ds.sizes["time"])
+    # Separate per product, since cache names are indices into that product's time axis.
+    tag = "" if product.version == "v2" else f"{product.version}_"
+    cache_dir = output_dir / ".cache" / f"analysis_{tag}{area.name}"
+    ds, urls, from_opendap = build_analysis(area, windows, workers, cache_dir, use_cloud, product)
+    missing = validate_analysis(ds, ds.sizes["time"], product.unavailable)
     valid_times = [pd.Timestamp(t).isoformat() + "Z" for t in ds["time"].values]
     metadata = {
         "source": ff.SOURCE,
-        "source_version": ff.SOURCE_VERSION,
+        "source_version": product.version,
+        "variables_not_available": list(product.unavailable),
         "product": "analysis",
         "source_urls": urls,
         "downloaded_at": downloaded_at.isoformat().replace("+00:00", "Z"),
@@ -415,7 +516,7 @@ def run(
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Download NASA GEOS-CF v2 analysis (historical hourly) data for Georgia.")
+    parser = argparse.ArgumentParser(description="Download NASA GEOS-CF analysis (historical hourly) data for Georgia.")
     where = parser.add_mutually_exclusive_group()
     where.add_argument("--region", choices=sorted(ff.REGIONS))
     where.add_argument("--point", type=lambda t: ff._floats(t, 2), metavar="LAT,LON")
@@ -430,6 +531,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--output", type=Path, default=Path("data/geos_cf"))
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS, help="parallel requests to NASA")
     parser.add_argument("--no-cloud", action="store_true", help="skip the S3 cloud copy and use only OPeNDAP")
+    parser.add_argument(
+        "--model-version", choices=sorted(PRODUCTS),
+        help="GEOS-CF version to read; default v2, or v1 for dates before 2025-08-04",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -449,11 +554,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 parser.error("--first-days must be between 1 and 31")
             windows = monthly_windows(args.start, args.end, args.first_days, args.tz)
             sampling = f"first{args.first_days}days"
+        listed = [windows] if isinstance(windows, ff.TimeWindow) else windows
+        product = PRODUCTS[args.model_version] if args.model_version else product_for(listed)
     except ValueError as exc:
         parser.error(str(exc))
 
     try:
-        run(area, windows, args.output, args.workers, use_cloud=not args.no_cloud, sampling=sampling)
+        run(area, windows, args.output, args.workers, use_cloud=not args.no_cloud, sampling=sampling, product=product)
     except (ff.ForecastUnavailableError, ff.ValidationError) as exc:
         logger.error("%s", exc)
         return 1

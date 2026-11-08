@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 
 from ingestion.geos_cf import fetch_analysis as fa
 from ingestion.geos_cf import fetch_forecast as ff
@@ -16,7 +17,7 @@ def offline(monkeypatch):
     monkeypatch.setattr(ff, "remote_call", lambda fn, *args, **kwargs: fn(*args))
 
 
-def fake_cloud_copy(area, times):
+def fake_cloud_copy(area, times, product=fa.V2):
     """Like the real Zarr copy: no specific humidity, and a 12-hour hole in everything else."""
     out = {}
     for spec in ff.VARIABLES:
@@ -112,3 +113,36 @@ def test_build_analysis_with_several_windows(offline, monkeypatch, tmp_path):
     assert from_opendap["pm25"] == 4 and from_opendap["specific_humidity"] == 10
     assert not bool(ds.to_array().isnull().any())
     assert fa.validate_analysis(ds, 10)["pm25"] == 0
+
+
+def test_product_is_chosen_by_date():
+    w = lambda a, b: ff.TimeWindow(pd.Timestamp(a), pd.Timestamp(b))
+    assert fa.product_for([w("2023-01-01", "2023-01-06")]) is fa.V1
+    assert fa.product_for([w("2025-10-01", "2025-10-06")]) is fa.V2
+    with pytest.raises(ValueError, match="spans the switch"):
+        fa.product_for([w("2025-07-01", "2025-07-06"), w("2025-10-01", "2025-10-06")])
+
+
+def test_v1_keeps_v2_columns_and_leaves_pm10_empty(monkeypatch, tmp_path):
+    v1_collections = list(dict.fromkeys(s.collection for s in fa.V1.specs))
+    monkeypatch.setattr(ff, "open_remote", lambda url: fake_remote(next(c for c in v1_collections if c in url), specs=fa.V1.specs))
+    monkeypatch.setattr(ff, "remote_call", lambda fn, *args, **kwargs: fn(*args))
+
+    def v1_cloud_copy(area, times, product):
+        assert product is fa.V1
+        return {  # like the real v1 Zarr: no t or q
+            s.name: fake_remote(s.collection, specs=fa.V1.specs)[s.source_name].isel(lev=0).sel(**ff._grid_selection(area.bbox))
+            for s in product.specs if s.source_name not in ("t", "q")
+        }
+
+    monkeypatch.setattr(fa, "read_zarr", v1_cloud_copy)
+    nc_path = fa.run(ATLANTA, WINDOW, tmp_path, workers=2, product=fa.V1)
+
+    assert nc_path.name.startswith("geos_cf_v1_analysis_point_33.75N_84.39W_")
+    ds = xr.open_dataset(nc_path)
+    assert list(ds.data_vars) == [s.name for s in ff.VARIABLES]  # same columns as v2
+    assert bool(ds["pm10"].isnull().all()) and "not available" in ds["pm10"].attrs["comment"]
+    assert ds["pm25"].attrs["source_name"] == "pm25_rh35_gcc" and ds["pm25"].attrs["units"] == "ug m-3"
+    assert not bool(ds.drop_vars("pm10").to_array().isnull().any())
+    assert ds.attrs["source_version"] == "v1" and ds.attrs["variables_not_available"] == "pm10"
+    assert (tmp_path / ".cache" / "analysis_v1_point_33.75N_84.39W").is_dir()
