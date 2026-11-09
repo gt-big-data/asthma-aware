@@ -64,7 +64,6 @@ def inspect_tiff(path: Path) -> None:
                 sort_dicts=False,
             )
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("paths", nargs="*", type=Path, help="TIFF files to inspect")
