@@ -1,8 +1,12 @@
 """Minimal independent-source training integration. Importing does not train."""
 
 import torch
-from .data_pipeline import TARGETS, masked_loss
+from pathlib import Path
+import math
+import json
+from .data_pipeline import TARGETS, masked_loss, make_loader
 from .source_models import SourceModelConfig, build_source_models
+
 
 
 def initialize_training(
@@ -83,3 +87,88 @@ def save_source_checkpoint(path, source, model, optimizer, config, loader, epoch
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(payload, path)
+
+
+@torch.no_grad()
+def evaluate(model, loader):
+    model.eval()
+    squared_error = 0.0
+    count = 0
+    for batch in loader:
+        batch = {key: value.to(model.device) for key, value in batch.items()}
+
+        prediction = model(
+            batch["forecast"],
+            baseline=batch["baseline"],
+            time_features=batch["time_features"]
+        )
+        loss = masked_loss(prediction, batch)
+
+        if loss is None:
+            continue
+
+        n = int(batch["valid"].sum().item())
+        squared_error += n * loss.item()
+        count += n
+
+        if count == 0:
+            raise RuntimeError("No valid validation observations")
+
+        return squared_error / count
+
+        
+
+def train(epochs=20, sources=("temperature", "dewpoint"), learning_rate=1e-3):
+    torch.manual_seed(42)
+    prepared = Path("prepared")
+    bundle = json.loads((prepared / "bundle.json").read_text())
+
+    device = ("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using {device}")
+
+    for source in sources:
+        normalization = json.loads((prepared / f"{source}_normalization.json").read_text())
+
+        train_loader = make_loader(bundle, source, "train", normalization, batch_size=1, num_workers=0)
+        validation_loader = make_loader(bundle, source, "validation", normalization, batch_size=1, num_workers=0)
+
+        models, optimizers, configs = initialize_training(
+            {source: train_loader},
+            learning_rate=learning_rate,
+            device=device
+        )
+        model = models[source]
+        optimizer = optimizers[source]
+        best_validation = float("inf")
+
+        try:
+            for epoch in range(1, epochs + 1):
+                training = train_one_epoch(model, train_loader, optimizer, device=device)
+                if training["updates"] == 0:
+                    raise RuntimeError(f"{source}: no training updates")
+
+                validation_mse = evaluate(model, validation_loader)
+                validation_rmse_c = math.sqrt(validation_mse) * normalization["target_std"] # convert to Celsius
+                print(
+                    f"{source} | epoch {epoch:02d} | "
+                    f"train normalized MSE={training['mean_batch_loss']:.4f} | "
+                    f"validation RMSE={validation_rmse_c:.3f} °C"
+                )
+
+                if validation_mse < best_validation:
+                    best_validation = validation_mse
+                    save_source_checkpoint(
+                        Path("checkpoints") / f"{source}_best.pt",
+                        source,
+                        model,
+                        optimizer,
+                        configs[source],
+                        train_loader,
+                        epoch,
+                    )
+        finally:
+            train_loader.dataset.close()
+            validation_loader.dataset.close()
+
+        del model, optimizer, models, optimizers
+                

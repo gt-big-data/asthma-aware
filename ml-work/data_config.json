@@ -1,5 +1,5 @@
 {
-  "geos_files": ["../backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc"],
+  "geos_files": ["../backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc", "../backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc"],
   "grid": {"crs": "EPSG:4326", "width": 408, "height": 420, "transform": [0.01, 0, -85.60, 0, -0.01, 34.98]},
   "sources": {
     "no2": {
