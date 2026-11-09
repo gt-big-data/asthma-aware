@@ -1,0 +1,2557 @@
+[
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 1,
+    "date": "2025-10-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 2,
+    "date": "2025-10-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 3,
+    "date": "2025-10-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 4,
+    "date": "2025-10-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 5,
+    "date": "2025-10-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 6,
+    "date": "2025-10-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 7,
+    "date": "2025-10-31",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 8,
+    "date": "2025-11-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 9,
+    "date": "2025-11-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 10,
+    "date": "2025-11-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 11,
+    "date": "2025-11-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 12,
+    "date": "2025-11-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 13,
+    "date": "2025-11-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 14,
+    "date": "2025-11-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 15,
+    "date": "2025-11-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 16,
+    "date": "2025-11-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 17,
+    "date": "2025-11-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 18,
+    "date": "2025-11-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 19,
+    "date": "2025-11-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 20,
+    "date": "2025-11-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 21,
+    "date": "2025-11-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 22,
+    "date": "2025-11-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 23,
+    "date": "2025-11-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 24,
+    "date": "2025-11-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 25,
+    "date": "2025-11-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 26,
+    "date": "2025-11-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 27,
+    "date": "2025-11-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 28,
+    "date": "2025-11-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 29,
+    "date": "2025-11-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 30,
+    "date": "2025-11-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 31,
+    "date": "2025-11-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 32,
+    "date": "2025-11-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 33,
+    "date": "2025-11-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 34,
+    "date": "2025-11-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 35,
+    "date": "2025-11-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 36,
+    "date": "2025-11-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 37,
+    "date": "2025-11-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 38,
+    "date": "2025-12-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 39,
+    "date": "2025-12-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 40,
+    "date": "2025-12-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 41,
+    "date": "2025-12-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 42,
+    "date": "2025-12-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 43,
+    "date": "2025-12-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 44,
+    "date": "2025-12-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 45,
+    "date": "2025-12-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 46,
+    "date": "2025-12-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 47,
+    "date": "2025-12-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 48,
+    "date": "2025-12-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 49,
+    "date": "2025-12-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 50,
+    "date": "2025-12-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 51,
+    "date": "2025-12-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 52,
+    "date": "2025-12-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 53,
+    "date": "2025-12-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 54,
+    "date": "2025-12-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 55,
+    "date": "2025-12-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 56,
+    "date": "2025-12-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 57,
+    "date": "2025-12-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 58,
+    "date": "2025-12-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 59,
+    "date": "2025-12-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 60,
+    "date": "2025-12-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 61,
+    "date": "2025-12-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 62,
+    "date": "2025-12-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 63,
+    "date": "2025-12-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 64,
+    "date": "2025-12-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 65,
+    "date": "2025-12-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 66,
+    "date": "2025-12-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 67,
+    "date": "2025-12-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 68,
+    "date": "2025-12-31",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 69,
+    "date": "2026-01-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 70,
+    "date": "2026-01-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 71,
+    "date": "2026-01-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 72,
+    "date": "2026-01-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 73,
+    "date": "2026-01-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 74,
+    "date": "2026-01-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 75,
+    "date": "2026-01-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 76,
+    "date": "2026-01-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 77,
+    "date": "2026-01-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 78,
+    "date": "2026-01-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 79,
+    "date": "2026-01-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 80,
+    "date": "2026-01-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 81,
+    "date": "2026-01-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 82,
+    "date": "2026-01-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 83,
+    "date": "2026-01-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 84,
+    "date": "2026-01-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 85,
+    "date": "2026-01-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 86,
+    "date": "2026-01-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 87,
+    "date": "2026-01-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 88,
+    "date": "2026-01-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 89,
+    "date": "2026-01-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 90,
+    "date": "2026-01-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 91,
+    "date": "2026-01-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 92,
+    "date": "2026-01-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 93,
+    "date": "2026-01-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 94,
+    "date": "2026-01-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 95,
+    "date": "2026-01-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 96,
+    "date": "2026-01-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 97,
+    "date": "2026-01-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 98,
+    "date": "2026-01-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 99,
+    "date": "2026-01-31",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 100,
+    "date": "2026-02-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 101,
+    "date": "2026-02-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 102,
+    "date": "2026-02-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 103,
+    "date": "2026-02-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 104,
+    "date": "2026-02-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 105,
+    "date": "2026-02-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 106,
+    "date": "2026-02-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 107,
+    "date": "2026-02-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 108,
+    "date": "2026-02-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 109,
+    "date": "2026-02-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 110,
+    "date": "2026-02-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 111,
+    "date": "2026-02-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 112,
+    "date": "2026-02-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 113,
+    "date": "2026-02-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 114,
+    "date": "2026-02-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 115,
+    "date": "2026-02-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 116,
+    "date": "2026-02-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 117,
+    "date": "2026-02-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 118,
+    "date": "2026-02-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 119,
+    "date": "2026-02-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 120,
+    "date": "2026-02-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 121,
+    "date": "2026-02-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 122,
+    "date": "2026-02-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 123,
+    "date": "2026-02-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 124,
+    "date": "2026-02-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 125,
+    "date": "2026-02-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 126,
+    "date": "2026-02-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 127,
+    "date": "2026-02-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 128,
+    "date": "2026-03-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 129,
+    "date": "2026-03-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 130,
+    "date": "2026-03-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 131,
+    "date": "2026-03-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 132,
+    "date": "2026-03-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 133,
+    "date": "2026-03-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 134,
+    "date": "2026-03-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 135,
+    "date": "2026-03-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 136,
+    "date": "2026-03-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 137,
+    "date": "2026-03-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 138,
+    "date": "2026-03-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 139,
+    "date": "2026-03-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 140,
+    "date": "2026-03-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 141,
+    "date": "2026-03-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 142,
+    "date": "2026-03-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 143,
+    "date": "2026-03-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 144,
+    "date": "2026-03-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 145,
+    "date": "2026-03-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 146,
+    "date": "2026-03-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 147,
+    "date": "2026-03-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 148,
+    "date": "2026-03-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 149,
+    "date": "2026-03-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 150,
+    "date": "2026-03-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 151,
+    "date": "2026-03-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 152,
+    "date": "2026-03-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 153,
+    "date": "2026-03-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 154,
+    "date": "2026-03-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 155,
+    "date": "2026-03-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 156,
+    "date": "2026-03-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 157,
+    "date": "2026-03-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 158,
+    "date": "2026-03-31",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 159,
+    "date": "2026-04-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 160,
+    "date": "2026-04-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 161,
+    "date": "2026-04-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 162,
+    "date": "2026-04-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 163,
+    "date": "2026-04-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 164,
+    "date": "2026-04-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 165,
+    "date": "2026-04-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 166,
+    "date": "2026-04-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 167,
+    "date": "2026-04-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 168,
+    "date": "2026-04-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 169,
+    "date": "2026-04-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 170,
+    "date": "2026-04-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 171,
+    "date": "2026-04-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 172,
+    "date": "2026-04-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 173,
+    "date": "2026-04-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 174,
+    "date": "2026-04-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 175,
+    "date": "2026-04-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 176,
+    "date": "2026-04-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 177,
+    "date": "2026-04-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 178,
+    "date": "2026-04-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 179,
+    "date": "2026-04-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 180,
+    "date": "2026-04-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 181,
+    "date": "2026-04-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 182,
+    "date": "2026-04-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 183,
+    "date": "2026-04-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 184,
+    "date": "2026-04-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 185,
+    "date": "2026-04-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 186,
+    "date": "2026-04-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 187,
+    "date": "2026-04-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 188,
+    "date": "2026-04-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 189,
+    "date": "2026-05-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 190,
+    "date": "2026-05-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 191,
+    "date": "2026-05-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 192,
+    "date": "2026-05-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 193,
+    "date": "2026-05-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 194,
+    "date": "2026-05-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 195,
+    "date": "2026-05-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 196,
+    "date": "2026-05-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 197,
+    "date": "2026-05-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 198,
+    "date": "2026-05-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 199,
+    "date": "2026-05-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 200,
+    "date": "2026-05-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 201,
+    "date": "2026-05-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 202,
+    "date": "2026-05-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 203,
+    "date": "2026-05-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 204,
+    "date": "2026-05-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 205,
+    "date": "2026-05-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 206,
+    "date": "2026-05-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 207,
+    "date": "2026-05-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 208,
+    "date": "2026-05-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 209,
+    "date": "2026-05-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 210,
+    "date": "2026-05-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 211,
+    "date": "2026-05-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 212,
+    "date": "2026-05-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 213,
+    "date": "2026-05-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 214,
+    "date": "2026-05-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 215,
+    "date": "2026-05-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 216,
+    "date": "2026-05-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 217,
+    "date": "2026-05-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 218,
+    "date": "2026-05-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 219,
+    "date": "2026-05-31",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 220,
+    "date": "2026-06-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 221,
+    "date": "2026-06-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 222,
+    "date": "2026-06-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 223,
+    "date": "2026-06-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 224,
+    "date": "2026-06-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 225,
+    "date": "2026-06-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 226,
+    "date": "2026-06-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 227,
+    "date": "2026-06-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 228,
+    "date": "2026-06-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 229,
+    "date": "2026-06-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 230,
+    "date": "2026-06-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 231,
+    "date": "2026-06-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 232,
+    "date": "2026-06-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 233,
+    "date": "2026-06-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 234,
+    "date": "2026-06-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 235,
+    "date": "2026-06-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 236,
+    "date": "2026-06-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 237,
+    "date": "2026-06-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 238,
+    "date": "2026-06-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 239,
+    "date": "2026-06-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 240,
+    "date": "2026-06-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 241,
+    "date": "2026-06-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 242,
+    "date": "2026-06-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 243,
+    "date": "2026-06-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 244,
+    "date": "2026-06-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 245,
+    "date": "2026-06-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 246,
+    "date": "2026-06-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 247,
+    "date": "2026-06-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 248,
+    "date": "2026-06-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 249,
+    "date": "2026-06-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 250,
+    "date": "2026-07-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 251,
+    "date": "2026-07-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 252,
+    "date": "2026-07-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 253,
+    "date": "2026-07-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 254,
+    "date": "2026-07-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 255,
+    "date": "2026-07-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 256,
+    "date": "2026-07-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 257,
+    "date": "2026-07-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 258,
+    "date": "2026-07-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 259,
+    "date": "2026-07-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 260,
+    "date": "2026-07-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 261,
+    "date": "2026-07-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 262,
+    "date": "2026-07-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 263,
+    "date": "2026-07-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 264,
+    "date": "2026-07-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 265,
+    "date": "2026-07-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 266,
+    "date": "2026-07-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 267,
+    "date": "2026-07-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 268,
+    "date": "2026-07-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 269,
+    "date": "2026-07-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 270,
+    "date": "2026-07-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 271,
+    "date": "2026-07-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 272,
+    "date": "2026-07-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 273,
+    "date": "2026-07-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 274,
+    "date": "2026-07-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 275,
+    "date": "2026-07-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 276,
+    "date": "2026-07-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 277,
+    "date": "2026-07-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 278,
+    "date": "2026-07-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 279,
+    "date": "2026-07-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 280,
+    "date": "2026-07-31",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 281,
+    "date": "2026-08-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 282,
+    "date": "2026-08-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 283,
+    "date": "2026-08-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 284,
+    "date": "2026-08-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 285,
+    "date": "2026-08-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 286,
+    "date": "2026-08-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 287,
+    "date": "2026-08-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 288,
+    "date": "2026-08-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 289,
+    "date": "2026-08-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 290,
+    "date": "2026-08-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 291,
+    "date": "2026-08-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 292,
+    "date": "2026-08-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 293,
+    "date": "2026-08-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 294,
+    "date": "2026-08-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 295,
+    "date": "2026-08-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 296,
+    "date": "2026-08-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 297,
+    "date": "2026-08-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 298,
+    "date": "2026-08-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 299,
+    "date": "2026-08-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 300,
+    "date": "2026-08-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 301,
+    "date": "2026-08-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 302,
+    "date": "2026-08-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 303,
+    "date": "2026-08-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 304,
+    "date": "2026-08-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 305,
+    "date": "2026-08-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 306,
+    "date": "2026-08-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 307,
+    "date": "2026-08-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 308,
+    "date": "2026-08-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 309,
+    "date": "2026-08-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 310,
+    "date": "2026-08-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 311,
+    "date": "2026-08-31",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 312,
+    "date": "2026-09-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 313,
+    "date": "2026-09-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 314,
+    "date": "2026-09-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 315,
+    "date": "2026-09-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 316,
+    "date": "2026-09-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 317,
+    "date": "2026-09-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 318,
+    "date": "2026-09-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 319,
+    "date": "2026-09-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 320,
+    "date": "2026-09-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 321,
+    "date": "2026-09-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 322,
+    "date": "2026-09-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 323,
+    "date": "2026-09-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 324,
+    "date": "2026-09-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 325,
+    "date": "2026-09-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 326,
+    "date": "2026-09-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 327,
+    "date": "2026-09-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 328,
+    "date": "2026-09-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 329,
+    "date": "2026-09-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 330,
+    "date": "2026-09-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 331,
+    "date": "2026-09-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 332,
+    "date": "2026-09-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 333,
+    "date": "2026-09-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 334,
+    "date": "2026-09-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 335,
+    "date": "2026-09-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 336,
+    "date": "2026-09-25",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 337,
+    "date": "2026-09-26",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 338,
+    "date": "2026-09-27",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 339,
+    "date": "2026-09-28",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 340,
+    "date": "2026-09-29",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 341,
+    "date": "2026-09-30",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 342,
+    "date": "2026-10-01",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 343,
+    "date": "2026-10-02",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 344,
+    "date": "2026-10-03",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 345,
+    "date": "2026-10-04",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 346,
+    "date": "2026-10-05",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 347,
+    "date": "2026-10-06",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 348,
+    "date": "2026-10-07",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 349,
+    "date": "2026-10-08",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 350,
+    "date": "2026-10-09",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 351,
+    "date": "2026-10-10",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 352,
+    "date": "2026-10-11",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 353,
+    "date": "2026-10-12",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 354,
+    "date": "2026-10-13",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 355,
+    "date": "2026-10-14",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 356,
+    "date": "2026-10-15",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 357,
+    "date": "2026-10-16",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 358,
+    "date": "2026-10-17",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 359,
+    "date": "2026-10-18",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 360,
+    "date": "2026-10-19",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 361,
+    "date": "2026-10-20",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 362,
+    "date": "2026-10-21",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 363,
+    "date": "2026-10-22",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 364,
+    "date": "2026-10-23",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  },
+  {
+    "file": "/Users/shreydesai/Developer/repos/asthma-aware/ml-work/O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+    "band": 365,
+    "date": "2026-10-24",
+    "actual_acquisition_time": null,
+    "timing_method": "assumed_noon_interval"
+  }
+]

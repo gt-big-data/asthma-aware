@@ -1,0 +1,27 @@
+{
+  "geos_files": ["../backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20251001-20260906_first5days.nc", "../backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc"],
+  "grid": {"crs": "EPSG:4326", "width": 408, "height": 420, "transform": [0.01, 0, -85.60, 0, -0.01, 34.98]},
+  "sources": {
+    "no2": {
+      "labels": "NO2_GA_2023_filled_umol_m2.tif",
+      "huggingface": {"repo_id": "ShreyD06/AsthmaAware", "filename": "NO2_GA_2023_filled_umol_m2.tif", "revision": "main"},
+      "label_units": "umol/m2",
+      "observation_mask": null,
+      "baseline_variable": "tropcol_no2",
+      "predictors": ["no2", "air_temperature", "specific_humidity", "surface_pressure", "pbl_height"],
+      "coarse_shape": [18, 17]
+    },
+    "o3": {
+      "labels": "O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+      "huggingface": {"repo_id": "ShreyD06/AsthmaAware", "filename": "O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif", "revision": "main"},
+      "label_units": "mol/m2",
+      "observation_mask": null,
+      "baseline_variable": "totalcol_o3",
+      "baseline_quantity": "total_o3_column",
+      "predictors": ["o3", "air_temperature", "specific_humidity", "surface_pressure", "pbl_height"],
+      "coarse_shape": [18, 17]
+    },
+    "temperature": {"labels": "station_hour_labels_2023.parquet", "coarse_shape": [18, 17]},
+    "dewpoint": {"labels": "station_hour_labels_2023.parquet", "coarse_shape": [18, 17]}
+  }
+}
