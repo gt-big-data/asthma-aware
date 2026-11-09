@@ -407,3 +407,18 @@ establish accuracy at unseen stations or independent fine-resolution detail.
 Tests cover temporal matching/gaps, unit and baseline validation, masks, separate
 source readiness, geographic mapping, training-only statistics, missing losses,
 batching, and a synthetic forward/backward epoch for all four independent models.
+
+### Satellite TIFF fallback
+
+Preparation uses the configured local NO2/O3 TIFF whenever it exists. Otherwise,
+the source's `huggingface` configuration downloads the corresponding file from
+https://huggingface.co/datasets/ShreyD06/AsthmaAware into the standard Hugging Face
+cache. Install `requirements.txt` (or `.[data]`) first. Cached downloads are reused;
+`HF_HOME` can set the cache location and `HF_TOKEN` can supply credentials if needed.
+A download failure blocks only that satellite source in the readiness report.
+
+Run preparation again after moving machines or removing cached files: prepared
+indexes contain local absolute paths and file fingerprints. The fallback resolves
+files during preparation, not inside DataLoader workers. Set `revision` to a Hub
+commit hash for a pinned dataset version; the default is `main`. Original-observation
+masks and a compatible O3 column baseline are still required for satellite training.

@@ -4,6 +4,7 @@
   "sources": {
     "no2": {
       "labels": "NO2_GA_2023_filled_umol_m2.tif",
+      "huggingface": {"repo_id": "ShreyD06/AsthmaAware", "filename": "NO2_GA_2023_filled_umol_m2.tif", "revision": "main"},
       "label_units": "umol/m2",
       "observation_mask": null,
       "baseline_variable": "tropcol_no2",
@@ -12,6 +13,7 @@
     },
     "o3": {
       "labels": "O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif",
+      "huggingface": {"repo_id": "ShreyD06/AsthmaAware", "filename": "O3_S5P_Georgia_2025-10-25_2026-10-24_filled.tif", "revision": "main"},
       "label_units": "mol/m2",
       "observation_mask": null,
       "baseline_variable": "totalcol_o3",

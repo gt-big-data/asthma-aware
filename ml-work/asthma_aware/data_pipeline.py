@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import calendar
+import copy
 import hashlib
 import json
 import math
@@ -652,8 +653,39 @@ def masked_loss(prediction, batch):
     return (selected[valid] - target[valid]).square().mean()
 
 
+def resolve_satellite_labels(cfg):
+    """Prefer local labels; resolve configured Hub fallbacks before fingerprinting."""
+    cfg = copy.deepcopy(cfg)
+    errors = {}
+    for source in ("no2", "o3"):
+        sc = cfg["sources"].get(source)
+        if not sc or Path(sc["labels"]).is_file():
+            continue
+        remote = sc.get("huggingface")
+        if not remote:
+            continue
+        try:
+            from huggingface_hub import hf_hub_download
+
+            cached = hf_hub_download(
+                repo_id=remote["repo_id"],
+                repo_type="dataset",
+                filename=remote.get("filename", Path(sc["labels"]).name),
+                revision=remote.get("revision", "main"),
+            )
+            sc["labels"] = str(Path(cached).absolute())
+        except Exception as exc:
+            errors[source] = (
+                f"Local satellite labels missing and Hugging Face fallback failed "
+                f"for {remote.get('repo_id')}: {exc}. Install huggingface_hub, "
+                "check network/access, or provide the local TIFF and prepare again."
+            )
+    return cfg, errors
+
+
 def build_catalog(cfg):
     """Discover actual dates and preflight all candidate tensors; never train."""
+    cfg, download_errors = resolve_satellite_labels(cfg)
     lookup, geo_inventory = inspect_geos(cfg["geos_files"])
     bundle = {
         "config": cfg,
@@ -705,6 +737,8 @@ def build_catalog(cfg):
             "target_units": "mol/m2" if source in ("no2", "o3") else "degC",
             "grid": grid.as_dict(),
         }
+        if source in download_errors:
+            report["blockers"].append(download_errors[source])
         catalog = []
         records = []
         if source in ("no2", "o3"):
