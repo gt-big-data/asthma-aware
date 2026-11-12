@@ -144,7 +144,7 @@ def test_point_area_snaps_to_containing_grid_cell(offline):
     assert area.bbox == {"min_lat": 33.75, "max_lat": 33.75, "min_lon": -84.5, "max_lon": -84.5}
     ds = ff.build_forecast(INIT, area, FULL_RUN)
     assert dict(ds.sizes) == {"time": 120, "lat": 1, "lon": 1}
-    assert float(ds.lat) == 33.75 and float(ds.lon) == -84.5
+    assert ds.lat.item() == 33.75 and ds.lon.item() == -84.5
 
 
 def test_point_and_bbox_must_be_in_georgia():

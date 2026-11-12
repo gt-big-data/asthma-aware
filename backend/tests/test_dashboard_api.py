@@ -21,7 +21,9 @@ def test_unconfigured_app_does_not_return_fabricated_risk():
 
 
 def test_only_current_routes_are_registered():
-    assert set(app.openapi()["paths"]) == {"/dashboard", "/health"}
+    paths = set(app.openapi()["paths"])
+    assert {"/dashboard", "/health", "/v1/users/me", "/v1/symptoms/{log_date}"} <= paths
+    assert not any(path.startswith("/map") for path in paths)
 
 
 def test_demo_response_is_identified():

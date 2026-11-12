@@ -1,15 +1,18 @@
 # AsthmaAware backend
 
-One FastAPI application, independent data collectors, and a reusable environmental
-database layer. This is a development foundation; authentication, live dashboard
-providers, the application schema, and cloud deployment are unfinished.
+One FastAPI application, independent data collectors, an environmental database
+layer, and a private application schema. Authenticated V1 profile and symptom-log
+endpoints are implemented. Live forecast providers, model fitting, and cloud
+deployment remain separate work.
 
 ## Layout
 
 | Path | Responsibility |
 | --- | --- |
 | `app/main.py` | Single API entry point and app factory |
-| `app/api/` | Dashboard route, operational health check, and dependencies |
+| `app/api/` | V1 profile/log routes, demo dashboard, and operational health check |
+| `app/auth.py` | Supabase asymmetric access-token verification |
+| `app/dependencies.py` | Restricted transactional database context for V1 |
 | `app/models/` | API request/response schemas |
 | `app/services/` | Dashboard assembly and explicitly mocked providers |
 | `app/data/` | Demo JSON fixtures, not collected environmental data |
@@ -50,7 +53,16 @@ and forecast providers. It checks process liveness, not dependency readiness.
 
 The obsolete `/map/*` routes are no longer registered. The old
 frontend still calls `/map/*`; migrating it to the new API is separate work.
-The planned `/v1` endpoint inventory is not implemented by this cleanup.
+V1 now supports profile GET/PATCH, dated symptom PUT/GET, today's log, and paginated
+history. Configure `SUPABASE_URL`, review migration 0002, and provision the runtime
+database login before using these routes. See the [application contract and setup](docs/application-api.md).
+V1 never accepts the demo identity. It automatically finalizes today's entry at
+the stored local-midnight boundary; exposure matching remains pending until a
+future worker supplies it.
+
+For connecting the shared development project, follow the
+[Supabase connection checklist](docs/supabase-connection.md). Its preflight
+command checks readiness without applying migrations or reading user records.
 
 ## Collectors
 
@@ -75,9 +87,10 @@ NWS and pollen have no collector implementation in this checkout.
 
 ## Database
 
-Keep the existing migration history. [Database reference](db/README.md) describes
-the environmental schema; it is not yet the Supabase-backed user-data design.
-Set a migration-capable `DATABASE_URL`, review the target database, then run:
+Keep the migration history. [Database reference](db/README.md) describes the public
+environmental schema and private `app` tables. Set `MIGRATION_DATABASE_URL` to a
+migration-capable connection and `DATABASE_URL` to a restricted runtime login.
+Review the migration and target database before running:
 
 ```powershell
 python -m alembic upgrade head
@@ -87,7 +100,7 @@ python scripts/seed_reference_data.py
 The seed intentionally retains the historical 56×96 raster grid for compatibility.
 Its extent is south of downtown Atlanta. Do not reuse it as product coverage or
 silently relabel historical cells when designing the planned 500 m grid.
-No migration is automatically applied by API startup or this cleanup.
+No migration is automatically applied by API startup.
 
 ## Verification
 
@@ -98,6 +111,7 @@ python -m pytest
 
 PostGIS integration tests skip unless `TEST_DATABASE_URL` is set. They **drop
 tables**, so they additionally require `TEST_DATABASE_ALLOW_RESET=true` and
-must target a disposable database. They currently test ORM schema creation,
-not the Alembic upgrade path. A real migration round trip remains necessary
-before deployment. Dependencies have version ranges, not a deployment lockfile.
+must target a disposable database. They exercise actual Alembic upgrades and
+downgrades, API transactions, JWT signatures, concurrent writes, and RLS isolation.
+Dependencies have version ranges, not a deployment lockfile. Hosted Supabase
+configuration and network connectivity still need environment-specific checks.

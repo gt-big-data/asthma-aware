@@ -47,7 +47,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to show your city and state."
+          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location for local information and symptom entries."
         }
       ],
       "@maplibre/maplibre-react-native",
