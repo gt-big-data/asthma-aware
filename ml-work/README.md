@@ -422,3 +422,21 @@ indexes contain local absolute paths and file fingerprints. The fallback resolve
 files during preparation, not inside DataLoader workers. Set `revision` to a Hub
 commit hash for a pinned dataset version; the default is `main`. Original-observation
 masks and a compatible O3 column baseline are still required for satellite training.
+
+Satellite observation masks use the same local-first download behavior as labels.
+Configure `observation_mask` as the local path and `huggingface.mask_filename` as
+the remote filename. O3 now uses the 2023 filled raster and its matching 2023 mask.
+Preparation validates mask grids, band counts, dates (when provided), and binary
+values. Rebuild preparation and normalization after changing these inputs.
+
+O3 timing now uses `nearest_collection_within_1h`: observed band UTC timestamps
+are matched to the nearest GEOS hourly-mean center within 60 minutes (inclusive;
+ties choose the earlier center). No-pass bands fall back to the exact 12:30 UTC GEOS center.
+Rounded-hour collection times and matching offsets are retained in sample metadata;
+they are not represented as exact acquisition times. NO2 uses `weighted_pass_midpoints_within_1h`: pass interval midpoints weighted
+by reported pixel counts, then the nearest GEOS center within 60 minutes. This
+is a band-level approximation; overlapping pixels can contribute to multiple
+pass counts. No-pass dates use the exact 12:30 UTC GEOS center, recorded as
+`assumed_noon_interval` with `timing_fallback_reason=no_satellite_pass`.
+Observation masks remain enforced: entirely filled bands cannot supervise training.
+Rebuild preparation and normalization after this timing change.

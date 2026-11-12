@@ -1,5 +1,6 @@
 """Minimal independent-source training integration. Importing does not train."""
 
+import argparse
 import torch
 from pathlib import Path
 import math
@@ -95,7 +96,11 @@ def evaluate(model, loader):
     squared_error = 0.0
     count = 0
     for batch in loader:
-        batch = {key: value.to(model.device) for key, value in batch.items()}
+        device = next(model.parameters()).device
+        batch = {
+            key: value.to(device) if isinstance(value, torch.Tensor) else value
+            for key, value in batch.items()
+        }
 
         prediction = model(
             batch["forecast"],
@@ -111,19 +116,21 @@ def evaluate(model, loader):
         squared_error += n * loss.item()
         count += n
 
-        if count == 0:
-            raise RuntimeError("No valid validation observations")
+    if count == 0:
+        raise RuntimeError("No valid validation observations")
 
-        return squared_error / count
+    return squared_error / count
 
         
 
 def train(epochs=20, sources=("temperature", "dewpoint"), learning_rate=1e-3):
+    if epochs < 1:
+        raise ValueError("epochs must be positive")
     torch.manual_seed(42)
     prepared = Path("prepared")
-    bundle = json.loads((prepared / "bundle.json").read_text())
+    bundle = json.loads((prepared / "prepared.json").read_text())
 
-    device = ("cuda" if torch.cuda.is_available() else "cpu")
+    device = ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     print(f"Using {device}")
 
     for source in sources:
@@ -171,4 +178,12 @@ def train(epochs=20, sources=("temperature", "dewpoint"), learning_rate=1e-3):
             validation_loader.dataset.close()
 
         del model, optimizer, models, optimizers
-                
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Train independent downscaling models.")
+    parser.add_argument("--epochs", type=int, default=20)
+    parser.add_argument("--sources", nargs="+", choices=tuple(TARGETS), default=["temperature", "dewpoint"])
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
+    args = parser.parse_args()
+    train(epochs=args.epochs, sources=args.sources, learning_rate=args.learning_rate)

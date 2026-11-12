@@ -1,842 +1,1046 @@
 [
   {
-    "target_time": "2023-01-01T12:30:00+00:00",
+    "target_time": "2023-01-01T18:30:00+00:00",
     "band": 1,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 7,
-        "time": "2023-01-01T12:30:00+00:00"
+        "index": 13,
+        "time": "2023-01-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-01-01T18:20:33.748569092+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 9.437523833333334,
     "split": "train"
   },
   {
-    "target_time": "2023-01-02T12:30:00+00:00",
+    "target_time": "2023-01-02T18:30:00+00:00",
     "band": 2,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 31,
-        "time": "2023-01-02T12:30:00+00:00"
+        "index": 37,
+        "time": "2023-01-02T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-01-02T18:28:19.588183821+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 1.6735302666666667,
     "split": "train"
   },
   {
-    "target_time": "2023-01-03T12:30:00+00:00",
+    "target_time": "2023-01-03T18:30:00+00:00",
     "band": 3,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 55,
-        "time": "2023-01-03T12:30:00+00:00"
+        "index": 61,
+        "time": "2023-01-03T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-01-03T18:52:36.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -22.608333333333334,
     "split": "train"
   },
   {
-    "target_time": "2023-01-04T12:30:00+00:00",
+    "target_time": "2023-01-04T18:30:00+00:00",
     "band": 4,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 79,
-        "time": "2023-01-04T12:30:00+00:00"
+        "index": 85,
+        "time": "2023-01-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-01-04T18:33:37+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -3.6166666666666667,
     "split": "train"
   },
   {
-    "target_time": "2023-01-05T12:30:00+00:00",
+    "target_time": "2023-01-05T18:30:00+00:00",
     "band": 5,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 103,
-        "time": "2023-01-05T12:30:00+00:00"
+        "index": 109,
+        "time": "2023-01-05T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-01-05T18:11:34.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 18.425,
     "split": "train"
   },
   {
-    "target_time": "2023-02-01T12:30:00+00:00",
+    "target_time": "2023-02-01T18:30:00+00:00",
     "band": 32,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 127,
-        "time": "2023-02-01T12:30:00+00:00"
+        "index": 133,
+        "time": "2023-02-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-02-01T18:10:08.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 19.858333333333334,
     "split": "train"
   },
   {
-    "target_time": "2023-02-02T12:30:00+00:00",
+    "target_time": "2023-02-02T17:30:00+00:00",
     "band": 33,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 151,
-        "time": "2023-02-02T12:30:00+00:00"
+        "index": 156,
+        "time": "2023-02-02T17:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-02-02T17:51:11.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -21.191666666666666,
     "split": "train"
   },
   {
-    "target_time": "2023-02-03T12:30:00+00:00",
+    "target_time": "2023-02-03T18:30:00+00:00",
     "band": 34,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 175,
-        "time": "2023-02-03T12:30:00+00:00"
+        "index": 181,
+        "time": "2023-02-03T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-02-03T18:33:46.572719052+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -3.776212,
     "split": "train"
   },
   {
-    "target_time": "2023-02-04T12:30:00+00:00",
+    "target_time": "2023-02-04T18:30:00+00:00",
     "band": 35,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 199,
-        "time": "2023-02-04T12:30:00+00:00"
+        "index": 205,
+        "time": "2023-02-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-02-04T18:54:48.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -24.808333333333334,
     "split": "train"
   },
   {
-    "target_time": "2023-02-05T12:30:00+00:00",
+    "target_time": "2023-02-05T18:30:00+00:00",
     "band": 36,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 223,
-        "time": "2023-02-05T12:30:00+00:00"
+        "index": 229,
+        "time": "2023-02-05T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-02-05T18:35:51.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -5.858333333333333,
     "split": "train"
   },
   {
-    "target_time": "2023-03-01T12:30:00+00:00",
+    "target_time": "2023-03-01T18:30:00+00:00",
     "band": 60,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 247,
-        "time": "2023-03-01T12:30:00+00:00"
+        "index": 253,
+        "time": "2023-03-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-03-01T18:21:56.177314914+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 8.063711416666667,
     "split": "train"
   },
   {
-    "target_time": "2023-03-02T12:30:00+00:00",
+    "target_time": "2023-03-02T19:30:00+00:00",
     "band": 61,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 271,
-        "time": "2023-03-02T12:30:00+00:00"
+        "index": 278,
+        "time": "2023-03-02T19:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-03-02T19:07:00.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 22.991666666666667,
     "split": "train"
   },
   {
-    "target_time": "2023-03-03T12:30:00+00:00",
+    "target_time": "2023-03-03T18:30:00+00:00",
     "band": 62,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 295,
-        "time": "2023-03-03T12:30:00+00:00"
+        "index": 301,
+        "time": "2023-03-03T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-03-03T18:51:08.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -21.141666666666666,
     "split": "train"
   },
   {
-    "target_time": "2023-03-04T12:30:00+00:00",
+    "target_time": "2023-03-04T18:30:00+00:00",
     "band": 63,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 319,
-        "time": "2023-03-04T12:30:00+00:00"
+        "index": 325,
+        "time": "2023-03-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-03-04T18:32:12+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -2.2,
     "split": "train"
   },
   {
-    "target_time": "2023-03-05T12:30:00+00:00",
+    "target_time": "2023-03-05T18:30:00+00:00",
     "band": 64,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 343,
-        "time": "2023-03-05T12:30:00+00:00"
+        "index": 349,
+        "time": "2023-03-05T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-03-05T18:13:17+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 16.716666666666665,
     "split": "train"
   },
   {
-    "target_time": "2023-04-01T12:30:00+00:00",
+    "target_time": "2023-04-01T18:30:00+00:00",
     "band": 91,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 368,
-        "time": "2023-04-01T12:30:00+00:00"
+        "index": 374,
+        "time": "2023-04-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-04-01T18:10:38.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 19.358333333333334,
     "split": "train"
   },
   {
-    "target_time": "2023-04-02T12:30:00+00:00",
+    "target_time": "2023-04-02T18:30:00+00:00",
     "band": 92,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 392,
-        "time": "2023-04-02T12:30:00+00:00"
+        "index": 398,
+        "time": "2023-04-02T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-04-02T18:22:30.541139530+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 7.4909810000000006,
     "split": "train"
   },
   {
-    "target_time": "2023-04-03T12:30:00+00:00",
+    "target_time": "2023-04-03T19:30:00+00:00",
     "band": 93,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 416,
-        "time": "2023-04-03T12:30:00+00:00"
+        "index": 423,
+        "time": "2023-04-03T19:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-04-03T19:14:23+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 15.616666666666667,
     "split": "train"
   },
   {
-    "target_time": "2023-04-04T12:30:00+00:00",
+    "target_time": "2023-04-04T18:30:00+00:00",
     "band": 94,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 440,
-        "time": "2023-04-04T12:30:00+00:00"
+        "index": 446,
+        "time": "2023-04-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-04-04T18:55:30.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -25.508333333333333,
     "split": "train"
   },
   {
-    "target_time": "2023-04-05T12:30:00+00:00",
+    "target_time": "2023-04-05T18:30:00+00:00",
     "band": 95,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 464,
-        "time": "2023-04-05T12:30:00+00:00"
+        "index": 470,
+        "time": "2023-04-05T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-04-05T18:36:37+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -6.616666666666666,
     "split": "train"
   },
   {
-    "target_time": "2023-05-01T12:30:00+00:00",
+    "target_time": "2023-05-01T18:30:00+00:00",
     "band": 121,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 488,
-        "time": "2023-05-01T12:30:00+00:00"
+        "index": 494,
+        "time": "2023-05-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-05-01T18:52:48.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -22.808333333333334,
     "split": "train"
   },
   {
-    "target_time": "2023-05-02T12:30:00+00:00",
+    "target_time": "2023-05-02T18:30:00+00:00",
     "band": 122,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 512,
-        "time": "2023-05-02T12:30:00+00:00"
+        "index": 518,
+        "time": "2023-05-02T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-05-02T18:33:53+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -3.8833333333333333,
     "split": "train"
   },
   {
-    "target_time": "2023-05-03T12:30:00+00:00",
-    "band": 123,
-    "geos": [
-      {
-        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 536,
-        "time": "2023-05-03T12:30:00+00:00"
-      }
-    ],
-    "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
-    "split": "train"
-  },
-  {
-    "target_time": "2023-05-04T12:30:00+00:00",
+    "target_time": "2023-05-04T18:30:00+00:00",
     "band": 124,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 560,
-        "time": "2023-05-04T12:30:00+00:00"
+        "index": 566,
+        "time": "2023-05-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-05-04T18:31:44.759297508+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -1.7459883,
     "split": "train"
   },
   {
-    "target_time": "2023-05-05T12:30:00+00:00",
+    "target_time": "2023-05-05T19:30:00+00:00",
     "band": 125,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 584,
-        "time": "2023-05-05T12:30:00+00:00"
+        "index": 591,
+        "time": "2023-05-05T19:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-05-05T19:18:34.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 11.425,
     "split": "train"
   },
   {
-    "target_time": "2023-06-01T12:30:00+00:00",
+    "target_time": "2023-06-01T19:30:00+00:00",
     "band": 152,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 608,
-        "time": "2023-06-01T12:30:00+00:00"
+        "index": 615,
+        "time": "2023-06-01T19:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-06-01T19:10:32.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 19.458333333333332,
     "split": "train"
   },
   {
-    "target_time": "2023-06-02T12:30:00+00:00",
+    "target_time": "2023-06-02T18:30:00+00:00",
     "band": 153,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 632,
-        "time": "2023-06-02T12:30:00+00:00"
+        "index": 638,
+        "time": "2023-06-02T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-06-02T18:51:32.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -21.541666666666668,
     "split": "train"
   },
   {
-    "target_time": "2023-06-03T12:30:00+00:00",
-    "band": 154,
-    "geos": [
-      {
-        "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 656,
-        "time": "2023-06-03T12:30:00+00:00"
-      }
-    ],
-    "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
-    "split": "train"
-  },
-  {
-    "target_time": "2023-06-04T12:30:00+00:00",
+    "target_time": "2023-06-04T18:30:00+00:00",
     "band": 155,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 680,
-        "time": "2023-06-04T12:30:00+00:00"
+        "index": 686,
+        "time": "2023-06-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-06-04T18:16:34+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 13.433333333333334,
     "split": "train"
   },
   {
-    "target_time": "2023-06-05T12:30:00+00:00",
+    "target_time": "2023-06-05T18:30:00+00:00",
     "band": 156,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 704,
-        "time": "2023-06-05T12:30:00+00:00"
+        "index": 710,
+        "time": "2023-06-05T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-06-05T18:48:24.036862076+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -18.400614383333334,
     "split": "train"
   },
   {
-    "target_time": "2023-07-01T12:30:00+00:00",
+    "target_time": "2023-07-01T18:30:00+00:00",
     "band": 182,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 728,
-        "time": "2023-07-01T12:30:00+00:00"
+        "index": 734,
+        "time": "2023-07-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-07-01T18:09:50.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 20.158333333333335,
     "split": "train"
   },
   {
-    "target_time": "2023-07-02T12:30:00+00:00",
+    "target_time": "2023-07-02T18:30:00+00:00",
     "band": 183,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 752,
-        "time": "2023-07-02T12:30:00+00:00"
+        "index": 758,
+        "time": "2023-07-02T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-07-02T18:43:36.011047311+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -13.600184133333332,
     "split": "train"
   },
   {
-    "target_time": "2023-07-03T12:30:00+00:00",
+    "target_time": "2023-07-03T19:30:00+00:00",
     "band": 184,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 776,
-        "time": "2023-07-03T12:30:00+00:00"
+        "index": 783,
+        "time": "2023-07-03T19:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-07-03T19:09:20.267391628+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 20.662210133333335,
     "split": "train"
   },
   {
-    "target_time": "2023-07-04T12:30:00+00:00",
+    "target_time": "2023-07-04T18:30:00+00:00",
     "band": 185,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 800,
-        "time": "2023-07-04T12:30:00+00:00"
+        "index": 806,
+        "time": "2023-07-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-07-04T18:54:06+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -24.1,
     "split": "train"
   },
   {
-    "target_time": "2023-07-05T12:30:00+00:00",
+    "target_time": "2023-07-05T18:30:00+00:00",
     "band": 186,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 824,
-        "time": "2023-07-05T12:30:00+00:00"
+        "index": 830,
+        "time": "2023-07-05T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-07-05T18:35:02+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -5.033333333333333,
     "split": "train"
   },
   {
-    "target_time": "2023-08-01T12:30:00+00:00",
+    "target_time": "2023-08-01T18:30:00+00:00",
     "band": 213,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 848,
-        "time": "2023-08-01T12:30:00+00:00"
+        "index": 854,
+        "time": "2023-08-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-08-01T18:26:37.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 3.375,
     "split": "train"
   },
   {
-    "target_time": "2023-08-02T12:30:00+00:00",
+    "target_time": "2023-08-02T18:30:00+00:00",
     "band": 214,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 872,
-        "time": "2023-08-02T12:30:00+00:00"
+        "index": 878,
+        "time": "2023-08-02T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-08-02T18:07:29.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 22.508333333333333,
     "split": "train"
   },
   {
-    "target_time": "2023-08-03T12:30:00+00:00",
+    "target_time": "2023-08-03T18:30:00+00:00",
     "band": 215,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 896,
-        "time": "2023-08-03T12:30:00+00:00"
+        "index": 902,
+        "time": "2023-08-03T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-08-03T18:39:29.426457471+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -9.490440966666666,
     "split": "train"
   },
   {
-    "target_time": "2023-08-04T12:30:00+00:00",
+    "target_time": "2023-08-04T19:30:00+00:00",
     "band": 216,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 920,
-        "time": "2023-08-04T12:30:00+00:00"
+        "index": 927,
+        "time": "2023-08-04T19:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-08-04T19:10:19.852621744+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 19.669122966666666,
     "split": "train"
   },
   {
-    "target_time": "2023-08-05T12:30:00+00:00",
+    "target_time": "2023-08-05T18:30:00+00:00",
     "band": 217,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 944,
-        "time": "2023-08-05T12:30:00+00:00"
+        "index": 950,
+        "time": "2023-08-05T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-08-05T18:51:35+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -21.583333333333332,
     "split": "train"
   },
   {
-    "target_time": "2023-09-01T12:30:00+00:00",
+    "target_time": "2023-09-01T18:30:00+00:00",
     "band": 244,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 968,
-        "time": "2023-09-01T12:30:00+00:00"
+        "index": 974,
+        "time": "2023-09-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-09-01T18:42:02+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -12.033333333333333,
     "split": "train"
   },
   {
-    "target_time": "2023-09-02T12:30:00+00:00",
+    "target_time": "2023-09-02T18:30:00+00:00",
     "band": 245,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 992,
-        "time": "2023-09-02T12:30:00+00:00"
+        "index": 998,
+        "time": "2023-09-02T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-09-02T18:19:51.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 10.141666666666667,
     "split": "train"
   },
   {
-    "target_time": "2023-09-03T12:30:00+00:00",
+    "target_time": "2023-09-03T18:30:00+00:00",
     "band": 246,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1016,
-        "time": "2023-09-03T12:30:00+00:00"
+        "index": 1022,
+        "time": "2023-09-03T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-09-03T18:03:49.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 26.175,
     "split": "validation"
   },
   {
-    "target_time": "2023-09-04T12:30:00+00:00",
+    "target_time": "2023-09-04T18:30:00+00:00",
     "band": 247,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1040,
-        "time": "2023-09-04T12:30:00+00:00"
+        "index": 1046,
+        "time": "2023-09-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-09-04T18:34:24.131832733+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -4.402197216666666,
     "split": "validation"
   },
   {
-    "target_time": "2023-09-05T12:30:00+00:00",
+    "target_time": "2023-09-05T19:30:00+00:00",
     "band": 248,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1064,
-        "time": "2023-09-05T12:30:00+00:00"
+        "index": 1071,
+        "time": "2023-09-05T19:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-09-05T19:02:10.113320941+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 27.831444649999998,
     "split": "validation"
   },
   {
-    "target_time": "2023-10-01T12:30:00+00:00",
+    "target_time": "2023-10-01T18:30:00+00:00",
     "band": 274,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1088,
-        "time": "2023-10-01T12:30:00+00:00"
+        "index": 1094,
+        "time": "2023-10-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-10-01T18:36:49.582315454+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -6.826371933333333,
     "split": "validation"
   },
   {
-    "target_time": "2023-10-02T12:30:00+00:00",
+    "target_time": "2023-10-02T18:30:00+00:00",
     "band": 275,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1112,
-        "time": "2023-10-02T12:30:00+00:00"
+        "index": 1118,
+        "time": "2023-10-02T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-10-02T18:58:03+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -28.05,
     "split": "validation"
   },
   {
-    "target_time": "2023-10-03T12:30:00+00:00",
+    "target_time": "2023-10-03T18:30:00+00:00",
     "band": 276,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1136,
-        "time": "2023-10-03T12:30:00+00:00"
+        "index": 1142,
+        "time": "2023-10-03T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-10-03T18:38:54.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -8.908333333333333,
     "split": "validation"
   },
   {
-    "target_time": "2023-10-04T12:30:00+00:00",
+    "target_time": "2023-10-04T18:30:00+00:00",
     "band": 277,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1160,
-        "time": "2023-10-04T12:30:00+00:00"
+        "index": 1166,
+        "time": "2023-10-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-10-04T18:19:46+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 10.233333333333333,
     "split": "validation"
   },
   {
-    "target_time": "2023-10-05T12:30:00+00:00",
+    "target_time": "2023-10-05T18:30:00+00:00",
     "band": 278,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1184,
-        "time": "2023-10-05T12:30:00+00:00"
+        "index": 1190,
+        "time": "2023-10-05T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-10-05T18:00:38+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 29.366666666666667,
     "split": "validation"
   },
   {
-    "target_time": "2023-11-01T12:30:00+00:00",
+    "target_time": "2023-11-01T18:30:00+00:00",
     "band": 305,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1208,
-        "time": "2023-11-01T12:30:00+00:00"
+        "index": 1214,
+        "time": "2023-11-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-11-01T18:07:23.979082959+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 22.60034861666667,
     "split": "validation"
   },
   {
-    "target_time": "2023-11-02T12:30:00+00:00",
+    "target_time": "2023-11-02T18:30:00+00:00",
     "band": 306,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1232,
-        "time": "2023-11-02T12:30:00+00:00"
+        "index": 1238,
+        "time": "2023-11-02T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-11-02T18:31:28.846405509+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -1.4807734333333333,
     "split": "test"
   },
   {
-    "target_time": "2023-11-03T12:30:00+00:00",
+    "target_time": "2023-11-03T18:30:00+00:00",
     "band": 307,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1256,
-        "time": "2023-11-03T12:30:00+00:00"
+        "index": 1262,
+        "time": "2023-11-03T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-11-03T18:54:26.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -24.441666666666666,
     "split": "test"
   },
   {
-    "target_time": "2023-11-04T12:30:00+00:00",
+    "target_time": "2023-11-04T18:30:00+00:00",
     "band": 308,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1280,
-        "time": "2023-11-04T12:30:00+00:00"
+        "index": 1286,
+        "time": "2023-11-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-11-04T18:35:17.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -5.291666666666667,
     "split": "test"
   },
   {
-    "target_time": "2023-11-05T12:30:00+00:00",
+    "target_time": "2023-11-05T18:30:00+00:00",
     "band": 309,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1304,
-        "time": "2023-11-05T12:30:00+00:00"
+        "index": 1310,
+        "time": "2023-11-05T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-11-05T18:16:09.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 13.841666666666667,
     "split": "test"
   },
   {
-    "target_time": "2023-12-01T12:30:00+00:00",
+    "target_time": "2023-12-01T18:30:00+00:00",
     "band": 335,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1328,
-        "time": "2023-12-01T12:30:00+00:00"
+        "index": 1334,
+        "time": "2023-12-01T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-12-01T18:26:29+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 3.5166666666666666,
     "split": "test"
   },
   {
-    "target_time": "2023-12-02T12:30:00+00:00",
+    "target_time": "2023-12-02T18:30:00+00:00",
     "band": 336,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1352,
-        "time": "2023-12-02T12:30:00+00:00"
+        "index": 1358,
+        "time": "2023-12-02T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-12-02T18:04:19.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 25.675,
     "split": "test"
   },
   {
-    "target_time": "2023-12-03T12:30:00+00:00",
+    "target_time": "2023-12-03T18:30:00+00:00",
     "band": 337,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1376,
-        "time": "2023-12-03T12:30:00+00:00"
+        "index": 1382,
+        "time": "2023-12-03T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-12-03T18:41:24.924237499+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -11.415403966666666,
     "split": "test"
   },
   {
-    "target_time": "2023-12-04T12:30:00+00:00",
+    "target_time": "2023-12-04T18:30:00+00:00",
     "band": 338,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1400,
-        "time": "2023-12-04T12:30:00+00:00"
+        "index": 1406,
+        "time": "2023-12-04T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-12-04T18:28:50.272466351+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": 1.1621255499999998,
     "split": "test"
   },
   {
-    "target_time": "2023-12-05T12:30:00+00:00",
+    "target_time": "2023-12-05T18:30:00+00:00",
     "band": 339,
     "geos": [
       {
         "path": "/Users/shreydesai/Developer/repos/asthma-aware/backend/data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc",
-        "index": 1424,
-        "time": "2023-12-05T12:30:00+00:00"
+        "index": 1430,
+        "time": "2023-12-05T18:30:00+00:00"
       }
     ],
+    "timing_fallback_reason": null,
     "actual_acquisition_time": null,
-    "timing_method": "assumed_noon_interval",
+    "reported_collection_time": "2023-12-05T18:51:35.500000+00:00",
+    "collection_time_precision": "pixel_count_weighted_pass_midpoint",
+    "timing_method": "weighted_pass_midpoints_within_1h",
+    "time_offset_minutes": -21.591666666666665,
     "split": "test"
   }
 ]
