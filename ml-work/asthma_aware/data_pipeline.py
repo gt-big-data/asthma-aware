@@ -16,6 +16,7 @@ import json
 import math
 import os
 import random
+import re
 
 import numpy as np
 import pandas as pd
@@ -653,33 +654,80 @@ def masked_loss(prediction, batch):
     return (selected[valid] - target[valid]).square().mean()
 
 
+def weighted_pass_time(date, tags):
+    """Pixel-count-weighted pass midpoints, not per-pixel acquisition times."""
+    count = int(tags.get("n_passes", "0"))
+    if count == 0:
+        return None
+    passes = re.findall(
+        r"(\d{2}:\d{2}:\d{2})-(\d{2}:\d{2}:\d{2}) UTC \(orbit \d+, (\d+) px\)",
+        tags.get("passes_utc", ""),
+    )
+    if len(passes) != count:
+        raise ValueError("Incomplete NO2 pass-time metadata")
+    total, weight = 0.0, 0
+    date = utc(date).normalize()
+    for start, end, pixels in passes:
+        start = date + pd.to_timedelta(start)
+        end = date + pd.to_timedelta(end)
+        if end < start:
+            end += pd.Timedelta(days=1)
+        pixels = int(pixels)
+        total += ((start - date).total_seconds() + (end - date).total_seconds()) / 2 * pixels
+        weight += pixels
+    return (date + pd.Timedelta(seconds=total / weight)).isoformat() if weight else None
+
+
+def nearest_geos_time(timestamp, lookup, tolerance_minutes=60):
+    """Nearest analysis center within inclusive tolerance; ties choose earlier time."""
+    if not lookup:
+        return None
+    timestamp = utc(timestamp)
+    candidate = min(lookup, key=lambda t: (abs(utc(t) - timestamp), utc(t)))
+    if abs(utc(candidate) - timestamp) > pd.Timedelta(minutes=tolerance_minutes):
+        return None
+    return candidate
+
+
+def satellite_day(description):
+    """Read compact dates or ISO timestamps without changing assumed-noon timing."""
+    if len(description) == 8 and description.isdigit():
+        return pd.to_datetime(description, format="%Y%m%d", utc=True).normalize()
+    return pd.to_datetime(description, utc=True).normalize()
+
+
 def resolve_satellite_labels(cfg):
-    """Prefer local labels; resolve configured Hub fallbacks before fingerprinting."""
+    """Resolve local-first satellite labels and observation masks before fingerprinting."""
     cfg = copy.deepcopy(cfg)
     errors = {}
     for source in ("no2", "o3"):
         sc = cfg["sources"].get(source)
-        if not sc or Path(sc["labels"]).is_file():
+        if not sc:
             continue
         remote = sc.get("huggingface")
         if not remote:
             continue
-        try:
-            from huggingface_hub import hf_hub_download
+        for field, remote_key in (("labels", "filename"), ("observation_mask", "mask_filename")):
+            local = sc.get(field)
+            if not local or Path(local).is_file():
+                continue
+            try:
+                from huggingface_hub import hf_hub_download
 
-            cached = hf_hub_download(
-                repo_id=remote["repo_id"],
-                repo_type="dataset",
-                filename=remote.get("filename", Path(sc["labels"]).name),
-                revision=remote.get("revision", "main"),
-            )
-            sc["labels"] = str(Path(cached).absolute())
-        except Exception as exc:
-            errors[source] = (
-                f"Local satellite labels missing and Hugging Face fallback failed "
-                f"for {remote.get('repo_id')}: {exc}. Install huggingface_hub, "
-                "check network/access, or provide the local TIFF and prepare again."
-            )
+                cached = hf_hub_download(
+                    repo_id=remote["repo_id"],
+                    repo_type="dataset",
+                    filename=remote.get(remote_key, Path(local).name),
+                    revision=remote.get("revision", "main"),
+                )
+                sc[field] = str(Path(cached).absolute())
+            except Exception as exc:
+                message = (
+                    f"Local satellite {field} missing and Hugging Face fallback failed "
+                    f"for {remote.get('repo_id')}: {exc}. Install huggingface_hub, "
+                    "check network/access, or provide the local TIFF and prepare again."
+                )
+                errors[source] = errors.get(source, "") + message + " "
     return cfg, errors
 
 
@@ -771,6 +819,7 @@ def build_catalog(cfg):
                         sc["label_units"] = unit
                     except ValueError as exc:
                         report["blockers"].append(str(exc))
+                    mask_band_tags = {}
                     mask_path = sc.get("observation_mask")
                     if not mask_path or not Path(mask_path).exists():
                         report["blockers"].append(
@@ -778,6 +827,7 @@ def build_catalog(cfg):
                         )
                     else:
                         with rasterio.open(mask_path) as mask:
+                            mask_band_tags = {i: mask.tags(i) for i in mask.indexes}
                             if (mask.crs, mask.transform, mask.shape, mask.count) != (
                                 src.crs,
                                 src.transform,
@@ -797,8 +847,8 @@ def build_catalog(cfg):
                                         break
                                     if (
                                         mask.descriptions[band - 1]
-                                        and mask.descriptions[band - 1]
-                                        != src.descriptions[band - 1]
+                                        and satellite_day(mask.descriptions[band - 1])
+                                        != satellite_day(src.descriptions[band - 1])
                                     ):
                                         report["blockers"].append(
                                             "Mask band dates differ from label dates"
@@ -808,38 +858,64 @@ def build_catalog(cfg):
                     for band, description in enumerate(src.descriptions, 1):
                         if not description:
                             raise ValueError(f'{sc["labels"]} band {band} lacks date')
-                        fmt = (
-                            "%Y%m%d"
-                            if len(description) == 8 and description.isdigit()
-                            else "%Y-%m-%d"
-                        )
-                        date = pd.to_datetime(description, format=fmt, utc=True)
+                        date = satellite_day(description)
                         if date.date() in dates:
                             raise ValueError(
                                 "Duplicate satellite date; use an explicit orbit index instead"
                             )
                         dates.add(date.date())
-                        noon = date + pd.Timedelta(hours=12, minutes=30)
+                        policy = sc.get("timing_policy", "assumed_noon_interval")
                         known = sidecar.get((str(Path(sc["labels"]).resolve()), band))
-                        catalog.append(
-                            {
-                                "file": sc["labels"],
-                                "band": band,
-                                "date": date.date().isoformat(),
-                                "actual_acquisition_time": known,
-                                "timing_method": "assumed_noon_interval",
-                            }
-                        )
-                        if noon.isoformat() in lookup:
-                            records.append(
-                                {
-                                    "target_time": noon.isoformat(),
-                                    "band": band,
-                                    "geos": [lookup[noon.isoformat()]],
-                                    "actual_acquisition_time": known,
-                                    "timing_method": "assumed_noon_interval",
-                                }
-                            )
+                        reported = None
+                        no_pass = False
+                        if policy == "nearest_collection_within_1h":
+                            tags = src.tags(band)
+                            no_pass = tags.get("status", "").startswith("no satellite pass")
+                            if tags.get("status") == "observed" and tags.get("datetime"):
+                                reported = utc(tags["datetime"]).isoformat()
+                            # A sidecar is an explicit acquisition timestamp; rounded
+                            # raster timestamps remain separately identified as estimates.
+                            match_time = known or reported
+                            matched = nearest_geos_time(match_time, lookup) if match_time else None
+                        elif policy == "weighted_pass_midpoints_within_1h":
+                            pass_tags = mask_band_tags.get(band, src.tags(band))
+                            no_pass = pass_tags.get("n_passes") == "0"
+                            reported = weighted_pass_time(date, pass_tags)
+                            match_time = known or reported
+                            matched = nearest_geos_time(match_time, lookup) if match_time else None
+                        elif policy == "assumed_noon_interval":
+                            noon = date + pd.Timedelta(hours=12, minutes=30)
+                            matched = noon.isoformat() if noon.isoformat() in lookup else None
+                        else:
+                            raise ValueError(f"Unknown satellite timing policy: {policy}")
+                        fallback = no_pass and not known
+                        if fallback:
+                            noon = date + pd.Timedelta(hours=12, minutes=30)
+                            matched = noon.isoformat() if noon.isoformat() in lookup else None
+                        metadata = {
+                            "timing_fallback_reason": "no_satellite_pass" if fallback else None,
+                            "actual_acquisition_time": known,
+                            "reported_collection_time": reported,
+                            "collection_time_precision": (
+                                "pixel_count_weighted_pass_midpoint" if policy == "weighted_pass_midpoints_within_1h"
+                                else "rounded_hour"
+                            ) if reported and not known else None,
+                            "timing_method": "assumed_noon_interval" if fallback else policy,
+                        }
+                        catalog.append({
+                            "file": sc["labels"], "band": band,
+                            "date": date.date().isoformat(), **metadata,
+                        })
+                        if matched is not None:
+                            records.append({
+                                "target_time": matched, "band": band,
+                                "geos": [lookup[matched]], **metadata,
+                                "time_offset_minutes": (
+                                    (utc(matched) - utc(known or reported)).total_seconds() / 60
+                                    if not fallback and policy in ("nearest_collection_within_1h", "weighted_pass_midpoints_within_1h") else None
+                                ),
+                            })
+
         else:
             if not Path(sc["labels"]).exists():
                 report["blockers"].append("Station label file is missing")
