@@ -1,0 +1,19 @@
+# Python >=3.10; matches pyproject.toml runtime and data dependencies.
+# Model training
+torch>=2.0
+
+# Arrays and station Parquet labels
+numpy>=1.24
+pandas>=2.0
+pyarrow>=12
+
+# Satellite GeoTIFF rasters
+rasterio>=1.3
+
+# GEOS-CF NetCDF files
+xarray>=2024.1
+h5netcdf>=1.3
+h5py>=3.8
+
+# Download missing satellite labels from Hugging Face
+huggingface_hub>=0.23
