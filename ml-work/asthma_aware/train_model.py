@@ -155,11 +155,12 @@ def train(epochs=20, sources=("temperature", "dewpoint"), learning_rate=1e-3):
                     raise RuntimeError(f"{source}: no training updates")
 
                 validation_mse = evaluate(model, validation_loader)
-                validation_rmse_c = math.sqrt(validation_mse) * normalization["target_std"] # convert to Celsius
+                validation_rmse = math.sqrt(validation_mse) * normalization["target_std"]
+                target_units = bundle["reports"][source]["target_units"]
                 print(
                     f"{source} | epoch {epoch:02d} | "
                     f"train normalized MSE={training['mean_batch_loss']:.4f} | "
-                    f"validation RMSE={validation_rmse_c:.3f} °C"
+                    f"validation RMSE={validation_rmse:.6g} {target_units}"
                 )
 
                 if validation_mse < best_validation:
