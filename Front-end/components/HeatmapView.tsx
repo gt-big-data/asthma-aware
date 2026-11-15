@@ -1,5 +1,11 @@
-import { useRef, useEffect, useCallback, useState } from "react";
-import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
+import { useRef, useEffect, useCallback, useMemo, useState } from "react";
+import {
+  PanResponder,
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  Text,
+} from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { LatLngIntensity } from "../constants/data";
 
@@ -9,8 +15,16 @@ export type MapBounds = [[number, number], [number, number]];
 // Metro Atlanta: roughly Marietta to Stockbridge, Douglasville to Lawrenceville.
 export const ATLANTA_BOUNDS: MapBounds = [[-84.80, 33.45], [-83.95, 34.05]];
 
+interface MapLocation {
+  latitude: number;
+  longitude: number;
+}
+
 interface HeatmapViewProps {
   points: LatLngIntensity[];
+  hoursAhead: number;
+  onHoursAheadChange: (hours: number) => void;
+  userLocation: MapLocation | null;
   visualization?: "cells" | "heat";
   // Area the map opens on. Only read on first render.
   startBounds?: MapBounds;
@@ -28,7 +42,7 @@ function buildMapHtml(startBounds: MapBounds): string {
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #map { width: 100%; height: 100%; }
-    body { background: #1a1a2e; }
+    body { background: #f4f7f4; }
   </style>
 </head>
 <body>
@@ -67,6 +81,7 @@ function buildMapHtml(startBounds: MapBounds): string {
     let map = null;
     let mapLoaded = false;
     let pending = null;
+    let currentUserLocation = null;
     let mode = "heat";
 
     function post(message) {
@@ -88,6 +103,70 @@ function buildMapHtml(startBounds: MapBounds): string {
       if (!mapLoaded || !map.getLayer("heat")) return;
       map.setLayoutProperty("heat", "visibility", mode === "heat" ? "visible" : "none");
       map.setLayoutProperty("cells", "visibility", mode === "cells" ? "visible" : "none");
+    }
+
+    function ensureUserLocationLayers() {
+      if (!map.getSource("user-location")) {
+        map.addSource("user-location", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+      }
+
+      if (!map.getLayer("user-location-halo")) {
+        map.addLayer({
+          id: "user-location-halo",
+          type: "circle",
+          source: "user-location",
+          paint: {
+            "circle-radius": 12,
+            "circle-color": "#2d6a4f",
+            "circle-opacity": 0.2,
+          },
+        });
+      }
+
+      if (!map.getLayer("user-location-dot")) {
+        map.addLayer({
+          id: "user-location-dot",
+          type: "circle",
+          source: "user-location",
+          paint: {
+            "circle-radius": 6,
+            "circle-color": "#2d6a4f",
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#ffffff",
+          },
+        });
+      }
+
+      map.moveLayer("user-location-halo");
+      map.moveLayer("user-location-dot");
+    }
+
+    function updateUserLocation(location) {
+      currentUserLocation = location;
+      if (!mapLoaded) return;
+
+      ensureUserLocationLayers();
+      const validLocation =
+        location &&
+        Number.isFinite(location.latitude) &&
+        Number.isFinite(location.longitude);
+      const features = validLocation
+        ? [{
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "Point",
+              coordinates: [location.longitude, location.latitude],
+            },
+          }]
+        : [];
+      map.getSource("user-location").setData({
+        type: "FeatureCollection",
+        features,
+      });
     }
 
     function drawData(points) {
@@ -196,6 +275,7 @@ function buildMapHtml(startBounds: MapBounds): string {
         });
       }
       setLayerVisibility();
+      ensureUserLocationLayers();
     }
 
     function radiusExpression(radiusAtZ0) {
@@ -228,6 +308,7 @@ function buildMapHtml(startBounds: MapBounds): string {
           drawData(pending);
           pending = null;
         }
+        updateUserLocation(currentUserLocation);
         post("ready");
       });
     } catch (err) {
@@ -240,6 +321,10 @@ function buildMapHtml(startBounds: MapBounds): string {
     window.setMapMode = function(nextMode) {
       mode = nextMode === "cells" ? "cells" : "heat";
       setLayerVisibility();
+    };
+
+    window.setUserLocation = function(location) {
+      updateUserLocation(location);
     };
 
     window.updateHeatmap = function(points, showAsHeatmap) {
@@ -263,6 +348,9 @@ function buildMapHtml(startBounds: MapBounds): string {
 
 export default function HeatmapView({
   points,
+  hoursAhead,
+  onHoursAheadChange,
+  userLocation,
   visualization = "cells",
   startBounds = ATLANTA_BOUNDS,
 }: HeatmapViewProps) {
@@ -271,8 +359,29 @@ export default function HeatmapView({
   const webviewRef   = useRef<WebView<object>>(null);
   const webviewReady = useRef(false);
   const pendingPts   = useRef<LatLngIntensity[] | null>(null);
+  const pendingLocation = useRef(userLocation);
+  const [timelineWidth, setTimelineWidth] = useState(0);
   const [mode, setMode] = useState(visualization);
   const modeRef      = useRef(visualization);
+
+  const setTimelineAtPosition = useCallback((position: number) => {
+    if (timelineWidth <= 0) return;
+
+    const progress = Math.max(0, Math.min(position / timelineWidth, 1));
+    const step = Math.round(progress * 12);
+    onHoursAheadChange(step * 8);
+  }, [onHoursAheadChange, timelineWidth]);
+
+  const timelinePanResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (event) => {
+      setTimelineAtPosition(event.nativeEvent.locationX);
+    },
+    onPanResponderMove: (event) => {
+      setTimelineAtPosition(event.nativeEvent.locationX);
+    },
+  }), [setTimelineAtPosition]);
 
   const injectHeatmap = useCallback((pts: LatLngIntensity[]) => {
     webviewRef.current?.injectJavaScript(
@@ -280,11 +389,17 @@ export default function HeatmapView({
     );
   }, []);
 
+  const injectUserLocation = useCallback((location: MapLocation | null) => {
+    webviewRef.current?.injectJavaScript(
+      `window.setUserLocation(${JSON.stringify(location)}); true;`
+    );
+  }, []);
+
   const changeMode = useCallback((next: "cells" | "heat") => {
     modeRef.current = next;
     setMode(next);
     webviewRef.current?.injectJavaScript(`window.setMapMode("${next}"); true;`);
-  }, []);
+  }, [setMode]);
 
   const zoomIn  = useCallback(() => {
     webviewRef.current?.injectJavaScript("window.mapZoomIn(); true;");
@@ -301,8 +416,9 @@ export default function HeatmapView({
         injectHeatmap(pendingPts.current);
         pendingPts.current = null;
       }
+      injectUserLocation(pendingLocation.current);
     }
-  }, [injectHeatmap]);
+  }, [injectHeatmap, injectUserLocation]);
 
   useEffect(() => {
     if (!points || points.length === 0) return;
@@ -312,6 +428,13 @@ export default function HeatmapView({
       pendingPts.current = points;
     }
   }, [points, injectHeatmap]);
+
+  useEffect(() => {
+    pendingLocation.current = userLocation;
+    if (webviewReady.current) {
+      injectUserLocation(userLocation);
+    }
+  }, [userLocation, injectUserLocation]);
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -355,6 +478,111 @@ export default function HeatmapView({
           </TouchableOpacity>
         ))}
       </View>
+
+      <View
+        style={styles.mapLegend}
+        accessible
+        accessibilityLabel={
+          userLocation
+            ? "Map legend. Green marker shows your location. Heat colors go from lower to higher intensity."
+            : "Map legend. Heat colors go from lower to higher intensity."
+        }
+      >
+        {userLocation && (
+          <View style={styles.locationLegendRow}>
+            <View style={styles.locationLegendDot} />
+            <Text style={styles.mapLegendText}>Your location</Text>
+          </View>
+        )}
+        <View style={styles.intensityLegend}>
+          <Text style={styles.mapLegendTitle}>Heat intensity</Text>
+          <View style={styles.intensityGradient}>
+            {["#2547a8", "#20b9c7", "#69cf71", "#f4d84a", "#e53935"].map(
+              (color) => (
+                <View
+                  key={color}
+                  style={[styles.intensityColor, { backgroundColor: color }]}
+                />
+              ),
+            )}
+          </View>
+          <View style={styles.intensityLabels}>
+            <Text style={styles.mapLegendCaption}>Lower</Text>
+            <Text style={styles.mapLegendCaption}>Higher</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.timeline}>
+        <View style={styles.timelineHeading}>
+          <Text style={styles.timelineTitle}>Forecast timeline</Text>
+          <Text style={styles.timelineValue}>
+            {hoursAhead === 0 ? "Now" : `+${hoursAhead}h`}
+          </Text>
+        </View>
+        <View
+          {...timelinePanResponder.panHandlers}
+          style={styles.timelineTrackTouchArea}
+          onLayout={(event) => {
+            setTimelineWidth(event.nativeEvent.layout.width);
+          }}
+          accessible
+          accessibilityRole="adjustable"
+          accessibilityLabel="Forecast timeline"
+          accessibilityValue={{
+            min: 0,
+            max: 96,
+            now: hoursAhead,
+            text: hoursAhead === 0 ? "Now" : `${hoursAhead} hours ahead`,
+          }}
+          accessibilityActions={[
+            { name: "decrement", label: "Move back 8 hours" },
+            { name: "increment", label: "Advance 8 hours" },
+          ]}
+          onAccessibilityAction={(event) => {
+            if (event.nativeEvent.actionName === "increment") {
+              onHoursAheadChange(Math.min(hoursAhead + 8, 96));
+            } else if (event.nativeEvent.actionName === "decrement") {
+              onHoursAheadChange(Math.max(hoursAhead - 8, 0));
+            }
+          }}
+        >
+          <View style={styles.timelineTrack} pointerEvents="none">
+            <View
+              style={[
+                styles.timelineFill,
+                { width: `${(hoursAhead / 96) * 100}%` },
+              ]}
+            />
+            {Array.from({ length: 13 }, (_, index) => {
+              const stepHours = index * 8;
+              return (
+                <View
+                  key={stepHours}
+                  style={[
+                    styles.timelineMark,
+                    { left: `${(index / 12) * 100}%` },
+                    stepHours <= hoursAhead && styles.timelineMarkActive,
+                  ]}
+                />
+              );
+            })}
+            <View
+              style={[
+                styles.timelineThumb,
+                { left: `${(hoursAhead / 96) * 100}%` },
+              ]}
+            />
+          </View>
+        </View>
+        <View style={styles.timelineLabels}>
+          {[0, 24, 48, 72, 96].map((hours) => (
+            <Text key={hours} style={styles.timelineLabel}>
+              {hours === 0 ? "Now" : `${hours}h`}
+            </Text>
+          ))}
+        </View>
+      </View>
     </View>
   );
 }
@@ -362,7 +590,7 @@ export default function HeatmapView({
 const styles = StyleSheet.create({
   zoomControls: {
     position: "absolute",
-    top: 100,
+    top: 145,
     right: 14,
     gap: 8,
   },
@@ -370,27 +598,27 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: "rgba(15,15,25,0.85)",
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "#dce5de",
     alignItems: "center",
     justifyContent: "center",
   },
   zoomText: {
-    color: "#ffffff",
+    color: "#2d6a4f",
     fontSize: 20,
     fontWeight: "400",
     lineHeight: 22,
   },
   modeToggle: {
     position: "absolute",
-    top: 190,
+    top: 55,
     right: 14,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: "rgba(15,15,25,0.85)",
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "#dce5de",
   },
   modeBtn: {
     width: 52,
@@ -398,14 +626,158 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modeBtnActive: {
-    backgroundColor: "#55c7f3",
+    backgroundColor: "#2d6a4f",
   },
   modeText: {
-    color: "#ffffff",
+    color: "#34473b",
     fontSize: 12,
     fontWeight: "600",
   },
   modeTextActive: {
-    color: "#0f1928",
+    color: "#ffffff",
+  },
+  mapLegend: {
+    position: "absolute",
+    top: 55,
+    left: 14,
+    width: 166,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#dce5de",
+    gap: 8,
+    elevation: 2,
+  },
+  locationLegendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  locationLegendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#2d6a4f",
+    borderWidth: 2,
+    borderColor: "#d8e3db",
+  },
+  mapLegendText: {
+    color: "#34473b",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  intensityLegend: {
+    gap: 4,
+  },
+  mapLegendTitle: {
+    color: "#34473b",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  intensityGradient: {
+    height: 8,
+    flexDirection: "row",
+    overflow: "hidden",
+    borderRadius: 4,
+  },
+  intensityColor: {
+    flex: 1,
+  },
+  intensityLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  mapLegendCaption: {
+    color: "#748178",
+    fontSize: 9,
+  },
+  timeline: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    bottom: 14,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderRadius: 14,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#dce5de",
+    gap: 3,
+    elevation: 3,
+  },
+  timelineHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  timelineTitle: {
+    color: "#34473b",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  timelineValue: {
+    color: "#2d6a4f",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  timelineNote: {
+    color: "#748178",
+    fontSize: 10,
+  },
+  timelineTrackTouchArea: {
+    height: 30,
+    justifyContent: "center",
+    marginHorizontal: 4,
+  },
+  timelineTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#e1e8e3",
+    justifyContent: "center",
+  },
+  timelineFill: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 2,
+    backgroundColor: "#2d6a4f",
+  },
+  timelineMark: {
+    position: "absolute",
+    top: -2,
+    width: 2,
+    height: 8,
+    marginLeft: -1,
+    backgroundColor: "#9bac9f",
+  },
+  timelineMarkActive: {
+    backgroundColor: "#ffffff",
+  },
+  timelineThumb: {
+    position: "absolute",
+    top: -7,
+    width: 18,
+    height: 18,
+    marginLeft: -9,
+    borderRadius: 9,
+    borderWidth: 3,
+    borderColor: "#ffffff",
+    backgroundColor: "#2d6a4f",
+    shadowColor: "#203629",
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  timelineLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  timelineLabel: {
+    color: "#748178",
+    fontSize: 10,
+    fontWeight: "600",
   },
 });

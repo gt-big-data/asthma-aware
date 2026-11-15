@@ -71,9 +71,17 @@ function isInsideGeorgia(lat: number, lon: number): boolean {
   return inside;
 }
 
-function makeTemporaryGeorgiaData(): LatLngIntensity[] {
+function makeTemporaryGeorgiaData(hoursAhead: number): LatLngIntensity[] {
   const points: LatLngIntensity[] = [];
   const step = 0.075;
+  const phase = (hoursAhead / 96) * Math.PI;
+  const atlantaScale = 1 + 0.18 * Math.sin(phase);
+  const maconPhase = (2 * Math.PI) / 3;
+  const maconScale =
+    1 + 0.18 * (Math.sin(phase + maconPhase) - Math.sin(maconPhase));
+  const savannahPhase = (4 * Math.PI) / 3;
+  const savannahScale =
+    1 + 0.18 * (Math.sin(phase + savannahPhase) - Math.sin(savannahPhase));
 
   for (let lat = 30.4; lat <= 35; lat += step) {
     for (let lon = -85.5; lon <= -80.9; lon += step) {
@@ -88,10 +96,16 @@ function makeTemporaryGeorgiaData(): LatLngIntensity[] {
       const savannah = Math.exp(
         -(((lat - 32.08) / 0.5) ** 2 + ((lon + 81.1) / 0.5) ** 2),
       );
+      const regionalPattern = Math.sin(lat * 3.1 + lon * 2.3);
       const regionalVariation =
-        (Math.sin(lat * 3.1 + lon * 2.3) + 1) * 0.04;
-      const intensity = 0.12 + atlanta * 0.62 + macon * 0.28 +
-        savannah * 0.2 + regionalVariation;
+        (regionalPattern + 1) * 0.04 +
+        (Math.sin(lat * 3.1 + lon * 2.3 + phase) - regionalPattern) * 0.02;
+      const intensity =
+        0.12 +
+        atlanta * 0.62 * atlantaScale +
+        macon * 0.28 * maconScale +
+        savannah * 0.2 * savannahScale +
+        regionalVariation;
 
       points.push([lat, lon, intensity]);
     }
@@ -122,7 +136,11 @@ function boundsAround(coords: Coords): MapBounds {
 }
 
 export default function MapScreen() {
-  const points = useMemo(() => makeTemporaryGeorgiaData(), []);
+  const [hoursAhead, setHoursAhead] = useState(0);
+  const points = useMemo(
+    () => makeTemporaryGeorgiaData(hoursAhead),
+    [hoursAhead],
+  );
 
   // undefined = still looking, null = no location (use Atlanta).
   const [location, setLocation] = useState<Coords | null | undefined>(
@@ -157,6 +175,9 @@ export default function MapScreen() {
       {location !== undefined && (
         <HeatmapView
           points={points}
+          hoursAhead={hoursAhead}
+          onHoursAheadChange={setHoursAhead}
+          userLocation={location}
           visualization="heat"
           startBounds={startBounds}
         />
@@ -168,6 +189,6 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#f4f7f4",
   },
 });

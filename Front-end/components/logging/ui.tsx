@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-export const colors = { background: "#0b1220", card: "#121c2c", border: "#25344a", text: "#f4f7fb", muted: "#a5b5c8", accent: "#55c7f3", error: "#ff9baa", success: "#76d6a1" };
+export const colors = { background: "#f4f7f4", card: "#ffffff", border: "#dce5de", text: "#1f2d25", muted: "#66766b", accent: "#2d6a4f", error: "#b42318", success: "#39845c" };
 export function Button({ title, onPress, disabled = false, secondary = false }: {
   title: string; onPress: () => void; disabled?: boolean; secondary?: boolean;
 }) {

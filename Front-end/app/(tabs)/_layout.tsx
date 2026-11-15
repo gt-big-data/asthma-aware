@@ -12,11 +12,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#55c7f3",
-        tabBarInactiveTintColor: "#8192a7",
+        tabBarActiveTintColor: "#2d6a4f",
+        tabBarInactiveTintColor: "#748178",
         tabBarStyle: {
-          backgroundColor: "#0f1928",
-          borderTopColor: "#25344a",
+          backgroundColor: "#ffffff",
+          borderTopColor: "#dce5de",
           height: 64 + Math.max(insets.bottom, 8),
           paddingTop: 6,
           paddingBottom: Math.max(insets.bottom, 8),
@@ -35,7 +35,7 @@ export default function TabLayout() {
           tabBarIcon: ({ focused, size }) => (
             <Ionicons
               name="speedometer-outline"
-              color={focused ? "#55c7f3" : "#8192a7"}
+              color={focused ? "#2d6a4f" : "#748178"}
               size={size}
             />
           ),
@@ -45,7 +45,7 @@ export default function TabLayout() {
         name="symptoms"
         options={{
           title: "Symptom Log",
-          tabBarIcon: ({ focused, size }) => <Ionicons name="clipboard-outline" color={focused ? "#55c7f3" : "#8192a7"} size={size} />,
+          tabBarIcon: ({ focused, size }) => <Ionicons name="clipboard-outline" color={focused ? "#2d6a4f" : "#748178"} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -55,7 +55,7 @@ export default function TabLayout() {
           tabBarIcon: ({ focused, size }) => (
             <Ionicons
               name="map-outline"
-              color={focused ? "#55c7f3" : "#8192a7"}
+              color={focused ? "#2d6a4f" : "#748178"}
               size={size}
             />
           ),
