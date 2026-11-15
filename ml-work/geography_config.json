@@ -1,0 +1,4 @@
+{
+  "path": "geography_GA.tif",
+  "log1p_bands": ["road_km", "pop_per_km2"]
+}
