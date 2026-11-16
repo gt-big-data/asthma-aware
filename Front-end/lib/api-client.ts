@@ -1,4 +1,5 @@
 import type { Coordinates, LocationSource } from "./logging";
+import { parseForecast } from "./forecast.ts";
 
 export interface Profile { user_id: string; name: string | null; timezone: string }
 export interface SymptomEntry extends Coordinates {
@@ -36,12 +37,26 @@ export function createApiClient(options: {
   timeoutMs?: number;
 }) {
   const fetcher = options.fetcher ?? fetch;
-  async function request<T>(path: string, method = "GET", body?: unknown): Promise<T> {
-    const token = await options.getAccessToken();
-    if (!token) throw new ApiError(401, "Please sign in to continue.");
+  async function request<T>(path: string, method = "GET", body?: unknown, signal?: AbortSignal): Promise<T> {
+    if (signal?.aborted) throw new ApiError(0, "Request cancelled.");
     const controller = new AbortController();
+    const cancel = () => controller.abort();
+    signal?.addEventListener("abort", cancel, { once: true });
+    if (signal?.aborted) controller.abort();
     const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 15000);
+    let tokenAbort: (() => void) | undefined;
     try {
+      const token = await Promise.race([
+        options.getAccessToken(),
+        new Promise<never>((_resolve, reject) => {
+          tokenAbort = () => reject(new ApiError(0, "The request timed out or was cancelled. Please try again."));
+          controller.signal.addEventListener("abort", tokenAbort, { once: true });
+          if (controller.signal.aborted) tokenAbort();
+        }),
+      ]);
+      if (!token) throw new ApiError(401, "Please sign in to continue.");
+      if (controller.signal.aborted) throw new ApiError(0, "Request cancelled.");
+      if (tokenAbort) controller.signal.removeEventListener("abort", tokenAbort);
       const response = await fetcher(options.baseUrl.replace(/\/$/, "") + path, {
         method, signal: controller.signal,
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -61,9 +76,15 @@ export function createApiClient(options: {
       throw new ApiError(0, "Could not reach the service. Check your connection and try again.");
     } finally {
       clearTimeout(timeout);
+      if (tokenAbort) controller.signal.removeEventListener("abort", tokenAbort);
+      signal?.removeEventListener("abort", cancel);
     }
   }
   return {
+    async forecast(point: Coordinates, signal?: AbortSignal) {
+      const result = await request<unknown>(`/v1/forecast?lat=${encodeURIComponent(point.latitude)}&lon=${encodeURIComponent(point.longitude)}`, "GET", undefined, signal);
+      return parseForecast(result);
+    },
     profile: () => request<Profile>("/v1/users/me"),
     setTimezone: (timezone: string) => request<Profile>("/v1/users/me", "PATCH", { timezone }),
     async entry(day: string): Promise<SymptomEntry | null> {

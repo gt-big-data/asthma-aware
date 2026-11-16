@@ -5,9 +5,10 @@ import {
   View,
   TouchableOpacity,
   Text,
+  Platform,
 } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import { LatLngIntensity } from "../constants/data";
+import type { LatLngIntensity } from "../constants/data";
 
 // [[west, south], [east, north]]
 export type MapBounds = [[number, number], [number, number]];
@@ -28,6 +29,8 @@ interface HeatmapViewProps {
   visualization?: "cells" | "heat";
   // Area the map opens on. Only read on first render.
   startBounds?: MapBounds;
+  showTimeline?: boolean;
+  locationLabel?: string;
 }
 
 // The map page is built with its starting area already in it, so the first
@@ -86,6 +89,7 @@ function buildMapHtml(startBounds: MapBounds): string {
 
     function post(message) {
       if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(message);
+      else window.parent.postMessage({type: "forecast-map-status", message}, "*");
     }
 
     // Smallest gap between neighbouring values, i.e. the grid spacing.
@@ -170,18 +174,21 @@ function buildMapHtml(startBounds: MapBounds): string {
     }
 
     function drawData(points) {
+      if (!points.length) {
+        for (const name of ["points", "cells"]) {
+          if (map.getSource(name)) map.getSource(name).setData({type:"FeatureCollection",features:[]});
+        }
+        return;
+      }
       const lats = points.map(p => p[0]);
       const lons = points.map(p => p[1]);
-      const vals = points.map(p => p[2]);
-      const minVal = Math.min(...vals);
-      const range = Math.max(...vals) - minVal;
       const latStep = gridStep(lats, DEFAULT_LAT_STEP);
       const lonStep = gridStep(lons, DEFAULT_LON_STEP);
 
       const pointFeatures = [];
       const cellFeatures = [];
       for (const [lat, lon, raw] of points) {
-        const t = range > 0.0001 ? (raw - minVal) / range : 0.5;
+        const t = Math.max(0, Math.min(raw, 1));
         pointFeatures.push({
           type: "Feature",
           properties: { t },
@@ -329,7 +336,7 @@ function buildMapHtml(startBounds: MapBounds): string {
 
     window.updateHeatmap = function(points, showAsHeatmap) {
       try {
-        if (!points || points.length === 0 || !map) return;
+        if (!points || !map) return;
         mode = showAsHeatmap ? "heat" : "cells";
         if (!mapLoaded) {
           pending = points;
@@ -340,6 +347,14 @@ function buildMapHtml(startBounds: MapBounds): string {
         console.error("updateHeatmap error:", err.message);
       }
     };
+    window.addEventListener("message", function(event) {
+      if (event.source !== window.parent || !event.data) return;
+      const msg = event.data;
+      if (msg.type === "forecast-map-points") window.updateHeatmap(msg.points, msg.heat);
+      if (msg.type === "forecast-map-location") window.setUserLocation(msg.location);
+      if (msg.type === "forecast-map-mode") window.setMapMode(msg.mode);
+      if (msg.type === "forecast-map-zoom") msg.direction === "in" ? window.mapZoomIn() : window.mapZoomOut();
+    });
   </script>
 </body>
 </html>
@@ -353,10 +368,13 @@ export default function HeatmapView({
   userLocation,
   visualization = "cells",
   startBounds = ATLANTA_BOUNDS,
+  showTimeline = true,
+  locationLabel = "Your location",
 }: HeatmapViewProps) {
   // Built once: later changes to startBounds shouldn't reload the map.
   const [mapHtml] = useState(() => buildMapHtml(startBounds));
   const webviewRef   = useRef<WebView<object>>(null);
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
   const webviewReady = useRef(false);
   const pendingPts   = useRef<LatLngIntensity[] | null>(null);
   const pendingLocation = useRef(userLocation);
@@ -384,12 +402,20 @@ export default function HeatmapView({
   }), [setTimelineAtPosition]);
 
   const injectHeatmap = useCallback((pts: LatLngIntensity[]) => {
+    if (Platform.OS === "web") {
+      frameRef.current?.contentWindow?.postMessage({type: "forecast-map-points", points: pts, heat: modeRef.current === "heat"}, "*");
+      return;
+    }
     webviewRef.current?.injectJavaScript(
       `window.updateHeatmap(${JSON.stringify(pts)}, ${modeRef.current === "heat"}); true;`
     );
   }, []);
 
   const injectUserLocation = useCallback((location: MapLocation | null) => {
+    if (Platform.OS === "web") {
+      frameRef.current?.contentWindow?.postMessage({type: "forecast-map-location", location}, "*");
+      return;
+    }
     webviewRef.current?.injectJavaScript(
       `window.setUserLocation(${JSON.stringify(location)}); true;`
     );
@@ -398,21 +424,24 @@ export default function HeatmapView({
   const changeMode = useCallback((next: "cells" | "heat") => {
     modeRef.current = next;
     setMode(next);
+    frameRef.current?.contentWindow?.postMessage({type: "forecast-map-mode", mode: next}, "*");
     webviewRef.current?.injectJavaScript(`window.setMapMode("${next}"); true;`);
   }, [setMode]);
 
   const zoomIn  = useCallback(() => {
+    frameRef.current?.contentWindow?.postMessage({type: "forecast-map-zoom", direction: "in"}, "*");
     webviewRef.current?.injectJavaScript("window.mapZoomIn(); true;");
   }, []);
 
   const zoomOut = useCallback(() => {
+    frameRef.current?.contentWindow?.postMessage({type: "forecast-map-zoom", direction: "out"}, "*");
     webviewRef.current?.injectJavaScript("window.mapZoomOut(); true;");
   }, []);
 
   const onMessage = useCallback((event: WebViewMessageEvent) => {
     if (event.nativeEvent.data === "ready") {
       webviewReady.current = true;
-      if (pendingPts.current && pendingPts.current.length > 0) {
+      if (pendingPts.current) {
         injectHeatmap(pendingPts.current);
         pendingPts.current = null;
       }
@@ -421,7 +450,17 @@ export default function HeatmapView({
   }, [injectHeatmap, injectUserLocation]);
 
   useEffect(() => {
-    if (!points || points.length === 0) return;
+    if (Platform.OS !== "web") return;
+    const listener = (event: MessageEvent) => {
+      if (event.source === frameRef.current?.contentWindow && event.data?.type === "forecast-map-status") {
+        onMessage({ nativeEvent: { data: event.data.message } } as WebViewMessageEvent);
+      }
+    };
+    window.addEventListener("message", listener);
+    return () => window.removeEventListener("message", listener);
+  }, [onMessage]);
+
+  useEffect(() => {
     if (webviewReady.current) {
       injectHeatmap(points);
     } else {
@@ -438,7 +477,8 @@ export default function HeatmapView({
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <WebView<object>
+      {Platform.OS === "web" ? <iframe ref={frameRef} srcDoc={mapHtml} title="NASA forecast grid" sandbox="allow-scripts"
+        style={{ border: 0, width: "100%", height: "100%" }} /> : <WebView<object>
         ref={webviewRef}
         source={{ html: mapHtml }}
         style={StyleSheet.absoluteFill}
@@ -447,9 +487,9 @@ export default function HeatmapView({
         domStorageEnabled
         scrollEnabled={false}
         overScrollMode="never"
-        mixedContentMode="always"
+        mixedContentMode="never"
         onMessage={onMessage}
-      />
+      />}
 
       {/* React Native zoom buttons — always on top, never blocked by WebView */}
       <View style={styles.zoomControls} pointerEvents="box-none">
@@ -484,14 +524,14 @@ export default function HeatmapView({
         accessible
         accessibilityLabel={
           userLocation
-            ? "Map legend. Green marker shows your location. Heat colors go from lower to higher intensity."
+            ? `Map legend. Green marker shows ${locationLabel.toLowerCase()}. Colors go from lower to higher score.`
             : "Map legend. Heat colors go from lower to higher intensity."
         }
       >
         {userLocation && (
           <View style={styles.locationLegendRow}>
             <View style={styles.locationLegendDot} />
-            <Text style={styles.mapLegendText}>Your location</Text>
+            <Text style={styles.mapLegendText}>{locationLabel}</Text>
           </View>
         )}
         <View style={styles.intensityLegend}>
@@ -513,7 +553,7 @@ export default function HeatmapView({
         </View>
       </View>
 
-      <View style={styles.timeline}>
+      {showTimeline && <View style={styles.timeline}>
         <View style={styles.timelineHeading}>
           <Text style={styles.timelineTitle}>Forecast timeline</Text>
           <Text style={styles.timelineValue}>
@@ -582,7 +622,7 @@ export default function HeatmapView({
             </Text>
           ))}
         </View>
-      </View>
+      </View>}
     </View>
   );
 }

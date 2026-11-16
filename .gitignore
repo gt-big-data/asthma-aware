@@ -1,3 +1,5 @@
 .venv/
+.venv-integration/
+.npm-integration-cache/
 .DS_Store
 

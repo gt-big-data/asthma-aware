@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 .env
 .pytest_cache/
+.pytest_tmp*/
 data/satellite/
 data/geos_cf/
 /data/

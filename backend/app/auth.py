@@ -22,7 +22,7 @@ def verify_access_token(token: str, supabase_url: str) -> UUID:
     if not supabase_url:
         raise HTTPException(503, "Supabase authentication is not configured")
     parsed = urlparse(supabase_url)
-    if parsed.scheme != "https" or not parsed.netloc or parsed.query or parsed.fragment or parsed.path not in ("", "/"):
+    if parsed.scheme != "https" or not parsed.netloc or parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment or parsed.path not in ("", "/"):
         raise HTTPException(503, "SUPABASE_URL must be an HTTPS project origin")
     issuer = supabase_url.rstrip("/") + "/auth/v1"
     try:

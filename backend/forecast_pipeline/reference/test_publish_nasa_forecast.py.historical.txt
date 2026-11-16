@@ -1,0 +1,137 @@
+"""Actual NetCDF conversion and bounded acquisition orchestration, offline NASA."""
+import json
+from types import SimpleNamespace
+
+import numpy as np
+import pandas as pd
+import pytest
+import xarray as xr
+
+from app.services import live_forecast as live
+from ingestion.geos_cf import fetch_forecast as nasa
+from scripts import publish_nasa_forecast as job
+from tests.test_live_forecast import INIT, NOW, artifact
+
+
+def dataset(init, start=0, count=6):
+    times = pd.date_range(pd.Timestamp(init).tz_localize(None) + pd.Timedelta(hours=start, minutes=30), periods=count, freq="h")
+    ds = xr.Dataset(coords={"time": times, "lat": [33.75], "lon": [-84.5]})
+    for name, value in {"pm25": 25, "no2": 50e-9, "o3": 50e-9}.items():
+        ds[name] = xr.DataArray(np.full((count, 1, 1), value, dtype=float), dims=("time", "lat", "lon"))
+        ds[name].attrs = {"units": job.RAW_UNITS[name], "source_name": name,
+                          "source_collection": nasa.AQC_COLLECTION}
+    return ds
+
+
+def netcdf(tmp_path, *, modify=None):
+    ds = dataset(INIT)
+    if modify:
+        modify(ds)
+    init = pd.Timestamp(INIT).tz_localize(None)
+    ds = ds.assign_coords(lead_time=("time", ds.time.values - init.to_datetime64()))
+    metadata = nasa.build_metadata(ds, init, nasa.point_area(33.75, -84.39), slice(0, 6), NOW)
+    path, _ = nasa.write_outputs(ds, metadata, tmp_path)
+    return path
+
+
+def test_netcdf_roundtrip_units_midpoint_times_and_provenance(tmp_path):
+    path = netcdf(tmp_path)
+    result = job.from_netcdf(path)
+    hour = result["cells"][0]["hours"][0]
+    assert live.moment(hour["timestamp"]) == INIT
+    assert hour["values"] == pytest.approx({"pm25": 25, "no2": 50, "o3": 50})
+    assert result["run_id"] == "20261115_09z"
+    assert result["source"] == "NASA GEOS-CF v2"
+    assert result["acquired_at"] == NOW.isoformat().replace("+00:00", "Z")
+
+
+def test_wrong_units_missing_values_and_sidecar_mismatch_fail(tmp_path):
+    def units(ds):
+        ds["o3"].attrs["units"] = "ppb"
+    with pytest.raises(ValueError, match="units"):
+        job.from_netcdf(netcdf(tmp_path / "units", modify=units))
+    def missing(ds):
+        ds["pm25"][0, 0, 0] = np.nan
+    with pytest.raises(live.ForecastUnavailable):
+        job.from_netcdf(netcdf(tmp_path / "nan", modify=missing))
+    path = netcdf(tmp_path / "metadata")
+    sidecar = path.with_suffix(".metadata.json")
+    meta = json.loads(sidecar.read_text())
+    meta["valid_times"][0] = "2020-01-01T00:30:00Z"
+    sidecar.write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match="times"):
+        job.from_netcdf(path)
+
+
+def test_acquisition_requests_only_required_pollutants_and_writes_lead_time(monkeypatch, tmp_path):
+    init = pd.Timestamp.now(tz="UTC").tz_localize(None).normalize() + pd.Timedelta(hours=9)
+    if init > pd.Timestamp.now(tz="UTC").tz_localize(None):
+        init -= pd.Timedelta(days=1)
+    calls = []
+    def inventory(url):
+        calls.append(url)
+        times = pd.date_range(init + pd.Timedelta(minutes=30), periods=120, freq="h").values
+        return {}, times, 179.75
+    monkeypatch.setattr(nasa, "_read_inventory", inventory)
+    monkeypatch.setattr(nasa, "remote_call", lambda fn, *args, **kw: fn(*args))
+    def fetch(collection, run, specs, bbox, lead):
+        assert collection == nasa.AQC_COLLECTION
+        assert {s.name for s in specs} == {"pm25", "no2", "o3"}
+        assert lead.stop - lead.start == 6
+        return dataset(init, lead.start, 6)
+    monkeypatch.setattr(nasa, "fetch_collection", fetch)
+    args = SimpleNamespace(lat=33.75, lon=-84.39, hours=6, raw_output=str(tmp_path))
+    payload = job.acquire(args)
+    assert len(calls) == 1 and ".latest" in calls[0]
+    assert len(payload["cells"]) == 1
+    assert len(payload["cells"][0]["hours"]) == 6
+    with xr.open_dataset(next(tmp_path.glob("*.nc"))) as saved:
+        assert "lead_time" in saved.coords
+    assert live.at_location(payload, 33.75, -84.39)["hourly"][0]["score"] == 50
+
+
+def test_recent_complete_forecast_reuses_cache_without_any_network(tmp_path):
+    path = tmp_path / "cached.json"
+    live.publish_file(artifact(), path)
+    args = SimpleNamespace(output=str(path), lat=33.75, lon=-84.39, hours=24)
+    assert job.reusable(args, NOW) == artifact()
+    args.hours = 48
+    assert job.reusable(args, NOW) is None  # Remaining horizon is shorter.
+    args.hours = 24
+    args.lat = 34
+    assert job.reusable(args, NOW) is None
+    args.lat = 33.75
+    from datetime import timedelta
+    assert job.reusable(args, NOW + timedelta(hours=2)) is None
+
+
+def test_invalid_payload_does_not_publish_to_database(monkeypatch, tmp_path):
+    path = netcdf(tmp_path, modify=lambda ds: ds["o3"].attrs.update(units="ppb"))
+    from db.repositories import live_forecast as repository
+    monkeypatch.setattr(repository, "publish", lambda _: pytest.fail("invalid input reached database"))
+    args = SimpleNamespace(input=path, database=True, output=str(tmp_path / "output.json"))
+    with pytest.raises(ValueError):
+        job.worker(args)
+    assert not (tmp_path / "output.json").exists()
+
+
+def test_deadline_cancels_worker_process_group(monkeypatch):
+    calls = []
+    class Process:
+        pid = 12345
+        def wait(self, timeout):
+            calls.append(timeout)
+            if len(calls) == 1:
+                raise job.subprocess.TimeoutExpired("fixture-worker", timeout)
+            return -9
+    monkeypatch.setattr(job.subprocess, "Popen", lambda *a, **kw: Process())
+    def taskkill(*a, **kw):
+        calls.append(a[0])
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(job.subprocess, "run", taskkill)
+    monkeypatch.setattr(job.sys, "argv", ["publish_nasa_forecast", "--deadline", "10"])
+    if job.sys.platform != "win32":
+        monkeypatch.setattr(job.os, "killpg", lambda *a: calls.append(a))
+    assert job.main() == 1
+    assert calls[0] == 10 and calls[-1] == 10
+    assert len(calls) == 3

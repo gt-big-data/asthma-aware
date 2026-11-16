@@ -1,0 +1,4 @@
+{
+  "notificationChannel": "REPLACE_WITH_EXISTING_MONITORING_NOTIFICATION_CHANNEL_RESOURCE",
+  "note": "Copy to observability.local.json. Use an owner-approved, verified channel in this project. Never use a placeholder email or invent a recipient."
+}

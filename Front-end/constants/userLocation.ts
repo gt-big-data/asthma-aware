@@ -19,6 +19,7 @@ const MAX_CACHED_AGE_MS = 60 * 60 * 1000;
 const MAX_CACHED_ERROR_M = 5000;
 
 let cached: Coords | null = null;
+let cachedAt = 0;
 let pending: Promise<Coords | null> | null = null;
 
 async function lookUpLocation(): Promise<Coords | null> {
@@ -48,16 +49,18 @@ async function lookUpLocation(): Promise<Coords | null> {
 
 /** The location if it has already been found, otherwise null. */
 export function getCachedUserLocation(): Coords | null {
-  return cached;
+  return Date.now() - cachedAt < MAX_CACHED_AGE_MS ? cached : null;
 }
 
 /** Finds the user's location, reusing an earlier or in-progress lookup. */
 export function getUserLocation(): Promise<Coords | null> {
-  if (cached) return Promise.resolve(cached);
+  const previous = getCachedUserLocation();
+  if (previous) return Promise.resolve(previous);
 
   if (!pending) {
     pending = lookUpLocation().then((coords) => {
       cached = coords;
+      cachedAt = Date.now();
       // On failure, let a later call try again (e.g. after the user
       // turns location on).
       pending = null;

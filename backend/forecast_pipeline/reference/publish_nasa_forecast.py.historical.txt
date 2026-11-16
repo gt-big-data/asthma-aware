@@ -1,0 +1,180 @@
+"""Manually acquire a bounded NASA point forecast, or convert existing NetCDF.
+
+Run from backend: python -m scripts.publish_nasa_forecast --help
+The parent process kills the acquisition worker and its request children at the
+deadline on Windows. No API route imports or starts this command.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import signal
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+RAW_UNITS = {"pm25": "ug m-3", "no2": "mol mol-1", "o3": "mol mol-1"}
+
+
+def from_netcdf(path):
+    import pandas as pd
+    import xarray as xr
+    from app.services.live_forecast import validate, UNITS
+
+    metadata = json.loads(Path(path).with_suffix(".metadata.json").read_text())
+    if metadata.get("source") != "NASA GEOS-CF" or metadata.get("source_version") != "v2":
+        raise ValueError("Expected NASA GEOS-CF v2 forecast metadata")
+    with xr.open_dataset(path) as ds:
+        if ds.sizes["lat"] * ds.sizes["lon"] > 1000 or ds.sizes["time"] > 120:
+            raise ValueError("Input exceeds native-cell or horizon limits")
+        expected = RAW_UNITS
+        for name, unit in expected.items():
+            if ds[name].attrs.get("units", "").lower() != unit:
+                raise ValueError(f"Unexpected units for {name}")
+        stamps = [pd.Timestamp(t).isoformat() + "Z" for t in ds.time.values]
+        if stamps != metadata.get("valid_times") or metadata.get("forecast_hours") != len(stamps):
+            raise ValueError("NetCDF times do not match the NASA metadata")
+        initialized = pd.Timestamp(metadata["initialization_time"]).tz_convert("UTC").tz_localize(None)
+        from ingestion.geos_cf.fetch_forecast import run_id_for
+        if metadata["forecast_run"] != run_id_for(initialized):
+            raise ValueError("NetCDF run identity does not match initialization")
+        if any(ds[k].dims != ("time", "lat", "lon") for k in expected):
+            raise ValueError("Expected time x lat x lon pollution arrays")
+        cells = []
+        for lat in ds.lat.values:
+            for lon in ds.lon.values:
+                hours = []
+                point = ds.sel(lat=lat, lon=lon)
+                for i, timestamp in enumerate(ds.time.values):
+                    # NASA tavg stamps the midpoint of an hourly averaging window.
+                    start = pd.Timestamp(timestamp) - pd.Timedelta(minutes=30)
+                    values = {k: float(point[k].isel(time=i).item()) * (1 if k == "pm25" else 1e9)
+                              for k in expected}
+                    hours.append({"timestamp": start.isoformat() + "Z", "values": values})
+                cells.append({"lat": float(lat), "lon": float(lon), "hours": hours})
+    from forecast_pipeline.pipeline import process_forecast
+    return process_forecast(validate({"schema_version": "nasa-placeholder-v1", "source": "NASA GEOS-CF v2",
+                     "run_id": metadata["forecast_run"], "initialized_at": metadata["initialization_time"],
+                     "acquired_at": metadata["downloaded_at"], "units": UNITS, "cells": cells}))
+
+
+def reusable(args, now=None):
+    """Reuse a complete recent local result before making any remote request."""
+    from app.services.live_forecast import at_location, moment, validate, MAX_BYTES
+    now = now or datetime.now(timezone.utc)
+    try:
+        path = Path(args.output)
+        if path.stat().st_size > MAX_BYTES:
+            return None
+        payload = validate(json.loads(path.read_text(encoding="utf-8")))
+        age = (now - moment(payload["acquired_at"])).total_seconds()
+        view = at_location(payload, args.lat, args.lon, now)
+        if 0 <= age < 3600 and len(view["hourly"]) >= args.hours:
+            from forecast_pipeline.models import MODEL_VERSIONS
+            if payload.get("processing") == MODEL_VERSIONS:
+                return payload
+            from forecast_pipeline.pipeline import process_forecast
+            return process_forecast(payload)
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return None
+
+
+def acquire(args):
+    import functools
+    import pandas as pd
+    from ingestion.geos_cf import fetch_forecast as nasa
+    # Reduce both retries and per-request timeouts. OPEN_RETRIES is a bound
+    # default argument, so changing the module constant alone would not work.
+    nasa.REQUEST_TIMEOUT_SECONDS = 30
+    nasa.remote_call = functools.partial(nasa.remote_call, retries=1)
+    area = nasa.point_area(args.lat, args.lon)
+    # Only AQC is needed. Do not probe unrelated meteorology/satellite endpoints.
+    _, times, lon_max = nasa.remote_call(nasa._read_inventory,
+        nasa.collection_url(nasa.AQC_COLLECTION), what="Discovering latest pollution forecast")
+    if lon_max > 180:
+        raise ValueError("Expected NASA -180..180 longitude convention")
+    init = nasa.infer_init_time(times)
+    age = int((pd.Timestamp.now(tz="UTC").tz_localize(None) - init) / pd.Timedelta(hours=1))
+    if age < 0 or age > 48:
+        raise ValueError("Latest NASA forecast is stale or future dated")
+    lead = slice(age, min(age + args.hours, nasa.MAX_FORECAST_HOURS))
+    specs = [s for s in nasa.VARIABLES if s.name in RAW_UNITS]
+    ds = nasa.fetch_collection(nasa.AQC_COLLECTION, nasa.run_id_for(init), specs, area.bbox, lead)
+    nasa.validate_forecast(ds, lead.stop - lead.start, specs)
+    # write_outputs includes lead_time encoding; the single-collection helper
+    # does not create this coordinate (build_forecast normally does).
+    ds = ds.transpose("time", "lat", "lon").assign_coords(
+        lead_time=("time", ds.time.values - init.to_datetime64()))
+    metadata = nasa.build_metadata(ds, init, area, lead, datetime.now(timezone.utc), None)
+    metadata["source_urls"] = [nasa.collection_url(nasa.AQC_COLLECTION, nasa.run_id_for(init))]
+    path, _ = nasa.write_outputs(ds, metadata, Path(args.raw_output))
+    return from_netcdf(path)
+
+
+def worker(args):
+    from app.services.live_forecast import publish_file, at_location, GEORGIA
+    if args.input:
+        payload = from_netcdf(args.input)
+    else:
+        payload = reusable(args) or acquire(args)
+    # Refuse stale/future-only inputs rather than publishing something unusable.
+    cell = payload["cells"][0]
+    at_location(payload, min(max(cell["lat"], GEORGIA[0]), GEORGIA[1]),
+                min(max(cell["lon"], GEORGIA[2]), GEORGIA[3]))
+    # File is also the next manual batch's acquisition cache. No cache is used
+    # by a deployed process unless explicitly configured as its forecast store.
+    if not args.input or not args.database:
+        publish_file(payload, args.output)
+    if args.database:
+        from db.repositories.live_forecast import publish
+        print(json.dumps({"published": publish(payload), "store": "database", "run_id": payload["run_id"]}))
+    else:
+        print(json.dumps({"published": True, "store": "file", "run_id": payload["run_id"],
+                          "cells": len(payload["cells"]), "hours": len(cell["hours"])}))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input", type=Path, help="Existing NASA NetCDF and metadata sidecar")
+    parser.add_argument("--lat", type=float, default=33.75)
+    parser.add_argument("--lon", type=float, default=-84.39)
+    parser.add_argument("--hours", type=int, choices=range(1, 49), default=24)
+    parser.add_argument("--deadline", type=int, choices=range(10, 241), default=180)
+    parser.add_argument("--raw-output", default="data/geos_cf/live")
+    parser.add_argument("--output", default="data/live-forecast.json")
+    parser.add_argument("--database", action="store_true")
+    parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
+    args = parser.parse_args()
+    if args.worker:
+        try:
+            worker(args)
+            return 0
+        except Exception as exc:
+            # Connection-library exceptions may contain host/user information;
+            # keep server credentials and connection strings out of batch logs.
+            print(f"Forecast publication failed ({type(exc).__name__}); check provider availability, input contract and configuration.", file=sys.stderr)
+            return 1
+    proc = subprocess.Popen([sys.executable, "-m", "scripts.publish_nasa_forecast", *sys.argv[1:], "--worker"],
+                            **({"start_new_session": True} if sys.platform != "win32" else {}))
+    try:
+        return proc.wait(timeout=args.deadline)
+    except (subprocess.TimeoutExpired, KeyboardInterrupt):
+        if sys.platform == "win32":
+            try:
+                result = subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"], check=False, capture_output=True, timeout=10)
+                if result.returncode:
+                    proc.kill()
+            except (OSError, subprocess.TimeoutExpired):
+                proc.kill()
+        else:
+            os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait(timeout=10)
+        print("NASA acquisition deadline reached; no continuing batch process", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

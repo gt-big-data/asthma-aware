@@ -11,7 +11,7 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def demo_mode(monkeypatch):
-    monkeypatch.setattr(app.state, "settings", Settings(dashboard_demo_enabled=True))
+    monkeypatch.setitem(app.state._state, "settings", Settings(dashboard_demo_enabled=True))
 
 
 def test_unconfigured_app_does_not_return_fabricated_risk():

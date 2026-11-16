@@ -1,0 +1,7 @@
+# Build context is ONLY backend/forecast_job, never the repository root.
+**
+!__init__.py
+!__main__.py
+!sample.py
+!Dockerfile
+!.dockerignore

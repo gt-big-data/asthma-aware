@@ -1,0 +1,56 @@
+"""Temporary inference implementations; acquisition/storage are not mocked.
+
+The downscaler uses the developed ResidualUNet's NCHW forward boundary and
+aligned fine-grid baseline. It implements zero residual, not trained inference.
+The current surface-pollution feature contract is NOT compatible with column
+NO2/O3 or temperature checkpoints without quantity-specific preprocessing.
+"""
+import numpy as np
+
+MODEL_VERSIONS = {
+    "pipeline_version": "nasa-forecast-v1",
+    "downscaling_model": "native-copy-v1",
+    "population_model": "equal-weight-v1",
+    "models_are_placeholders": True,
+}
+FEATURES = ("pm25", "no2", "o3")
+SCALES = np.array([50.0, 100.0, 100.0], dtype=np.float64)
+
+
+def finite_array(value, dimensions):
+    result = np.asarray(value, dtype=np.float64)
+    if result.ndim != dimensions or not result.size or not np.isfinite(result).all():
+        raise ValueError("Model inputs must be finite, nonempty arrays with the expected dimensions")
+    if result.size > 1_000_000:
+        raise ValueError("Model batch exceeds the bounded inference size")
+    return result
+
+
+class CopyDownscalingModel:
+    """Zero residual against an aligned baseline: same forward axis convention."""
+    version = MODEL_VERSIONS["downscaling_model"]
+
+    def forward(self, forecast, geography=None, baseline=None, time_features=None):
+        forecast = finite_array(forecast, 4)
+        if baseline is None:
+            raise ValueError("An aligned fine-grid baseline is required")
+        baseline = finite_array(baseline, 4)
+        if forecast.shape[:2] != baseline.shape[:2]:
+            raise ValueError("Batch/channel dimensions must match")
+        if geography is not None or time_features is not None:
+            raise ValueError("This placeholder does not consume geography or temporal predictors")
+        if (forecast < 0).any() or (baseline < 0).any():
+            raise ValueError("Surface pollutant concentrations cannot be negative")
+        return baseline.copy()
+
+
+class EqualWeightPopulationModel:
+    """N,3,H,W pollution in ug/m3, ppb, ppb → N,1,H,W development scores."""
+    version = MODEL_VERSIONS["population_model"]
+
+    def predict(self, downscaled):
+        values = finite_array(downscaled, 4)
+        if values.shape[1] != len(FEATURES) or (values < 0).any():
+            raise ValueError("Expected nonnegative PM2.5, NO2 and O3 in that channel order")
+        normalized = np.clip(values / SCALES[None, :, None, None], 0, 1)
+        return np.rint(normalized.mean(axis=1, keepdims=True) * 100).astype(np.int16)

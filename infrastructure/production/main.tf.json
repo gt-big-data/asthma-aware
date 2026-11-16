@@ -1,0 +1,757 @@
+{
+  "terraform": {
+    "required_version": ">= 1.6.0",
+    "required_providers": {
+      "google": {
+        "source": "hashicorp/google",
+        "version": "~> 7.0"
+      }
+    }
+  },
+  "provider": {
+    "google": {
+      "project": "${var.project_id}",
+      "region": "${var.region}"
+    }
+  },
+  "locals": {
+    "bucket_names": {
+      "raw": "${var.project_id}-${var.name_prefix}-raw",
+      "processed": "${var.project_id}-${var.name_prefix}-processed",
+      "delivery": "${var.project_id}-${var.name_prefix}-delivery"
+    },
+    "api_secret_env": "${merge({ DATABASE_URL = var.database_secret_id }, var.places_secret_id != \"\" ? { PLACES_API_KEY = var.places_secret_id } : {}, var.cdn_signing_secret_id != \"\" ? { FORECAST_CDN_SIGNING_KEY = var.cdn_signing_secret_id } : {})}",
+    "worker_secret_env": {
+      "WORKER_DATABASE_URL": "${var.worker_database_secret_id}"
+    },
+    "api_env": {
+      "SUPABASE_URL": "${var.supabase_url}",
+      "CORS_ORIGINS": "${var.cors_origins}",
+      "FORECAST_RAW_BUCKET": "${google_storage_bucket.forecast[\"raw\"].name}",
+      "FORECAST_PROCESSED_BUCKET": "${google_storage_bucket.forecast[\"processed\"].name}",
+      "FORECAST_DELIVERY_BASE_URL": "${var.enable_cdn ? \"https://${var.cdn_domain}\" : \"\"}",
+      "FORECAST_CDN_KEY_NAME": "${var.cdn_key_name}",
+      "CLOUD_PROJECT": "${var.project_id}",
+      "TASKS_LOCATION": "${var.region}",
+      "TASKS_QUEUE": "${google_cloud_tasks_queue.personalization.name}",
+      "PERSONALIZATION_WORKER_URL": "${var.worker_audience}",
+      "TASKS_SERVICE_ACCOUNT_EMAIL": "${google_service_account.runtime[\"dispatch\"].email}",
+      "TASKS_ENABLED": "${tostring(var.enable_tasks)}",
+      "PLACES_ENABLED": "${tostring(var.enable_places)}",
+      "DASHBOARD_DEMO_ENABLED": "false",
+      "FORECAST_PROVIDER": "disabled",
+      "LIVE_FORECAST_STORE": "disabled",
+      "FORECAST_DELIVERY_BUCKET": "${google_storage_bucket.forecast[\"delivery\"].name}"
+    },
+    "worker_env": {
+      "CLOUD_PROJECT": "${var.project_id}",
+      "WORKER_AUDIENCE": "${var.worker_audience}",
+      "WORKER_SERVICE_ACCOUNT_EMAIL": "${google_service_account.runtime[\"dispatch\"].email}"
+    }
+  },
+  "resource": {
+    "google_service_account": {
+      "runtime": {
+        "for_each": "${toset([\"api\", \"forecast\", \"worker\", \"scheduler\", \"dispatch\", \"processor\"])}",
+        "account_id": "${var.name_prefix}-${each.value}",
+        "display_name": "AsthmaAware ${each.value}",
+        "description": "AsthmaAware production contract v1. Created only by separately approved apply."
+      }
+    },
+    "google_storage_bucket": {
+      "forecast": {
+        "for_each": "${local.bucket_names}",
+        "name": "${each.value}",
+        "location": "${var.region}",
+        "uniform_bucket_level_access": true,
+        "public_access_prevention": "enforced",
+        "force_destroy": false,
+        "versioning": {
+          "enabled": true
+        },
+        "labels": {
+          "application": "asthma-aware",
+          "purpose": "${each.key}",
+          "managed_by": "terraform"
+        },
+        "lifecycle": {
+          "prevent_destroy": true
+        }
+      }
+    },
+    "google_storage_bucket_iam_member": {
+      "api_read": {
+        "for_each": "${toset([\"raw\", \"processed\", \"delivery\"])}",
+        "bucket": "${google_storage_bucket.forecast[each.key].name}",
+        "role": "roles/storage.objectViewer",
+        "member": "serviceAccount:${google_service_account.runtime[\"api\"].email}"
+      },
+      "forecast_create": {
+        "bucket": "${google_storage_bucket.forecast[\"raw\"].name}",
+        "role": "roles/storage.objectCreator",
+        "member": "serviceAccount:${google_service_account.runtime[\"forecast\"].email}"
+      },
+      "forecast_read": {
+        "bucket": "${google_storage_bucket.forecast[\"raw\"].name}",
+        "role": "roles/storage.objectViewer",
+        "member": "serviceAccount:${google_service_account.runtime[\"forecast\"].email}"
+      },
+      "forecast_pointer": {
+        "bucket": "${google_storage_bucket.forecast[\"raw\"].name}",
+        "role": "roles/storage.objectAdmin",
+        "member": "serviceAccount:${google_service_account.runtime[\"forecast\"].email}",
+        "condition": {
+          "title": "raw-current-pointer-only",
+          "expression": "resource.name == \"projects/_/buckets/${google_storage_bucket.forecast[\"raw\"].name}/objects/raw/current.json\""
+        }
+      },
+      "cdn_read": {
+        "count": "${var.enable_cdn ? 1 : 0}",
+        "bucket": "${google_storage_bucket.forecast[\"delivery\"].name}",
+        "role": "roles/storage.objectViewer",
+        "member": "serviceAccount:service-${var.project_number}@cloud-cdn-fill.iam.gserviceaccount.com",
+        "depends_on": [
+          "google_compute_backend_bucket_signed_url_key.forecast"
+        ]
+      },
+      "processor_raw": {
+        "bucket": "${google_storage_bucket.forecast[\"raw\"].name}",
+        "role": "roles/storage.objectViewer",
+        "member": "serviceAccount:${google_service_account.runtime[\"processor\"].email}"
+      },
+      "processor_processed_create": {
+        "bucket": "${google_storage_bucket.forecast[\"processed\"].name}",
+        "role": "roles/storage.objectCreator",
+        "member": "serviceAccount:${google_service_account.runtime[\"processor\"].email}"
+      },
+      "processor_processed_read": {
+        "bucket": "${google_storage_bucket.forecast[\"processed\"].name}",
+        "role": "roles/storage.objectViewer",
+        "member": "serviceAccount:${google_service_account.runtime[\"processor\"].email}"
+      },
+      "processor_delivery_create": {
+        "bucket": "${google_storage_bucket.forecast[\"delivery\"].name}",
+        "role": "roles/storage.objectCreator",
+        "member": "serviceAccount:${google_service_account.runtime[\"processor\"].email}"
+      },
+      "processor_delivery_read": {
+        "bucket": "${google_storage_bucket.forecast[\"delivery\"].name}",
+        "role": "roles/storage.objectViewer",
+        "member": "serviceAccount:${google_service_account.runtime[\"processor\"].email}"
+      },
+      "processor_pointer": {
+        "bucket": "${google_storage_bucket.forecast[\"processed\"].name}",
+        "role": "roles/storage.objectAdmin",
+        "member": "serviceAccount:${google_service_account.runtime[\"processor\"].email}",
+        "condition": {
+          "title": "processed-pointer-only",
+          "expression": "resource.name == \"projects/_/buckets/${google_storage_bucket.forecast[\"processed\"].name}/objects/processed/current.json\""
+        }
+      },
+      "processor_delivery_pointer": {
+        "bucket": "${google_storage_bucket.forecast[\"delivery\"].name}",
+        "role": "roles/storage.objectAdmin",
+        "member": "serviceAccount:${google_service_account.runtime[\"processor\"].email}",
+        "condition": {
+          "title": "delivery-current-pointer-only",
+          "expression": "resource.name == \"projects/_/buckets/${google_storage_bucket.forecast[\"delivery\"].name}/objects/processed/current.json\""
+        }
+      }
+    },
+    "google_cloud_run_v2_service": {
+      "api": {
+        "name": "${var.name_prefix}-api",
+        "location": "${var.region}",
+        "deletion_protection": true,
+        "ingress": "INGRESS_TRAFFIC_ALL",
+        "template": {
+          "service_account": "${google_service_account.runtime[\"api\"].email}",
+          "timeout": "60s",
+          "max_instance_request_concurrency": 8,
+          "scaling": {
+            "min_instance_count": 0,
+            "max_instance_count": 1
+          },
+          "containers": {
+            "image": "${var.api_image}",
+            "ports": {
+              "container_port": 8080
+            },
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "cpu_idle": true,
+              "startup_cpu_boost": false
+            },
+            "startup_probe": {
+              "http_get": {
+                "path": "/health",
+                "port": 8080
+              },
+              "initial_delay_seconds": 0,
+              "timeout_seconds": 5,
+              "period_seconds": 10,
+              "failure_threshold": 12
+            },
+            "dynamic": {
+              "env": {
+                "for_each": "${local.api_secret_env}",
+                "content": {
+                  "name": "${env.key}",
+                  "value_source": {
+                    "secret_key_ref": {
+                      "secret": "${env.value}",
+                      "version": "latest"
+                    }
+                  }
+                }
+              }
+            },
+            "env": [
+              {
+                "name": "SUPABASE_URL",
+                "value": "${local.api_env.SUPABASE_URL}"
+              },
+              {
+                "name": "CORS_ORIGINS",
+                "value": "${local.api_env.CORS_ORIGINS}"
+              },
+              {
+                "name": "FORECAST_RAW_BUCKET",
+                "value": "${local.api_env.FORECAST_RAW_BUCKET}"
+              },
+              {
+                "name": "FORECAST_PROCESSED_BUCKET",
+                "value": "${local.api_env.FORECAST_PROCESSED_BUCKET}"
+              },
+              {
+                "name": "FORECAST_DELIVERY_BASE_URL",
+                "value": "${local.api_env.FORECAST_DELIVERY_BASE_URL}"
+              },
+              {
+                "name": "FORECAST_CDN_KEY_NAME",
+                "value": "${local.api_env.FORECAST_CDN_KEY_NAME}"
+              },
+              {
+                "name": "CLOUD_PROJECT",
+                "value": "${local.api_env.CLOUD_PROJECT}"
+              },
+              {
+                "name": "TASKS_LOCATION",
+                "value": "${local.api_env.TASKS_LOCATION}"
+              },
+              {
+                "name": "TASKS_QUEUE",
+                "value": "${local.api_env.TASKS_QUEUE}"
+              },
+              {
+                "name": "PERSONALIZATION_WORKER_URL",
+                "value": "${local.api_env.PERSONALIZATION_WORKER_URL}"
+              },
+              {
+                "name": "TASKS_SERVICE_ACCOUNT_EMAIL",
+                "value": "${local.api_env.TASKS_SERVICE_ACCOUNT_EMAIL}"
+              },
+              {
+                "name": "TASKS_ENABLED",
+                "value": "${local.api_env.TASKS_ENABLED}"
+              },
+              {
+                "name": "PLACES_ENABLED",
+                "value": "${local.api_env.PLACES_ENABLED}"
+              },
+              {
+                "name": "DASHBOARD_DEMO_ENABLED",
+                "value": "${local.api_env.DASHBOARD_DEMO_ENABLED}"
+              },
+              {
+                "name": "FORECAST_PROVIDER",
+                "value": "${local.api_env.FORECAST_PROVIDER}"
+              },
+              {
+                "name": "LIVE_FORECAST_STORE",
+                "value": "${local.api_env.LIVE_FORECAST_STORE}"
+              },
+              {
+                "name": "FORECAST_DELIVERY_BUCKET",
+                "value": "${local.api_env.FORECAST_DELIVERY_BUCKET}"
+              }
+            ]
+          }
+        },
+        "lifecycle": {
+          "precondition": [
+            {
+              "condition": "${!var.enable_tasks || var.worker_audience != \"\"}",
+              "error_message": "Tasks activation requires the exact deployed worker URL."
+            },
+            {
+              "condition": "${!var.enable_places || var.places_secret_id != \"\"}",
+              "error_message": "Places activation requires an existing restricted-key secret."
+            }
+          ]
+        },
+        "depends_on": [
+          "google_secret_manager_secret_iam_member.api",
+          "google_storage_bucket_iam_member.api_read"
+        ]
+      },
+      "worker": {
+        "name": "${var.name_prefix}-worker",
+        "location": "${var.region}",
+        "deletion_protection": true,
+        "ingress": "INGRESS_TRAFFIC_ALL",
+        "template": {
+          "service_account": "${google_service_account.runtime[\"worker\"].email}",
+          "timeout": "60s",
+          "max_instance_request_concurrency": 1,
+          "scaling": {
+            "min_instance_count": 0,
+            "max_instance_count": 1
+          },
+          "containers": {
+            "image": "${var.worker_image}",
+            "ports": {
+              "container_port": 8080
+            },
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "cpu_idle": true,
+              "startup_cpu_boost": false
+            },
+            "startup_probe": {
+              "http_get": {
+                "path": "/health",
+                "port": 8080
+              },
+              "initial_delay_seconds": 0,
+              "timeout_seconds": 5,
+              "period_seconds": 10,
+              "failure_threshold": 12
+            },
+            "dynamic": {
+              "env": {
+                "for_each": "${local.worker_secret_env}",
+                "content": {
+                  "name": "${env.key}",
+                  "value_source": {
+                    "secret_key_ref": {
+                      "secret": "${env.value}",
+                      "version": "latest"
+                    }
+                  }
+                }
+              }
+            },
+            "env": [
+              {
+                "name": "CLOUD_PROJECT",
+                "value": "${local.worker_env.CLOUD_PROJECT}"
+              },
+              {
+                "name": "WORKER_AUDIENCE",
+                "value": "${local.worker_env.WORKER_AUDIENCE}"
+              },
+              {
+                "name": "WORKER_SERVICE_ACCOUNT_EMAIL",
+                "value": "${local.worker_env.WORKER_SERVICE_ACCOUNT_EMAIL}"
+              }
+            ]
+          }
+        },
+        "lifecycle": {
+          "precondition": [
+            {
+              "condition": "${!var.enable_tasks || var.worker_audience != \"\"}",
+              "error_message": "Tasks activation requires the exact deployed worker URL."
+            },
+            {
+              "condition": "${!var.enable_places || var.places_secret_id != \"\"}",
+              "error_message": "Places activation requires an existing restricted-key secret."
+            }
+          ]
+        },
+        "depends_on": [
+          "google_secret_manager_secret_iam_member.worker"
+        ]
+      }
+    },
+    "google_cloud_run_v2_service_iam_member": {
+      "api_public": {
+        "count": "${var.api_allow_unauthenticated ? 1 : 0}",
+        "project": "${var.project_id}",
+        "location": "${var.region}",
+        "name": "${google_cloud_run_v2_service.api.name}",
+        "role": "roles/run.invoker",
+        "member": "allUsers"
+      },
+      "worker_dispatch": {
+        "project": "${var.project_id}",
+        "location": "${var.region}",
+        "name": "${google_cloud_run_v2_service.worker.name}",
+        "role": "roles/run.invoker",
+        "member": "serviceAccount:${google_service_account.runtime[\"dispatch\"].email}"
+      }
+    },
+    "google_secret_manager_secret_iam_member": {
+      "api": {
+        "for_each": "${toset(values(local.api_secret_env))}",
+        "secret_id": "${each.value}",
+        "role": "roles/secretmanager.secretAccessor",
+        "member": "serviceAccount:${google_service_account.runtime[\"api\"].email}"
+      },
+      "worker": {
+        "secret_id": "${var.worker_database_secret_id}",
+        "role": "roles/secretmanager.secretAccessor",
+        "member": "serviceAccount:${google_service_account.runtime[\"worker\"].email}"
+      }
+    },
+    "google_cloud_tasks_queue": {
+      "personalization": {
+        "name": "${var.name_prefix}-personalization",
+        "location": "${var.region}",
+        "rate_limits": {
+          "max_dispatches_per_second": 1,
+          "max_concurrent_dispatches": 1
+        },
+        "retry_config": {
+          "max_attempts": 3,
+          "max_retry_duration": "600s",
+          "min_backoff": "10s",
+          "max_backoff": "60s",
+          "max_doublings": 3
+        },
+        "stackdriver_logging_config": {
+          "sampling_ratio": 1
+        }
+      }
+    },
+    "google_cloud_tasks_queue_iam_member": {
+      "api_enqueue": {
+        "project": "${var.project_id}",
+        "location": "${var.region}",
+        "name": "${google_cloud_tasks_queue.personalization.name}",
+        "role": "roles/cloudtasks.enqueuer",
+        "member": "serviceAccount:${google_service_account.runtime[\"api\"].email}"
+      }
+    },
+    "google_service_account_iam_member": {
+      "api_act_as_dispatch": {
+        "service_account_id": "${google_service_account.runtime[\"dispatch\"].name}",
+        "role": "roles/iam.serviceAccountUser",
+        "member": "serviceAccount:${google_service_account.runtime[\"api\"].email}"
+      }
+    },
+    "google_cloud_run_v2_job": {
+      "forecast": {
+        "name": "${var.name_prefix}-forecast",
+        "location": "${var.region}",
+        "deletion_protection": true,
+        "template": {
+          "task_count": 1,
+          "parallelism": 1,
+          "template": {
+            "service_account": "${google_service_account.runtime[\"forecast\"].email}",
+            "timeout": "300s",
+            "max_retries": 0,
+            "containers": {
+              "image": "${var.forecast_image}",
+              "args": [
+                "--output-dir",
+                "/tmp/nasa",
+                "--gcs-bucket",
+                "${google_storage_bucket.forecast[\"raw\"].name}",
+                "--hours",
+                "48",
+                "--bbox",
+                "33.45,34.05,-84.80,-83.95",
+                "--deadline",
+                "240"
+              ],
+              "resources": {
+                "limits": {
+                  "cpu": "1",
+                  "memory": "512Mi"
+                }
+              },
+              "env": [
+                {
+                  "name": "NASA_RAW_BUCKET",
+                  "value": "${google_storage_bucket.forecast[\"raw\"].name}"
+                },
+                {
+                  "name": "NASA_OUTPUT_DIR",
+                  "value": "/tmp/nasa"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "google_cloud_run_v2_job_iam_member": {
+      "scheduler_invoke": {
+        "project": "${var.project_id}",
+        "location": "${var.region}",
+        "name": "${google_cloud_run_v2_job.forecast.name}",
+        "role": "roles/run.invoker",
+        "member": "serviceAccount:${google_service_account.runtime[\"scheduler\"].email}"
+      }
+    },
+    "google_cloud_scheduler_job": {
+      "forecast": {
+        "name": "${var.name_prefix}-forecast-daily",
+        "region": "${var.region}",
+        "description": "Must remain paused until an explicitly approved manual execution and freshness verification.",
+        "schedule": "${var.scheduler_cron}",
+        "time_zone": "Etc/UTC",
+        "paused": true,
+        "attempt_deadline": "60s",
+        "retry_config": {
+          "retry_count": 0,
+          "max_retry_duration": "0s"
+        },
+        "http_target": {
+          "uri": "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.forecast.name}:run",
+          "http_method": "POST",
+          "body": "${base64encode(\"{}\")}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "oauth_token": {
+            "service_account_email": "${google_service_account.runtime[\"scheduler\"].email}",
+            "scope": "https://www.googleapis.com/auth/cloud-platform"
+          }
+        },
+        "count": "${var.create_scheduler ? 1 : 0}"
+      }
+    },
+    "google_compute_backend_bucket": {
+      "forecast": {
+        "count": "${var.enable_cdn ? 1 : 0}",
+        "name": "${var.name_prefix}-forecast-cdn",
+        "bucket_name": "${google_storage_bucket.forecast[\"delivery\"].name}",
+        "enable_cdn": true,
+        "cdn_policy": {
+          "cache_mode": "USE_ORIGIN_HEADERS",
+          "signed_url_cache_max_age_sec": 300
+        },
+        "lifecycle": {
+          "precondition": [
+            {
+              "condition": "${var.cdn_domain != \"\" && var.cdn_signing_key != null && var.cdn_signing_secret_id != \"\"}",
+              "error_message": "CDN requires DNS domain and matching backend/API signing-key configuration."
+            }
+          ]
+        }
+      }
+    },
+    "google_compute_backend_bucket_signed_url_key": {
+      "forecast": {
+        "count": "${var.enable_cdn ? 1 : 0}",
+        "name": "${var.cdn_key_name}",
+        "key_value": "${var.cdn_signing_key}",
+        "backend_bucket": "${google_compute_backend_bucket.forecast[0].name}"
+      }
+    },
+    "google_compute_global_address": {
+      "cdn": {
+        "count": "${var.enable_cdn ? 1 : 0}",
+        "name": "${var.name_prefix}-cdn-ip"
+      }
+    },
+    "google_compute_managed_ssl_certificate": {
+      "cdn": {
+        "count": "${var.enable_cdn ? 1 : 0}",
+        "name": "${var.name_prefix}-cdn-cert",
+        "managed": {
+          "domains": [
+            "${var.cdn_domain}"
+          ]
+        }
+      }
+    },
+    "google_compute_url_map": {
+      "cdn": {
+        "count": "${var.enable_cdn ? 1 : 0}",
+        "name": "${var.name_prefix}-cdn-map",
+        "default_service": "${google_compute_backend_bucket.forecast[0].id}"
+      }
+    },
+    "google_compute_target_https_proxy": {
+      "cdn": {
+        "count": "${var.enable_cdn ? 1 : 0}",
+        "name": "${var.name_prefix}-cdn-proxy",
+        "url_map": "${google_compute_url_map.cdn[0].id}",
+        "ssl_certificates": [
+          "${google_compute_managed_ssl_certificate.cdn[0].id}"
+        ]
+      }
+    },
+    "google_compute_global_forwarding_rule": {
+      "cdn": {
+        "count": "${var.enable_cdn ? 1 : 0}",
+        "name": "${var.name_prefix}-cdn-https",
+        "ip_address": "${google_compute_global_address.cdn[0].address}",
+        "target": "${google_compute_target_https_proxy.cdn[0].id}",
+        "port_range": "443",
+        "load_balancing_scheme": "EXTERNAL"
+      }
+    }
+  },
+  "output": {
+    "api_uri": {
+      "value": "${google_cloud_run_v2_service.api.uri}"
+    },
+    "worker_uri": {
+      "value": "${google_cloud_run_v2_service.worker.uri}"
+    },
+    "raw_bucket": {
+      "value": "${google_storage_bucket.forecast[\"raw\"].name}"
+    },
+    "processed_bucket": {
+      "value": "${google_storage_bucket.forecast[\"processed\"].name}"
+    },
+    "delivery_bucket": {
+      "value": "${google_storage_bucket.forecast[\"delivery\"].name}"
+    },
+    "scheduler_paused": {
+      "value": true
+    },
+    "cdn_ip": {
+      "value": "${var.enable_cdn ? google_compute_global_address.cdn[0].address : null}"
+    },
+    "scheduler_created": {
+      "value": "${var.create_scheduler}"
+    }
+  },
+  "variable": {
+    "project_id": {
+      "type": "string",
+      "description": "Explicit existing Google Cloud project ID.",
+      "validation": {
+        "condition": "${can(regex(\"^[a-z][a-z0-9-]{4,28}[a-z0-9]$\", var.project_id))}",
+        "error_message": "Set an explicit real Google Cloud project ID."
+      }
+    },
+    "project_number": {
+      "type": "string",
+      "description": "Existing numeric project number; required for CDN cache-fill identity."
+    },
+    "region": {
+      "type": "string",
+      "default": "us-east1"
+    },
+    "name_prefix": {
+      "type": "string",
+      "default": "asthma-prod",
+      "validation": {
+        "condition": "${can(regex(\"^[a-z][a-z0-9-]{4,19}$\", var.name_prefix))}",
+        "error_message": "Use 5–20 lowercase letters, digits and hyphens."
+      }
+    },
+    "api_image": {
+      "type": "string",
+      "description": "Previously built API image pinned by digest.",
+      "validation": {
+        "condition": "${can(regex(\"@sha256:[a-f0-9]{64}$\", var.api_image))}",
+        "error_message": "Use an immutable image digest."
+      }
+    },
+    "forecast_image": {
+      "type": "string",
+      "validation": {
+        "condition": "${can(regex(\"@sha256:[a-f0-9]{64}$\", var.forecast_image))}",
+        "error_message": "Use an immutable image digest."
+      }
+    },
+    "worker_image": {
+      "type": "string",
+      "validation": {
+        "condition": "${can(regex(\"@sha256:[a-f0-9]{64}$\", var.worker_image))}",
+        "error_message": "Use an immutable image digest."
+      }
+    },
+    "supabase_url": {
+      "type": "string",
+      "validation": {
+        "condition": "${can(regex(\"^https://[a-zA-Z0-9.-]+$\", var.supabase_url))}",
+        "error_message": "Use an HTTPS origin without credentials/path/query."
+      }
+    },
+    "database_secret_id": {
+      "type": "string",
+      "description": "Existing Secret Manager secret ID containing restricted API DATABASE_URL."
+    },
+    "worker_database_secret_id": {
+      "type": "string",
+      "description": "Existing Secret Manager secret ID containing restricted worker WORKER_DATABASE_URL."
+    },
+    "cors_origins": {
+      "type": "string",
+      "default": "http://localhost:8081"
+    },
+    "api_allow_unauthenticated": {
+      "type": "bool",
+      "default": false,
+      "description": "Separate explicit decision: public network ingress with application JWT auth. Defaults private IAM."
+    },
+    "enable_tasks": {
+      "type": "bool",
+      "default": false,
+      "description": "Enable enqueueing only after worker URL, database migration and identity smoke tests."
+    },
+    "worker_audience": {
+      "type": "string",
+      "default": "",
+      "description": "Exact deployed worker origin, supplied on reviewed second apply; empty fails closed."
+    },
+    "places_secret_id": {
+      "type": "string",
+      "default": "",
+      "description": "Optional existing server API-key secret. Places remains disabled by default."
+    },
+    "enable_places": {
+      "type": "bool",
+      "default": false
+    },
+    "enable_cdn": {
+      "type": "bool",
+      "default": false,
+      "description": "Optional billable global HTTPS LB/CDN. Requires explicit approval and domain/key setup."
+    },
+    "cdn_domain": {
+      "type": "string",
+      "default": ""
+    },
+    "cdn_key_name": {
+      "type": "string",
+      "default": "forecast-v1"
+    },
+    "cdn_signing_secret_id": {
+      "type": "string",
+      "default": "",
+      "description": "Existing Secret Manager key used by API; same 128-bit base64url key configured separately on backend bucket."
+    },
+    "cdn_signing_key": {
+      "type": "string",
+      "default": null,
+      "sensitive": true,
+      "description": "Base64url 128-bit signing key for backend bucket. Terraform state contains it; use restricted encrypted remote state and never tfvars in Git."
+    },
+    "scheduler_cron": {
+      "type": "string",
+      "default": "0 11 * * *"
+    },
+    "create_scheduler": {
+      "type": "bool",
+      "default": false,
+      "description": "Create only after explicit approval; provider may create then pause. Never enabled by this module."
+    }
+  }
+}

@@ -88,3 +88,11 @@ def test_v1_never_accepts_demo_identity_or_unconfigured_auth():
         assert client.get("/v1/users/me").status_code == 401
         response = client.get("/v1/users/me", headers={"Authorization": "Bearer any-token"})
         assert response.status_code == 503
+
+
+@pytest.mark.parametrize("origin", ["https://user:password@example.com", "https://example.com/path", "https://example.com?key=secret"])
+def test_authentication_rejects_non_origin_configuration_before_key_fetch(monkeypatch, origin):
+    monkeypatch.setattr(auth, "get_jwks_client", lambda _: pytest.fail("invalid configuration reached network"))
+    with pytest.raises(HTTPException) as failure:
+        auth.verify_access_token("unused-token", origin)
+    assert failure.value.status_code == 503

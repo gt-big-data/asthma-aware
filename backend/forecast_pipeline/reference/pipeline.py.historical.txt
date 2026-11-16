@@ -1,0 +1,38 @@
+"""Run model placeholders on real native forecasts before publication.
+
+Only one native cell's horizon is materialized at a time. Lossless native-copy
+outputs are compacted for storage; spatially varying trained output must use a
+different spatial artifact adapter, never silently collapse to one native value.
+"""
+from copy import deepcopy
+import numpy as np
+
+from forecast_pipeline.models import CopyDownscalingModel, EqualWeightPopulationModel, FEATURES, MODEL_VERSIONS
+
+
+def process_forecast(payload, *, downscaler=None, population_model=None):
+    from app.services.live_forecast import native_grid, validate
+    validate(payload)
+    downscaler = downscaler or CopyDownscalingModel()
+    population_model = population_model or EqualWeightPopulationModel()
+    result = deepcopy(payload)
+    result["processing"] = dict(MODEL_VERSIONS)
+    for cell in result["cells"]:
+        grid = native_grid(cell["lat"], cell["lon"])
+        values = np.array([[h["values"][key] for key in FEATURES] for h in cell["hours"]], dtype=np.float64)
+        coarse = values[:, :, None, None]
+        baseline = np.broadcast_to(coarse, (len(values), len(FEATURES), grid["rows"], grid["cols"]))
+        fine = np.asarray(downscaler.forward(coarse, baseline=baseline))
+        if fine.shape != baseline.shape or not np.isfinite(fine).all() or not np.equal(fine, baseline).all():
+            raise ValueError("Native-copy storage cannot compact spatially varying model output")
+        scores = np.asarray(population_model.predict(fine))
+        expected = (len(values), 1, grid["rows"], grid["cols"])
+        if scores.shape != expected or not np.isfinite(scores).all() or (scores < 0).any() or (scores > 100).any():
+            raise ValueError("Invalid population model output")
+        if not np.equal(scores, scores[:, :, :1, :1]).all():
+            raise ValueError("Native-copy storage cannot compact spatially varying risk scores")
+        cell["grid"] = grid
+        for hour, score in zip(cell["hours"], scores[:, 0, 0, 0]):
+            hour["score"] = int(score)
+    validate(result)
+    return result

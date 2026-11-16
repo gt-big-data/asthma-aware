@@ -53,3 +53,19 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# Live forecast integration
+
+Dashboard and Map use the authenticated `/v1/forecast` API and share a forecast
+request per selected point/account. They display only published NASA values and
+clearly identify the temporary environmental score. They do not use the old
+hardcoded risk scores or generated statewide heatmap. The map currently displays
+the selected native NASA cell subdivided into approximately 1 km pixels.
+
+Configure `.env.example` values in a local environment file, run the backend with
+its live store configured, and sign in. Without credentials, the app shows that
+sign-in is unavailable. Failed/unsupported forecasts show a retry message.
+
+`npm run typecheck`, `npm run lint`, `npm test`, and `npm run build:web` are local
+checks. Web export uses SPA mode; host application routes with an `index.html`
+fallback. Static rendering requires aligning the Expo/router dependency versions.
+See [forecast setup and verification limits](../backend/docs/live-forecast.md).

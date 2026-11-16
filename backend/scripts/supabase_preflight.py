@@ -19,7 +19,7 @@ from app.auth import ALGORITHMS
 from app.config import Settings
 from db import config
 
-HEAD = "0002_application"
+HEAD = "0004_personalization_tasks"
 TABLES = {"profiles", "symptom_logs", "symptom_log_revisions", "exposure_snapshots", "personalization_revisions", "outbox_events"}
 
 
@@ -58,17 +58,17 @@ def check_database(connection, mode: str) -> dict:
     tables = set(connection.scalars(text("SELECT tablename FROM pg_tables WHERE schemaname = 'app'")))
     result = {"database_role": identity["role"], "tls": True, "migration_revisions": revisions, "application_tables": sorted(tables)}
     if mode == "operator":
-        if revisions not in ([], ["0001_initial_schema"], [HEAD]):
+        if revisions not in ([], ["0001_initial_schema"], ["0002_application"], ["0003_live_forecast"], [HEAD]):
             raise ValueError("Unexpected migration revision; review the database history before applying migrations")
-        if tables and revisions != [HEAD]:
+        if tables and revisions not in (["0002_application"], ["0003_live_forecast"], [HEAD]):
             raise ValueError("Existing app tables do not match the recorded revision; review before migrating")
         if revisions != [HEAD] and not (identity["can_create_roles"] or identity["superuser"]):
-            raise ValueError("Migration operator needs role-creation permission for migration 0002")
+            raise ValueError("Migration operator needs role-creation permission for application/forecast migrations")
         result["next_step"] = "Application migration is already applied" if revisions == [HEAD] else "Review generated SQL, then apply Alembic migrations"
     else:
         if identity["superuser"] or identity["bypass_rls"] or identity["can_create_roles"]:
             raise ValueError("Use a restricted runtime login, not operator/administrator credentials")
-        if tables != TABLES:
+        if tables not in (TABLES, TABLES | {"personalization_tasks"}):
             raise ValueError("Expected application migration/tables are not present")
         member = connection.scalar(text("SELECT pg_has_role(current_user, 'asthmaaware_api', 'MEMBER')"))
         if not member:
@@ -84,7 +84,7 @@ def check_database(connection, mode: str) -> dict:
             SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE n.nspname = 'app' AND c.relkind = 'r' AND c.relrowsecurity AND c.relforcerowsecurity
         """))
-        if protected != len(TABLES):
+        if protected != len(tables):
             raise ValueError("All application tables must have enabled and forced RLS")
         result["next_step"] = "Ready for a test-user API smoke test"
     return result

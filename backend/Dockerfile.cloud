@@ -1,0 +1,12 @@
+FROM python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /srv
+COPY requirements/cloud.lock /srv/requirements/cloud.lock
+RUN pip install --no-cache-dir -r requirements/cloud.lock
+ARG INFRA_BUILD_LABEL=local
+ENV INFRA_BUILD_LABEL=$INFRA_BUILD_LABEL
+COPY --chown=10001:10001 app /srv/app
+COPY --chown=10001:10001 forecast_job /srv/forecast_job
+USER 10001:10001
+# Cloud Run supplies PORT. exec ensures signals reach the server.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

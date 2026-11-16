@@ -1,0 +1,27 @@
+# Allowlist: credentials, local environments, data, tests and legacy never enter builds.
+**
+!app/
+!app/**
+!forecast_job/
+!forecast_job/**
+!forecast_pipeline/
+!forecast_pipeline/**
+!db/
+!db/**
+!ingestion/
+!ingestion/**
+!scripts/
+!scripts/__init__.py
+!scripts/publish_nasa_forecast.py
+!scripts/publish_processed_forecast.py
+!requirements/
+!requirements/**
+!Dockerfile.cloud
+!Dockerfile.api
+!Dockerfile.forecast
+!Dockerfile.worker
+forecast_pipeline/reference/**
+**/.env
+**/.env.*
+**/__pycache__/
+**/*.pyc

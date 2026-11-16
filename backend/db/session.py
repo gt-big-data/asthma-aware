@@ -39,6 +39,7 @@ def get_engine() -> Engine:
     if _engine is None:
         _engine = create_engine(
             config.get_database_url(),
+            connect_args={"connect_timeout": 5, "options": "-c statement_timeout=10000 -c lock_timeout=5000"},
             echo=config.SQL_ECHO,
             pool_size=config.POOL_SIZE,
             max_overflow=config.MAX_OVERFLOW,

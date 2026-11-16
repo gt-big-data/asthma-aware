@@ -1,0 +1,8 @@
+# Reviewed compatible ranges; generate a platform-specific lock before release.
+-r api.txt
+-r database.txt
+google-cloud-storage>=3.0,<4
+google-cloud-tasks>=2.18,<3
+google-auth>=2.35,<3
+requests>=2.32,<3
+httpx>=0.27,<1

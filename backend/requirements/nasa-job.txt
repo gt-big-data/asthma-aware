@@ -1,0 +1,6 @@
+# Dedicated ingestion image; no ML framework or model weights.
+numpy>=1.26,<3
+pandas>=2.2,<4
+xarray>=2024.9
+netCDF4>=1.7,<2
+google-cloud-storage>=3.0,<4

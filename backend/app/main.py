@@ -6,11 +6,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.dashboard import router as dashboard_router
 from app.api.health import router as health_router
 from app.api.application import router as application_router
+from app.api.forecast_diagnostic import router as forecast_diagnostic_router
 from app.config import Settings
+from app.api.live_forecast import router as live_forecast_router
+from app.services.live_forecast import Provider
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     application = FastAPI(title="AsthmaAware API", version="0.1.0")
     application.state.settings = settings or Settings.from_env()
+    application.state.live_forecast_provider = Provider(application.state.settings)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=list(application.state.settings.cors_origins),
@@ -20,7 +24,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.include_router(dashboard_router)
     application.include_router(health_router)
+    application.include_router(live_forecast_router)
     application.include_router(application_router)
+    if application.state.settings.forecast_provider != 'disabled':
+        application.include_router(forecast_diagnostic_router)
     return application
 
 

@@ -1,9 +1,30 @@
 # AsthmaAware backend
 
+**Current cloud entrypoint: `app.cloud:app`.** This separates real NASA raw
+ingestion, validated externally supplied ML output, forecast metadata/CDN delivery,
+private symptom logging, Tasks/worker infrastructure and opt-in Places. It does not
+execute models or compute placeholder scores. See
+[current API contracts](../BACKEND_API_DOCUMENTATION.md) and
+[deployment preparation](../GOOGLE_CLOUD_DEPLOYMENT.md).
+Older prototype/sample instructions below remain historical, not cloud defaults.
+
 One FastAPI application, independent data collectors, an environmental database
 layer, and a private application schema. Authenticated V1 profile and symptom-log
-endpoints are implemented. Live forecast providers, model fitting, and cloud
-deployment remain separate work.
+endpoints and the local live-forecast adapter are implemented. Live provider/DB
+acceptance, model fitting, and product deployment remain separate work.
+For the isolated, sample-only Cloud Run Job and Cloud Scheduler milestone, see
+[forecast job deployment and verification](../infrastructure/forecast-job/README.md).
+This job does not publish forecasts or change the API's data providers.
+
+For the opt-in GCS fixture publisher, private API diagnostic, deployment stages,
+and recovery checks, see the [development cloud runbook](../infrastructure/development/README.md).
+The [verification report](../infrastructure/development/VERIFICATION.md) separates
+local results from actual cloud acceptance checks and any remaining limitations.
+
+For manually acquired NASA forecasts, the development scoring placeholder,
+Supabase publication, and the authenticated frontend, see
+[real forecast integration](docs/live-forecast.md). The live path never falls
+back to synthetic values when acquisition or storage fails.
 
 ## Layout
 
