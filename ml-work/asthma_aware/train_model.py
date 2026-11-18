@@ -18,7 +18,7 @@ def initialize_training(
     configs = {
         source: SourceModelConfig(
             forecast_channels=len(loader.dataset.channels),
-            target_names=(TARGETS[source],),
+            target_names=(loader.dataset.report["target"],),
             geography_channels=0,
             time_channels=4,
             **architecture
@@ -184,7 +184,7 @@ def train(epochs=20, sources=("temperature", "dewpoint"), learning_rate=1e-3):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train independent downscaling models.")
     parser.add_argument("--epochs", type=int, default=20)
-    parser.add_argument("--sources", nargs="+", choices=tuple(TARGETS), default=["temperature", "dewpoint"])
+    parser.add_argument("--sources", nargs="+", default=["temperature", "dewpoint"])
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     args = parser.parse_args()
     train(epochs=args.epochs, sources=args.sources, learning_rate=args.learning_rate)

@@ -99,6 +99,7 @@ class PipelineTests(unittest.TestCase):
                         p + "_longitude": -83.75,
                     }
                 )
+            row.update(o3_ppb=30.0+i, o3_valid=True, o3_latitude=33.75, o3_longitude=-83.75)
             rows.append(row)
         self.station = self.root / "stations.parquet"
         pd.DataFrame(rows).to_parquet(self.station)
@@ -112,13 +113,7 @@ class PipelineTests(unittest.TestCase):
                     "label_units": "umol/m2",
                     "coarse_shape": [4, 4],
                 },
-                "o3": {
-                    "labels": str(self.labels),
-                    "observation_mask": str(self.mask),
-                    "label_units": "mol/m2",
-                    "baseline_quantity": "total_o3_column",
-                    "coarse_shape": [4, 4],
-                },
+                "o3": {"labels": str(self.station), "label_units": "ppb", "coarse_shape": [4, 4]},
                 "temperature": {"labels": str(self.station), "coarse_shape": [4, 4]},
                 "dewpoint": {"labels": str(self.station), "coarse_shape": [4, 4]},
             },
@@ -161,10 +156,18 @@ class PipelineTests(unittest.TestCase):
             bundle["indexes"]["no2"][0]["target_time"], "2023-01-01T12:30:00+00:00"
         )
         self.assertEqual(len(bundle["indexes"]["temperature"][0]["geos"]), 2)
+        record = bundle["indexes"]["o3"][0]
+        self.assertEqual(record["target_time"], "2023-01-01T12:00:00+00:00")
+        self.assertEqual(record["geos"][0]["time"], "2023-01-01T12:30:00+00:00")
+        self.assertEqual(len(record["geos"]), 1)
+        ds = SourceDataset(bundle, "o3", "train")
+        self.assertAlmostEqual(float(ds[0]["baseline"].mean()), 30., places=4)
+        self.assertEqual(tuple(ds[0]["targets"].shape), (1, 1))
+        ds.close()
 
     def test_masks_units_and_independent_sources(self):
         self.cfg["sources"]["no2"].pop("observation_mask")
-        self.cfg["sources"]["o3"]["baseline_variable"] = "o3"
+        self.cfg["sources"]["o3"]["baseline_variable"] = "totalcol_o3"
         b = build_catalog(self.cfg)
         self.assertFalse(b["reports"]["no2"]["ready"])
         self.assertFalse(b["reports"]["o3"]["ready"])
