@@ -1,9 +1,16 @@
 """HTTP interface for GET /dashboard. All logic lives in dashboard_service."""
 
+from datetime import datetime
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
+from app.dependencies import utc_now, get_user_session
+from app.auth import get_current_user_id as verified_user
+from sqlalchemy.orm import Session
+from uuid import UUID
 from app.models.dashboard_models import DashboardResponse
-from app.services import dashboard_service
+from app.services import dashboard_service, geos_dashboard
 
 router = APIRouter(tags=["Dashboard"])
 
@@ -33,3 +40,77 @@ def get_dashboard(
         return dashboard_service.get_dashboard(lat, lon, user_id)
     except dashboard_service.LocationNotSupportedError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.get("/v1/dashboard/risk", response_model=geos_dashboard.DashboardForecast)
+def get_dashboard_risk(
+    request: Request,
+    response: Response,
+    lat: float = Query(ge=-90, le=90),
+    lon: float = Query(ge=-180, le=180),
+    now: datetime = Depends(utc_now),
+):
+    """General population scores use public forecast data and require no user record."""
+    settings = request.app.state.settings
+    try:
+        if settings.forecast_gcs_bucket:
+            from app.services.gcs_forecast import load_gcs_run
+
+            run = load_gcs_run(settings.forecast_gcs_bucket)
+        else:
+            run = geos_dashboard.load_run(Path(settings.dashboard_forecast_path))
+        from app.services.risk_dashboard import resolve_artifact, risk_dashboard
+
+        artifact = resolve_artifact(settings, run)
+        result = risk_dashboard(artifact, lat, lon, now) if artifact else geos_dashboard.dashboard_forecast(run, lat, lon, now)
+    except geos_dashboard.OutsideForecastGrid:
+        raise HTTPException(404, "Location is outside the forecast grid") from None
+    except (geos_dashboard.ForecastUnavailable, OSError, ValueError):
+        raise HTTPException(503, "No usable GEOS-CF forecast is available") from None
+
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-AsthmaAware-Data-Source"] = "geos-cf"
+    return result
+
+
+@router.get("/v1/dashboard/personal-risk", response_model=geos_dashboard.DashboardForecast)
+def get_personal_risk(
+    request: Request, response: Response,
+    lat: float = Query(ge=-90, le=90), lon: float = Query(ge=-180, le=180),
+    user: UUID = Depends(verified_user),
+    session: Session = Depends(get_user_session, scope="function"),
+    now: datetime = Depends(utc_now),
+):
+    from app.services.risk_dashboard import resolve_artifact, risk_dashboard
+    from db.repositories.personalization import rebuild_personalization
+    from db.models.application import Profile
+
+    settings = request.app.state.settings
+    try:
+        if settings.forecast_gcs_bucket:
+            from app.services.gcs_forecast import load_gcs_run
+            run = load_gcs_run(settings.forecast_gcs_bucket)
+        else:
+            run = geos_dashboard.load_run(Path(settings.dashboard_forecast_path))
+        artifact = resolve_artifact(settings, run)
+        if artifact is None:
+            # Legacy artifacts still serve their explicit placeholder population score.
+            result = geos_dashboard.dashboard_forecast(run, lat, lon, now)
+        else:
+            archive_dir = Path(settings.risk_archive_dir)
+            if settings.forecast_gcs_bucket:
+                from app.services.gcs_forecast import sync_history
+                archive_dir = sync_history(settings.forecast_gcs_bucket)
+            # Reject unavailable locations and expired forecasts before writing derived state.
+            risk_dashboard(artifact, lat, lon, now)
+            model, revision, pending = rebuild_personalization(session, user, artifact, archive_dir, now)
+            result = risk_dashboard(
+                artifact, lat, lon, now, model=model, revision=revision, pending=pending,
+                timezone_name=session.get(Profile, user).timezone,
+            )
+    except geos_dashboard.OutsideForecastGrid:
+        raise HTTPException(404, "Location is outside the forecast grid") from None
+    except (geos_dashboard.ForecastUnavailable, OSError, ValueError):
+        raise HTTPException(503, "Risk forecast or historical exposure is unavailable") from None
+    response.headers["Cache-Control"] = "private, no-store"
+    return result

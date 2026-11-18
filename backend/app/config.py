@@ -18,9 +18,16 @@ class Settings:
     dashboard_demo_enabled: bool = False
     cors_origins: tuple[str, ...] = ("http://localhost:8081", "http://127.0.0.1:8081")
 
+    dashboard_forecast_path: str = "data/dashboard/current.json"
+    forecast_gcs_bucket: str = ""
+    risk_archive_dir: str = "data/risk/history"
+
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
+            risk_archive_dir=os.getenv("RISK_ARCHIVE_DIR", "data/risk/history"),
+            forecast_gcs_bucket=os.getenv("FORECAST_GCS_BUCKET", "").strip(),
+            dashboard_forecast_path=os.getenv("DASHBOARD_FORECAST_PATH", "data/dashboard/current.json"),
             supabase_url=os.getenv("SUPABASE_URL", "").strip().rstrip("/"),
             dashboard_demo_enabled=os.getenv("DASHBOARD_DEMO_ENABLED", "false").lower() == "true",
             cors_origins=tuple(

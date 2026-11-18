@@ -1,7 +1,7 @@
 # V1 profiles and symptom logging
 
-This slice implements authenticated profiles and daily symptom logging. Cloud
-deployment, exposure matching, queue dispatch, and model fitting are separate work.
+This slice implements authenticated profiles and daily symptom logging. The [personalization integration](personalization.md) adds historical exposure matching
+and derived personal state. Cloud deployment uses the separate deployment guide.
 No shared Supabase migration is applied automatically.
 
 ## Decisions
@@ -48,8 +48,9 @@ in migrations. Never mount migration credentials in Cloud Run.
 Each V1 transaction sets the restricted group role and a transaction-local
 `app.user_id` from the verified JWT. Forced RLS isolates users even when a query
 forgets its ownership filter. API code also filters queries by the user UUID.
-Missing context grants no rows. The runtime role cannot write exposure snapshots
-or personalization revisions. Future workers need a separately designed role.
+Missing context grants no rows. Migration 0003 permits owner-scoped inserts of derived exposure snapshots and
+personalization revisions, plus updates to outbox dispatch timestamps.
+Existing audit, exposure, and model revisions remain immutable.
 GCP service identities do not replace PostgreSQL roles or user JWT verification.
 
 ## Routes
@@ -91,6 +92,13 @@ History accepts optional `start`, `end` (inclusive), `before` (exclusive), and
 return 401; unconfigured/unavailable authentication or database services return
 503. Invalid fields/date windows return 422.
 
+## Population risk map
+
+The public hourly map is documented in [risk-map.md](risk-map.md).
+`GET /v1/map/forecast` lists available frames; `GET /v1/map/frame` returns
+a run-pinned risk image. Both share the dashboard forecast artifact and
+require no authentication or database access.
+
 ## Durable logging and future workers
 
 The save transaction contains the active entry, an immutable audit revision, and
@@ -99,15 +107,12 @@ training observations: only the active revision may be used for a refit.
 
 Today's event is not available until the stored midnight boundary; backfilled
 entries are available immediately. Status becomes final from time alone, so a
-late dispatcher cannot leave the UI stuck in provisional state. A dispatcher
-still needs to run to process due events. Before matching or fitting, the future
-worker must verify finality, current revision, and model/feature compatibility.
-Out-of-date events must not overwrite newer results. Exposure matching failures
-must leave the saved log intact and pending.
-
-Snapshot and personalization tables are scaffolding: no exposures or personal
-weights are fabricated. The API never waits for fitting. The daily-to-hourly
-prediction contract remains a separate ML validation decision.
+late dispatcher cannot leave the UI stuck in provisional state. A signed-in
+personal dashboard request or the refresh CLI processes finalized active
+revisions, matches analysis-only local-day exposure, and rebuilds the personal
+model. Edits replace their prior observation. Missing historical hours keep the
+report pending. See [personalization](personalization.md) for versions, the
+reference calibration, scheduled refresh support, and the 0–100 score blend.
 
 ## Verification
 

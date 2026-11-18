@@ -191,13 +191,13 @@ def test_commit_failure_does_not_return_a_false_success(api, engine, monkeypatch
         assert session.scalar(select(func.count()).select_from(SymptomLog)) == 0
 
 
-def test_runtime_cannot_modify_audit_history_or_write_model_weights(api, engine):
+def test_runtime_cannot_modify_audit_history_or_existing_model_weights(api, engine):
     client, state = api
     assert client.put("/v1/symptoms/2026-11-01", json=BODY).status_code == 200
     for statement in (
         "UPDATE app.symptom_log_revisions SET severity = 1",
         "DELETE FROM app.symptom_log_revisions",
-        "INSERT INTO app.personalization_revisions (id) VALUES (gen_random_uuid())",
+        "UPDATE app.personalization_revisions SET weights = '{}'::jsonb",
     ):
         with owned_session(engine, state["user"]) as session:
             with pytest.raises(DBAPIError) as denied:
