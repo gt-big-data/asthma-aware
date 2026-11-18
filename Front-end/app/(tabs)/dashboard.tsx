@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,8 +12,11 @@ import {
 } from "react-native";
 import { getUserLocation } from "../../constants/userLocation";
 
-const RISK_SCORE = 64;
-const FORECAST_SCORES = [64, 71, 58, 49];
+import { api } from "../../lib/api";
+import { useAuth } from "../../providers/AuthProvider";
+import type { DashboardRisk } from "../../lib/api-client";
+
+const ATLANTA = { latitude: 33.75, longitude: -84.39 };
 const US_STATE_ABBREVIATIONS: Record<string, string> = {
   alabama: "AL",
   alaska: "AK",
@@ -71,7 +76,7 @@ const VARIABLE_TRENDS = [
     name: "CO2",
     value: "418",
     unit: "ppm",
-    color: "#55c7f3",
+    color: "#347982",
     values: [390, 402, 398, 415, 408, 422, 418],
     change: "+7.2%",
   },
@@ -79,7 +84,7 @@ const VARIABLE_TRENDS = [
     name: "NDVI",
     value: "0.46",
     unit: "index",
-    color: "#76d6a1",
+    color: "#2d6a4f",
     values: [0.37, 0.39, 0.4, 0.43, 0.41, 0.45, 0.46],
     change: "+24.3%",
   },
@@ -87,7 +92,7 @@ const VARIABLE_TRENDS = [
     name: "SO2",
     value: "3.8",
     unit: "ppb",
-    color: "#ffc36e",
+    color: "#9a650f",
     values: [4.4, 4.1, 4.3, 3.9, 4.2, 3.7, 3.8],
     change: "−13.6%",
   },
@@ -95,16 +100,16 @@ const VARIABLE_TRENDS = [
     name: "Pollen",
     value: "High",
     unit: "level",
-    color: "#d7a6ff",
+    color: "#76549a",
     values: [2, 3, 4, 5, 4, 6, 7],
     change: "+5.0%",
   },
 ];
 
 function getRiskColor(score: number): string {
-  if (score < 40) return "#55d6a0";
-  if (score < 70) return "#ffc36e";
-  return "#ff7585";
+  if (score < 40) return "#39845c";
+  if (score < 70) return "#9e6b1f";
+  return "#c54f49";
 }
 
 function getRiskLabel(score: number): string {
@@ -134,21 +139,21 @@ function getCityAndState(address: Location.LocationGeocodedAddress): string | nu
   return state ? `${city}, ${state}` : null;
 }
 
-function RiskGauge() {
+function RiskGauge({ score, status }: { score: number | null; status: string }) {
   const tickCount = 31;
   const centerX = 130;
   const centerY = 124;
   const radius = 106;
 
   return (
-    <View style={styles.gauge} accessibilityLabel={`Risk score ${RISK_SCORE} out of 100, ${getRiskLabel(RISK_SCORE)} risk`}>
+    <View style={styles.gauge} accessibilityLabel={score === null ? status : `Risk score ${score} out of 100, ${getRiskLabel(score)} risk`}>
       {Array.from({ length: tickCount }, (_, index) => {
         const progress = index / (tickCount - 1);
         const angle = 180 + progress * 180;
         const radians = (angle * Math.PI) / 180;
         const scoreAtTick = progress * 100;
         const color = getRiskColor(scoreAtTick);
-        const active = scoreAtTick <= RISK_SCORE;
+        const active = score !== null && scoreAtTick <= score;
 
         return (
           <View
@@ -158,7 +163,7 @@ function RiskGauge() {
               {
                 left: centerX + Math.cos(radians) * radius - 2,
                 top: centerY + Math.sin(radians) * radius - 7,
-                backgroundColor: active ? color : "#29384a",
+                backgroundColor: active ? color : "#e1e8e3",
                 transform: [{ rotate: `${angle - 270}deg` }],
               },
             ]}
@@ -166,10 +171,10 @@ function RiskGauge() {
         );
       })}
       <View style={styles.gaugeReading}>
-        <Text style={styles.gaugeScore}>{RISK_SCORE}</Text>
+        <Text style={styles.gaugeScore}>{score ?? "–"}</Text>
         <Text style={styles.gaugeOutOf}>OUT OF 100</Text>
-        <Text style={[styles.gaugeRisk, { color: getRiskColor(RISK_SCORE) }]}>
-          {getRiskLabel(RISK_SCORE).toUpperCase()} RISK
+        <Text style={[styles.gaugeRisk, { color: score === null ? "#748178" : getRiskColor(score) }]}>
+          {score === null ? status : `${getRiskLabel(score).toUpperCase()} RISK`}
         </Text>
       </View>
       <View style={styles.gaugeScale}>
@@ -242,39 +247,48 @@ function Sparkline({
 }
 
 export default function DashboardScreen() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [cityAndState, setCityAndState] = useState("Locating...");
-  const dayLabels = getDayLabels();
+  const [forecast, setForecast] = useState<DashboardRisk | null>(null);
+  const [forecastStatus, setForecastStatus] = useState("LOADING");
+  const dayLabels = forecast?.days.map(({ date }, index) => index === 0 ? "Today"
+    : new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }))
+    ?? getDayLabels();
+  const scores = forecast?.days.map(({ score }) => score) ?? [null, null, null, null];
 
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setForecast(null);
+    setForecastStatus("LOADING");
+    let locationTimeout: ReturnType<typeof setTimeout>;
+    async function loadForecast() {
+      const coords = await Promise.race([
+        getUserLocation(),
+        new Promise<null>((resolve) => { locationTimeout = setTimeout(() => resolve(null), 8000); }),
+      ]);
+      clearTimeout(locationTimeout);
+      if (!active) return;
 
-    async function loadLocation() {
+      const { latitude, longitude } = coords ?? ATLANTA;
+      setCityAndState(coords ? "Current location" : "Atlanta, GA");
+      if (coords && Platform.OS !== "web") {
+        void Location.reverseGeocodeAsync(coords).then(([address]) => {
+          const label = address && getCityAndState(address);
+          if (active && label) setCityAndState(label);
+        }).catch(() => { /* Keep the current-location label. */ });
+      }
       try {
-        // Shared with the map, so the location is only looked up once.
-        const coords = await getUserLocation();
-        if (!coords) {
-          if (isMounted) setCityAndState("Location unavailable");
-          return;
-        }
-
-        const [address] = await Location.reverseGeocodeAsync(coords);
-        const result = address ? getCityAndState(address) : null;
-
-        if (isMounted) {
-          setCityAndState(result ?? "Location unavailable");
-        }
-      } catch (error) {
-        console.error("Unable to retrieve the user's location.", error);
-        if (isMounted) setCityAndState("Location unavailable");
+        const result = await api.dashboardRisk(latitude, longitude, !!userId);
+        if (active) { setForecast(result); setForecastStatus("UNAVAILABLE"); }
+      } catch {
+        if (active) setForecastStatus("UNAVAILABLE");
       }
     }
-
-    void loadLocation();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    void loadForecast();
+    return () => { active = false; clearTimeout(locationTimeout); };
+  }, [userId]));
 
   return (
     <ScrollView
@@ -288,7 +302,7 @@ export default function DashboardScreen() {
           <Text style={styles.title}>Your dashboard</Text>
         </View>
         <View style={styles.locationPill}>
-          <Ionicons name="location-outline" size={15} color="#9aacc1" />
+          <Ionicons name="location-outline" size={15} color="#66766b" />
           <Text style={styles.locationText}>{cityAndState}</Text>
         </View>
       </View>
@@ -299,20 +313,25 @@ export default function DashboardScreen() {
             <Text style={styles.cardTitle}>Today&apos;s Respiratory Risk</Text>
           </View>
         </View>
-        <RiskGauge />
+        <RiskGauge score={scores[0]} status={forecastStatus} />
       </View>
 
       <View style={styles.sectionHeading}>
         <View>
           <Text style={styles.sectionTitle}>4-day forecast</Text>
-          <Text style={styles.sectionSubtitle}>Predicted respiratory risk</Text>
+          <Text style={styles.sectionSubtitle}>
+            {forecast?.personalization?.matched_logs ? "Personalized respiratory risk" : "General respiratory risk"}
+            {forecast?.placeholder ? " · Development estimate" : ""}
+            {forecast?.stale ? " · Older NASA run" : ""}
+            {forecast?.personalization?.still_learning && forecast.personalization.matched_logs > 0 ? " · Still learning" : ""}
+          </Text>
         </View>
-        <Ionicons name="calendar-outline" size={19} color="#8192a7" />
+        <Ionicons name="calendar-outline" size={19} color="#66766b" />
       </View>
       <View style={styles.card}>
         <View style={styles.forecastRow}>
           {dayLabels.map((day, index) => {
-            const score = FORECAST_SCORES[index];
+            const score = scores[index];
             const selected = expandedDay === index;
 
             return (
@@ -322,17 +341,17 @@ export default function DashboardScreen() {
                 onPress={() => setExpandedDay(selected ? null : index)}
                 activeOpacity={0.75}
                 accessibilityRole="button"
-                accessibilityLabel={`${day}, risk score ${score}`}
+                accessibilityLabel={score === null ? `${day}, forecast unavailable` : `${day}, risk score ${score}`}
                 accessibilityState={{ expanded: selected }}
               >
                 <Text style={styles.forecastDayLabel}>{day}</Text>
                 <View
                   style={[
                     styles.forecastDot,
-                    { backgroundColor: getRiskColor(score) },
+                    { backgroundColor: score === null ? "#e1e8e3" : getRiskColor(score) },
                   ]}
                 />
-                <Text style={styles.forecastScore}>{score}</Text>
+                <Text style={styles.forecastScore}>{score ?? "–"}</Text>
               </TouchableOpacity>
             );
           })}
@@ -340,10 +359,12 @@ export default function DashboardScreen() {
         {expandedDay !== null && (
           <View style={styles.forecastDetails}>
             <Text style={styles.forecastDetailsTitle}>
-              {dayLabels[expandedDay]} · {getRiskLabel(FORECAST_SCORES[expandedDay])} risk
+              {dayLabels[expandedDay]} · {scores[expandedDay] === null
+                ? "Unavailable" : `${getRiskLabel(scores[expandedDay])} risk`}
             </Text>
             <Text style={styles.forecastDetailsText}>
-              More forecast details coming soon.
+              {scores[expandedDay] === null ? "No usable NASA forecast for this day."
+                : `Peak score from ${forecast?.days[expandedDay].available_hours} available forecast hours.`}
             </Text>
           </View>
         )}
@@ -354,38 +375,44 @@ export default function DashboardScreen() {
           <Text style={styles.sectionTitle}>Environmental trends</Text>
           <Text style={styles.sectionSubtitle}>Past 7 days</Text>
         </View>
-        <Ionicons name="analytics-outline" size={20} color="#8192a7" />
+        <Ionicons name="analytics-outline" size={20} color="#66766b" />
       </View>
       <View style={styles.trendGrid}>
-        {VARIABLE_TRENDS.map((trend) => (
-          <View key={trend.name} style={styles.trendCard}>
-            <View style={styles.trendTop}>
-              <View>
-                <Text style={styles.trendName}>{trend.name}</Text>
-                <View style={styles.trendValueRow}>
-                  <Text style={styles.trendValue}>{trend.value}</Text>
-                  <Text style={styles.trendUnit}>{trend.unit}</Text>
+        {VARIABLE_TRENDS.map((trend) => {
+          const isIncreasing =
+            trend.values[trend.values.length - 1] > trend.values[0];
+          const directionColor = isIncreasing ? "#2d6a4f" : "#c2413a";
+
+          return (
+            <View key={trend.name} style={styles.trendCard}>
+              <View style={styles.trendTop}>
+                <View>
+                  <Text style={styles.trendName}>{trend.name}</Text>
+                  <View style={styles.trendValueRow}>
+                    <Text style={styles.trendValue}>{trend.value}</Text>
+                    <Text style={styles.trendUnit}>{trend.unit}</Text>
+                  </View>
+                </View>
+                <View
+                  style={[
+                    styles.trendIcon,
+                    { backgroundColor: `${directionColor}1A` },
+                  ]}
+                >
+                  <Ionicons
+                    name={isIncreasing ? "arrow-up-outline" : "arrow-down-outline"}
+                    size={16}
+                    color={directionColor}
+                  />
                 </View>
               </View>
-              <View
-                style={[
-                  styles.trendIcon,
-                  { backgroundColor: `${trend.color}1A` },
-                ]}
-              >
-                <Ionicons
-                  name="trending-up-outline"
-                  size={16}
-                  color={trend.color}
-                />
-              </View>
+              <Sparkline values={trend.values} color={trend.color} />
+              <Text style={[styles.trendChange, { color: trend.color }]}>
+                {trend.change} this week
+              </Text>
             </View>
-            <Sparkline values={trend.values} color={trend.color} />
-            <Text style={[styles.trendChange, { color: trend.color }]}>
-              {trend.change} this week
-            </Text>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </ScrollView>
   );
@@ -394,7 +421,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#0b1220",
+    backgroundColor: "#f4f7f4",
   },
   content: {
     paddingHorizontal: 18,
@@ -409,14 +436,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   eyebrow: {
-    color: "#55c7f3",
+    color: "#2d6a4f",
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 2,
     marginBottom: 5,
   },
   title: {
-    color: "#f4f7fb",
+    color: "#1f2d25",
     fontSize: 25,
     fontWeight: "700",
     letterSpacing: -0.5,
@@ -429,18 +456,18 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#29364a",
-    backgroundColor: "#121c2c",
+    borderColor: "#d8e3db",
+    backgroundColor: "#eaf2ec",
   },
   locationText: {
-    color: "#b3c0d0",
+    color: "#4b5b50",
     fontSize: 12,
     fontWeight: "600",
   },
   card: {
     alignItems:'center',
-    backgroundColor: "#121c2c",
-    borderColor: "#25344a",
+    backgroundColor: "#ffffff",
+    borderColor: "#dce5de",
     borderWidth: 1,
     borderRadius: 20,
     padding: 16,
@@ -452,12 +479,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     textAlign: 'center',
-    color: "#edf3fa",
+    color: "#25352c",
     fontSize: 16,
     fontWeight: "700",
   },
   cardSubtitle: {
-    color: "#8192a7",
+    color: "#66766b",
     fontSize: 12,
     marginTop: 4,
   },
@@ -468,16 +495,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 5,
-    backgroundColor: "#263143",
+    backgroundColor: "#f8edd9",
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#ffc36e",
+    backgroundColor: "#9a650f",
   },
   liveText: {
-    color: "#ffc36e",
+    color: "#80540d",
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 0.7,
@@ -502,14 +529,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   gaugeScore: {
-    color: "#f4f7fb",
+    color: "#1f2d25",
     fontSize: 37,
     lineHeight: 42,
     fontWeight: "800",
     letterSpacing: -1.5,
   },
   gaugeOutOf: {
-    color: "#8192a7",
+    color: "#66766b",
     fontSize: 9,
     fontWeight: "700",
     letterSpacing: 1.5,
@@ -529,13 +556,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   gaugeScaleText: {
-    color: "#8192a7",
+    color: "#66766b",
     fontSize: 9,
     fontWeight: "700",
     letterSpacing: 1,
   },
   gaugeFootnote: {
-    color: "#73849a",
+    color: "#66766b",
     fontSize: 11,
     textAlign: "center",
     marginTop: 6,
@@ -548,12 +575,12 @@ const styles = StyleSheet.create({
     marginBottom: -4,
   },
   sectionTitle: {
-    color: "#edf3fa",
+    color: "#25352c",
     fontSize: 17,
     fontWeight: "700",
   },
   sectionSubtitle: {
-    color: "#8192a7",
+    color: "#66766b",
     fontSize: 12,
     marginTop: 3,
   },
@@ -569,10 +596,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   forecastDaySelected: {
-    backgroundColor: "#202e41",
+    backgroundColor: "#eaf2ec",
   },
   forecastDayLabel: {
-    color: "#9aacc1",
+    color: "#66766b",
     fontSize: 10,
     fontWeight: "600",
   },
@@ -584,28 +611,28 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   forecastScore: {
-    color: "#edf3fa",
+    color: "#25352c",
     fontSize: 13,
     fontWeight: "700",
   },
   forecastDetails: {
     borderTopWidth: 1,
-    borderTopColor: "#29364a",
+    borderTopColor: "#dce5de",
     paddingTop: 12,
     marginTop: 10,
   },
   forecastDetailsTitle: {
-    color: "#edf3fa",
+    color: "#25352c",
     fontSize: 13,
     fontWeight: "700",
   },
   forecastDetailsText: {
-    color: "#8192a7",
+    color: "#66766b",
     fontSize: 12,
     marginTop: 5,
   },
   sampleNote: {
-    color: "#73849a",
+    color: "#66766b",
     fontSize: 10,
     textAlign: "center",
     marginTop: 8,
@@ -619,8 +646,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexBasis: "43%",
     minWidth: 130,
-    backgroundColor: "#121c2c",
-    borderColor: "#25344a",
+    backgroundColor: "#ffffff",
+    borderColor: "#dce5de",
     borderWidth: 1,
     borderRadius: 18,
     padding: 13,
@@ -631,7 +658,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   trendName: {
-    color: "#9aacc1",
+    color: "#66766b",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -642,12 +669,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   trendValue: {
-    color: "#f4f7fb",
+    color: "#1f2d25",
     fontSize: 21,
     fontWeight: "700",
   },
   trendUnit: {
-    color: "#8192a7",
+    color: "#66766b",
     fontSize: 10,
   },
   trendIcon: {
@@ -679,7 +706,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   footerNote: {
-    color: "#73849a",
+    color: "#66766b",
     fontSize: 10,
     lineHeight: 15,
     textAlign: "center",

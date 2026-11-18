@@ -1,368 +1,181 @@
-import { useRef, useEffect, useCallback, useState } from "react";
-import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
+import { useRef, useEffect, useCallback, useMemo, useState } from "react";
+import { PanResponder, Platform, StyleSheet, View, TouchableOpacity, Text } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import { LatLngIntensity } from "../constants/data";
+import type { MapRaster } from "../lib/forecast-map";
 
-// [[west, south], [east, north]]
 export type MapBounds = [[number, number], [number, number]];
-
-// Metro Atlanta: roughly Marietta to Stockbridge, Douglasville to Lawrenceville.
 export const ATLANTA_BOUNDS: MapBounds = [[-84.80, 33.45], [-83.95, 34.05]];
-
+interface MapLocation { latitude: number; longitude: number }
 interface HeatmapViewProps {
-  points: LatLngIntensity[];
+  raster: MapRaster | null;
+  hoursAhead: number;
+  maxHours: number;
+  onHoursAheadChange: (hours: number) => void;
+  userLocation: MapLocation | null;
   visualization?: "cells" | "heat";
-  // Area the map opens on. Only read on first render.
   startBounds?: MapBounds;
+  status: string;
+  note: string;
+  validLabel: string;
+  colors?: string[];
+  onRetry: () => void;
 }
 
-// The map page is built with its starting area already in it, so the first
-// frame shown is the right place (no jump after loading).
 function buildMapHtml(startBounds: MapBounds): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css"/>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body, #map { width: 100%; height: 100%; }
-    body { background: #1a1a2e; }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-
-  <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
-
-  <script>
-    // MapLibre draws both the base map and the data, so they move together
-    // in the same frame while zooming (no drift between two map engines).
-
-    const START_BOUNDS = ${JSON.stringify(startBounds)};
-
-    // Fallback cell size when the grid spacing can't be worked out from the data.
-    const DEFAULT_LAT_STEP = 0.25 / 56;
-    const DEFAULT_LON_STEP = 0.27 / 96;
-
-    // Heat blob radius, as a multiple of the grid spacing.
-    const RADIUS_PER_STEP = 2;
-
-    // Largest heat blob we allow on screen, and the normal max zoom.
-    const MAX_RADIUS_PX = 1000;
-    const MAX_ZOOM = 15;
-
-    const CELL_COLORS = [
-      0.00, "rgb(0,0,128)",
-      0.20, "rgb(0,0,255)",
-      0.40, "rgb(0,229,255)",
-      0.55, "rgb(0,255,0)",
-      0.70, "rgb(255,255,0)",
-      0.85, "rgb(255,165,0)",
-      0.95, "rgb(255,69,0)",
-      1.00, "rgb(255,0,0)",
-    ];
-
-    let map = null;
-    let mapLoaded = false;
-    let pending = null;
-    let mode = "heat";
-
-    function post(message) {
-      if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(message);
-    }
-
-    // Smallest gap between neighbouring values, i.e. the grid spacing.
-    function gridStep(values, fallback) {
-      const sorted = Array.from(new Set(values)).sort((a, b) => a - b);
-      let step = Infinity;
-      for (let i = 1; i < sorted.length; i++) {
-        const gap = sorted[i] - sorted[i - 1];
-        if (gap > 1e-6 && gap < step) step = gap;
-      }
-      return Number.isFinite(step) ? step : fallback;
-    }
-
-    function setLayerVisibility() {
-      if (!mapLoaded || !map.getLayer("heat")) return;
-      map.setLayoutProperty("heat", "visibility", mode === "heat" ? "visible" : "none");
-      map.setLayoutProperty("cells", "visibility", mode === "cells" ? "visible" : "none");
-    }
-
-    function drawData(points) {
-      const lats = points.map(p => p[0]);
-      const lons = points.map(p => p[1]);
-      const vals = points.map(p => p[2]);
-      const minVal = Math.min(...vals);
-      const range = Math.max(...vals) - minVal;
-      const latStep = gridStep(lats, DEFAULT_LAT_STEP);
-      const lonStep = gridStep(lons, DEFAULT_LON_STEP);
-
-      const pointFeatures = [];
-      const cellFeatures = [];
-      for (const [lat, lon, raw] of points) {
-        const t = range > 0.0001 ? (raw - minVal) / range : 0.5;
-        pointFeatures.push({
-          type: "Feature",
-          properties: { t },
-          geometry: { type: "Point", coordinates: [lon, lat] },
-        });
-        // Each point is the north-west corner of its cell.
-        cellFeatures.push({
-          type: "Feature",
-          properties: { t },
-          geometry: {
-            type: "Polygon",
-            coordinates: [[
-              [lon, lat],
-              [lon + lonStep, lat],
-              [lon + lonStep, lat - latStep],
-              [lon, lat - latStep],
-              [lon, lat],
-            ]],
-          },
-        });
-      }
-
-      // Blob radius in metres, then converted to screen pixels at zoom 0.
-      // Doubling it at every zoom level keeps each blob the same size on
-      // the ground, so the data doesn't spread out or shrink while zooming.
-      const midLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-      const cosLat = Math.cos(midLat * Math.PI / 180);
-      const latStepM = latStep * 111320;
-      const lonStepM = lonStep * 111320 * cosLat;
-      const stepM = Math.sqrt(latStepM * lonStepM);
-      const radiusM = stepM * RADIUS_PER_STEP;
-      const metresPerPixelAtZ0 = 78271.517 * cosLat;
-      const radiusAtZ0 = radiusM / metresPerPixelAtZ0;
-
-      // MapLibre's heatmap breaks once a blob gets bigger than roughly 1500px,
-      // so stop zooming in before that. Past this point the screen is inside
-      // a single grid cell anyway, so there's nothing more to see.
-      const dataMaxZoom = Math.log2(MAX_RADIUS_PX / radiusAtZ0);
-      map.setMaxZoom(Math.min(MAX_ZOOM, Math.max(8, dataMaxZoom)));
-
-      // Scale blob strength so a fully "hot" area adds up to a density of 1.
-      // (MapLibre's blob is a Gaussian whose radius is 3 standard deviations.)
-      // Overlap between blobs is the same at every zoom, so colours stay put.
-      const intensity = 1 / (0.3989 * (2 * Math.PI / 9) * RADIUS_PER_STEP * RADIUS_PER_STEP);
-
-      const pointData = { type: "FeatureCollection", features: pointFeatures };
-      const cellData = { type: "FeatureCollection", features: cellFeatures };
-
-      if (map.getSource("points")) {
-        map.getSource("points").setData(pointData);
-        map.getSource("cells").setData(cellData);
-        map.setPaintProperty("heat", "heatmap-radius", radiusExpression(radiusAtZ0));
-        map.setPaintProperty("heat", "heatmap-intensity", intensity);
-      } else {
-        // Large tile buffer so blobs near a tile edge aren't cut off.
-        map.addSource("points", { type: "geojson", data: pointData, buffer: 512, maxzoom: 9 });
-        map.addSource("cells", { type: "geojson", data: cellData });
-
-        map.addLayer({
-          id: "cells",
-          type: "fill",
-          source: "cells",
-          paint: {
-            "fill-color": ["interpolate", ["linear"], ["get", "t"], ...CELL_COLORS],
-            "fill-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0.57, 15.3, 0.14],
-            "fill-antialias": false,
-          },
-        });
-
-        map.addLayer({
-          id: "heat",
-          type: "heatmap",
-          source: "points",
-          paint: {
-            // Low values still show as faint blue instead of disappearing.
-            "heatmap-weight": ["+", 0.15, ["*", 0.85, ["get", "t"]]],
-            "heatmap-intensity": intensity,
-            "heatmap-radius": radiusExpression(radiusAtZ0),
-            "heatmap-opacity": 0.65,
-            "heatmap-color": [
-              "interpolate", ["linear"], ["heatmap-density"],
-              0.00, "rgba(37,71,168,0)",
-              0.08, "rgba(37,71,168,0.5)",
-              0.15, "#2547a8",
-              0.35, "#20b9c7",
-              0.55, "#69cf71",
-              0.75, "#f4d84a",
-              1.00, "#e53935",
-            ],
-          },
-        });
-      }
-      setLayerVisibility();
-    }
-
-    function radiusExpression(radiusAtZ0) {
-      return ["interpolate", ["exponential", 2], ["zoom"],
-        0, radiusAtZ0,
-        20, radiusAtZ0 * Math.pow(2, 20)];
-    }
-
-    try {
-      map = new maplibregl.Map({
-        container: "map",
-        style: "https://tiles.openfreemap.org/styles/positron",
-        bounds: START_BOUNDS,
-        minZoom: 5,
-        maxZoom: MAX_ZOOM,
-        dragRotate: false,
-        pitchWithRotate: false,
-        touchPitch: false,
-        attributionControl: { compact: true },
-      });
-      map.touchZoomRotate.disableRotation();
-
-      map.on("load", () => {
-        // On phones the WebView can still be resizing when the map is created,
-        // which makes the first fit zoom out too far. Fit again once loaded.
-        map.resize();
-        map.fitBounds(START_BOUNDS, { animate: false });
-        mapLoaded = true;
-        if (pending) {
-          drawData(pending);
-          pending = null;
-        }
-        post("ready");
-      });
-    } catch (err) {
-      console.error("Map init failed:", err.message);
-    }
-
-    window.mapZoomIn  = function() { map && map.zoomIn();  };
-    window.mapZoomOut = function() { map && map.zoomOut(); };
-
-    window.setMapMode = function(nextMode) {
-      mode = nextMode === "cells" ? "cells" : "heat";
-      setLayerVisibility();
-    };
-
-    window.updateHeatmap = function(points, showAsHeatmap) {
-      try {
-        if (!points || points.length === 0 || !map) return;
-        mode = showAsHeatmap ? "heat" : "cells";
-        if (!mapLoaded) {
-          pending = points;
-          return;
-        }
-        drawData(points);
-      } catch (err) {
-        console.error("updateHeatmap error:", err.message);
-      }
-    };
-  </script>
-</body>
-</html>
-`;
+  return `<!DOCTYPE html><html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css"/>
+<style>*{margin:0;padding:0;box-sizing:border-box}html,body,#map{width:100%;height:100%}body{background:#f4f7f4}</style>
+</head><body><div id="map"></div>
+<script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script><script>
+const START_BOUNDS = ${JSON.stringify(startBounds)};
+let map, ready=false, currentRaster=null, mode="heat", marker=null;
+function post(message) {
+  const text=JSON.stringify(message);
+  if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(text);
+  else window.parent.postMessage(text,"*");
+}
+function setMode(next) {
+  mode=next==="cells"?"cells":"heat";
+  if(ready && map.getLayer("risk")) map.setPaintProperty("risk","raster-resampling",mode==="cells"?"nearest":"linear");
+}
+function setRaster(raster) {
+  currentRaster=raster;
+  if(!ready) return;
+  if(map.getLayer("risk")) map.removeLayer("risk");
+  if(map.getSource("risk")) map.removeSource("risk");
+  if(!raster) return;
+  const [w,s,e,n]=raster.bounds;
+  map.addSource("risk",{type:"image",url:raster.image,coordinates:[[w,n],[e,n],[e,s],[w,s]]});
+  map.addLayer({id:"risk",type:"raster",source:"risk",paint:{
+    "raster-opacity":0.65,"raster-fade-duration":0,
+    "raster-resampling":mode==="cells"?"nearest":"linear"
+  }});
+}
+function setLocation(location) {
+  if(marker) { marker.remove(); marker=null; }
+  if(location && map) marker=new maplibregl.Marker({color:"#2d6a4f"}).setLngLat([location.longitude,location.latitude]).addTo(map);
+}
+function command(message) {
+  if(message.type==="raster") setRaster(message.raster);
+  if(message.type==="location") setLocation(message.location);
+  if(message.type==="mode") setMode(message.mode);
+  if(message.type==="zoom-in" && map) map.zoomIn();
+  if(message.type==="zoom-out" && map) map.zoomOut();
+}
+window.mapCommand=command;
+window.addEventListener("message",event=>{if(event.source===window.parent && event.data) command(event.data)});
+try {
+  map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/positron",
+    bounds:START_BOUNDS,minZoom:5,maxZoom:15,dragRotate:false,pitchWithRotate:false,touchPitch:false,attributionControl:{compact:true}});
+  map.touchZoomRotate.disableRotation();
+  map.on("load",()=>{map.resize();map.fitBounds(START_BOUNDS,{animate:false});ready=true;setRaster(currentRaster);post({type:"ready"})});
+  map.on("error",event=>{if(event.error) post({type:"error",message:"Map layer could not load. Tap to retry."})});
+} catch(error) {post({type:"error",message:"Map could not initialize. Tap to retry."})}
+</script></body></html>`;
 }
 
-export default function HeatmapView({
-  points,
-  visualization = "cells",
-  startBounds = ATLANTA_BOUNDS,
-}: HeatmapViewProps) {
-  // Built once: later changes to startBounds shouldn't reload the map.
+export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChange,userLocation,
+  visualization="heat",startBounds=ATLANTA_BOUNDS,status,note,validLabel,colors,onRetry}: HeatmapViewProps) {
   const [mapHtml] = useState(() => buildMapHtml(startBounds));
-  const webviewRef   = useRef<WebView<object>>(null);
-  const webviewReady = useRef(false);
-  const pendingPts   = useRef<LatLngIntensity[] | null>(null);
-  const [mode, setMode] = useState(visualization);
-  const modeRef      = useRef(visualization);
-
-  const injectHeatmap = useCallback((pts: LatLngIntensity[]) => {
-    webviewRef.current?.injectJavaScript(
-      `window.updateHeatmap(${JSON.stringify(pts)}, ${modeRef.current === "heat"}); true;`
-    );
-  }, []);
-
-  const changeMode = useCallback((next: "cells" | "heat") => {
-    modeRef.current = next;
-    setMode(next);
-    webviewRef.current?.injectJavaScript(`window.setMapMode("${next}"); true;`);
-  }, []);
-
-  const zoomIn  = useCallback(() => {
-    webviewRef.current?.injectJavaScript("window.mapZoomIn(); true;");
-  }, []);
-
-  const zoomOut = useCallback(() => {
-    webviewRef.current?.injectJavaScript("window.mapZoomOut(); true;");
-  }, []);
-
-  const onMessage = useCallback((event: WebViewMessageEvent) => {
-    if (event.nativeEvent.data === "ready") {
-      webviewReady.current = true;
-      if (pendingPts.current && pendingPts.current.length > 0) {
-        injectHeatmap(pendingPts.current);
-        pendingPts.current = null;
-      }
-    }
-  }, [injectHeatmap]);
-
+  const webviewRef = useRef<WebView<object>>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const ready = useRef(false);
+  const [timelineWidth,setTimelineWidth] = useState(0);
+  const [mode,setMode] = useState(visualization);
+  const [mapError,setMapError] = useState("");
+  const latest = useRef({raster,userLocation,mode});
+  useEffect(() => { latest.current={raster,userLocation,mode}; });
+  const send = useCallback((message: object) => {
+    iframeRef.current?.contentWindow?.postMessage(message,"*");
+    webviewRef.current?.injectJavaScript(`window.mapCommand(${JSON.stringify(message)});true;`);
+  },[]);
+  const receive = useCallback((text: string) => {
+    try {
+      const message=JSON.parse(text);
+      if(message.type==="ready") {
+        ready.current=true;
+        setMapError("");
+        const current=latest.current;
+        send({type:"raster",raster:current.raster});
+        send({type:"location",location:current.userLocation});
+        send({type:"mode",mode:current.mode});
+      } else if(message.type==="error") setMapError(message.message);
+    } catch { /* Ignore messages unrelated to the map bridge. */ }
+  },[send]);
   useEffect(() => {
-    if (!points || points.length === 0) return;
-    if (webviewReady.current) {
-      injectHeatmap(points);
-    } else {
-      pendingPts.current = points;
-    }
-  }, [points, injectHeatmap]);
-
-  return (
-    <View style={StyleSheet.absoluteFill}>
-      <WebView<object>
-        ref={webviewRef}
-        source={{ html: mapHtml }}
-        style={StyleSheet.absoluteFill}
-        originWhitelist={["*"]}
-        javaScriptEnabled
-        domStorageEnabled
-        scrollEnabled={false}
-        overScrollMode="never"
-        mixedContentMode="always"
-        onMessage={onMessage}
-      />
-
-      {/* React Native zoom buttons — always on top, never blocked by WebView */}
-      <View style={styles.zoomControls} pointerEvents="box-none">
-        <TouchableOpacity style={styles.zoomBtn} onPress={zoomIn} activeOpacity={0.7}>
-          <Text style={styles.zoomText}>+</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.zoomBtn} onPress={zoomOut} activeOpacity={0.7}>
-          <Text style={styles.zoomText}>−</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Switch between the smooth heatmap and the fixed grid squares */}
-      <View style={styles.modeToggle}>
-        {(["heat", "cells"] as const).map((option) => (
-          <TouchableOpacity
-            key={option}
-            style={[styles.modeBtn, mode === option && styles.modeBtnActive]}
-            onPress={() => changeMode(option)}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityState={{ selected: mode === option }}
-          >
-            <Text style={[styles.modeText, mode === option && styles.modeTextActive]}>
-              {option === "heat" ? "Heat" : "Grid"}
-            </Text>
-          </TouchableOpacity>
-        ))}
+    if(Platform.OS!=="web") return;
+    const handler=(event: MessageEvent) => {
+      if(event.source===iframeRef.current?.contentWindow && typeof event.data==="string") receive(event.data);
+    };
+    window.addEventListener("message",handler);
+    return () => window.removeEventListener("message",handler);
+  },[receive]);
+  useEffect(() => { if(ready.current) send({type:"raster",raster}); },[raster,send]);
+  useEffect(() => { if(ready.current) send({type:"location",location:userLocation}); },[userLocation,send]);
+  useEffect(() => { if(ready.current) send({type:"mode",mode}); },[mode,send]);
+  const selectPosition=useCallback((x:number)=>{
+    if(timelineWidth>0 && maxHours>0) onHoursAheadChange(Math.round(Math.max(0,Math.min(x/timelineWidth,1))*maxHours));
+  },[timelineWidth,maxHours,onHoursAheadChange]);
+  const pan=useMemo(()=>PanResponder.create({onStartShouldSetPanResponder:()=>true,onMoveShouldSetPanResponder:()=>true,
+    onPanResponderGrant:event=>selectPosition(event.nativeEvent.locationX),
+    onPanResponderMove:event=>selectPosition(event.nativeEvent.locationX)}),[selectPosition]);
+  const changeHour=(delta:number)=>onHoursAheadChange(Math.min(maxHours,Math.max(0,hoursAhead+delta)));
+  const progress=maxHours>0?hoursAhead/maxHours*100:0;
+  const ticks=Array.from(new Set([0,Math.round(maxHours/4),Math.round(maxHours/2),Math.round(maxHours*3/4),maxHours]));
+  const reload=()=>{setMapError("");ready.current=false;if(Platform.OS==="web"){if(iframeRef.current) iframeRef.current.srcdoc=mapHtml;}else webviewRef.current?.reload();onRetry();};
+  return <View style={StyleSheet.absoluteFill}>
+    {Platform.OS==="web" ? <iframe ref={iframeRef} title="Forecast map" srcDoc={mapHtml} sandbox="allow-scripts"
+      style={{width:"100%",height:"100%",border:0,display:"block"}}/> :
+      <WebView<object> ref={webviewRef} source={{html:mapHtml}} style={StyleSheet.absoluteFill}
+        originWhitelist={["*"]} javaScriptEnabled domStorageEnabled scrollEnabled={false} overScrollMode="never"
+        onMessage={(event:WebViewMessageEvent)=>receive(event.nativeEvent.data)} />}
+    <View style={styles.zoomControls} pointerEvents="box-none">
+      <TouchableOpacity style={styles.zoomBtn} onPress={()=>send({type:"zoom-in"})} accessibilityRole="button" accessibilityLabel="Zoom in"><Text style={styles.zoomText}>+</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.zoomBtn} onPress={()=>send({type:"zoom-out"})} accessibilityRole="button" accessibilityLabel="Zoom out"><Text style={styles.zoomText}>−</Text></TouchableOpacity>
+    </View>
+    <View style={styles.modeToggle}>{(["heat","cells"] as const).map(option=><TouchableOpacity key={option}
+      style={[styles.modeBtn,mode===option&&styles.modeBtnActive]} onPress={()=>setMode(option)}
+      accessibilityRole="button" accessibilityState={{selected:mode===option}}>
+      <Text style={[styles.modeText,mode===option&&styles.modeTextActive]}>{option==="heat"?"Heat":"Grid"}</Text>
+    </TouchableOpacity>)}</View>
+    <View style={styles.mapLegend}>
+      {userLocation&&<View style={styles.locationLegendRow}><View style={styles.locationLegendDot}/><Text style={styles.mapLegendText}>Your location</Text></View>}
+      <View style={styles.intensityLegend}><Text style={styles.mapLegendTitle}>General risk score</Text>
+        <View style={styles.intensityGradient}>{(colors??["#2547a8","#20b9c7","#69cf71","#f4d84a","#e53935"]).map(color=><View key={color} style={[styles.intensityColor,{backgroundColor:color}]}/>)}</View>
+        <View style={styles.intensityLabels}><Text style={styles.mapLegendCaption}>0 · Lower</Text><Text style={styles.mapLegendCaption}>100 · Higher</Text></View>
       </View>
     </View>
-  );
+    <View style={styles.timeline}>
+      <View style={styles.timelineHeading}><Text style={styles.timelineTitle}>Forecast timeline</Text>
+        <Text style={styles.timelineValue}>{hoursAhead===0?"Now":`+${hoursAhead}h`}</Text></View>
+      {!!validLabel&&<Text style={styles.timelineNote}>{validLabel}</Text>}
+      <View {...pan.panHandlers} style={styles.timelineTrackTouchArea} onLayout={event=>setTimelineWidth(event.nativeEvent.layout.width)}
+        accessible focusable accessibilityRole="adjustable" accessibilityLabel="Forecast timeline"
+        accessibilityValue={{min:0,max:maxHours,now:hoursAhead,text:validLabel}}
+        aria-valuemin={0} aria-valuemax={maxHours} aria-valuenow={hoursAhead} aria-valuetext={validLabel}
+        accessibilityActions={[{name:"decrement",label:"Move back one hour"},{name:"increment",label:"Advance one hour"}]}
+        onAccessibilityAction={event=>changeHour(event.nativeEvent.actionName==="increment"?1:-1)}
+        {...(Platform.OS==="web"?{tabIndex:0,onKeyDown:(event: import("react-native").KeyDownEvent)=>{
+          const key=event.nativeEvent.key;
+          if(key==="ArrowLeft"||key==="ArrowRight"){event.preventDefault();changeHour(key==="ArrowRight"?1:-1);}
+        }}:{})}>
+        <View style={styles.timelineTrack} pointerEvents="none"><View style={[styles.timelineFill,{width:`${progress}%`}]}/>
+          {ticks.map(hour=><View key={hour} style={[styles.timelineMark,{left:`${maxHours?hour/maxHours*100:0}%`},hour<=hoursAhead&&styles.timelineMarkActive]}/>)}
+          <View style={[styles.timelineThumb,{left:`${progress}%`}]}/></View>
+      </View>
+      <View style={styles.timelineLabels}>{ticks.map(hour=><Text key={hour} style={styles.timelineLabel}>{hour===0?"Now":`${hour}h`}</Text>)}</View>
+      {!!note&&<Text style={styles.timelineNote}>{note}</Text>}
+      {!!(status||mapError)&&<TouchableOpacity onPress={mapError?reload:onRetry} accessibilityRole="button" accessibilityLabel={mapError||status}>
+        <Text style={styles.timelineNote}>{mapError||status}</Text></TouchableOpacity>}
+    </View>
+  </View>;
 }
 
 const styles = StyleSheet.create({
   zoomControls: {
     position: "absolute",
-    top: 100,
+    top: 145,
     right: 14,
     gap: 8,
   },
@@ -370,27 +183,27 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: "rgba(15,15,25,0.85)",
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "#dce5de",
     alignItems: "center",
     justifyContent: "center",
   },
   zoomText: {
-    color: "#ffffff",
+    color: "#2d6a4f",
     fontSize: 20,
     fontWeight: "400",
     lineHeight: 22,
   },
   modeToggle: {
     position: "absolute",
-    top: 190,
+    top: 55,
     right: 14,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: "rgba(15,15,25,0.85)",
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "#dce5de",
   },
   modeBtn: {
     width: 52,
@@ -398,14 +211,158 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modeBtnActive: {
-    backgroundColor: "#55c7f3",
+    backgroundColor: "#2d6a4f",
   },
   modeText: {
-    color: "#ffffff",
+    color: "#34473b",
     fontSize: 12,
     fontWeight: "600",
   },
   modeTextActive: {
-    color: "#0f1928",
+    color: "#ffffff",
+  },
+  mapLegend: {
+    position: "absolute",
+    top: 55,
+    left: 14,
+    width: 166,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#dce5de",
+    gap: 8,
+    elevation: 2,
+  },
+  locationLegendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  locationLegendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#2d6a4f",
+    borderWidth: 2,
+    borderColor: "#d8e3db",
+  },
+  mapLegendText: {
+    color: "#34473b",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  intensityLegend: {
+    gap: 4,
+  },
+  mapLegendTitle: {
+    color: "#34473b",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  intensityGradient: {
+    height: 8,
+    flexDirection: "row",
+    overflow: "hidden",
+    borderRadius: 4,
+  },
+  intensityColor: {
+    flex: 1,
+  },
+  intensityLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  mapLegendCaption: {
+    color: "#748178",
+    fontSize: 9,
+  },
+  timeline: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    bottom: 14,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderRadius: 14,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#dce5de",
+    gap: 3,
+    elevation: 3,
+  },
+  timelineHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  timelineTitle: {
+    color: "#34473b",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  timelineValue: {
+    color: "#2d6a4f",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  timelineNote: {
+    color: "#748178",
+    fontSize: 10,
+  },
+  timelineTrackTouchArea: {
+    height: 30,
+    justifyContent: "center",
+    marginHorizontal: 4,
+  },
+  timelineTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#e1e8e3",
+    justifyContent: "center",
+  },
+  timelineFill: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 2,
+    backgroundColor: "#2d6a4f",
+  },
+  timelineMark: {
+    position: "absolute",
+    top: -2,
+    width: 2,
+    height: 8,
+    marginLeft: -1,
+    backgroundColor: "#9bac9f",
+  },
+  timelineMarkActive: {
+    backgroundColor: "#ffffff",
+  },
+  timelineThumb: {
+    position: "absolute",
+    top: -7,
+    width: 18,
+    height: 18,
+    marginLeft: -9,
+    borderRadius: 9,
+    borderWidth: 3,
+    borderColor: "#ffffff",
+    backgroundColor: "#2d6a4f",
+    shadowColor: "#203629",
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  timelineLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  timelineLabel: {
+    color: "#748178",
+    fontSize: 10,
+    fontWeight: "600",
   },
 });
