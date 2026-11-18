@@ -440,3 +440,41 @@ pass counts. No-pass dates use the exact 12:30 UTC GEOS center, recorded as
 `assumed_noon_interval` with `timing_fallback_reason=no_satellite_pass`.
 Observation masks remain enforced: entirely filled bands cannot supervise training.
 Rebuild preparation and normalization after this timing change.
+
+### Surface O3 station model (current configuration)
+
+`o3` now uses `o3_station_hour_labels_2023.parquet`, replacing satellite total-column
+supervision. Required fields are station_id, target_time_utc, o3_ppb, o3_valid,
+o3_latitude, and o3_longitude. A label at t averages [t, t+1 hour); it matches only
+the GEOS hourly-mean record at t+30 minutes. Missing exact intervals are skipped.
+The GEOS `o3` mol/mol baseline is multiplied by 1e9 to obtain ppb. The model predicts
+a full map, with loss evaluated only at valid, in-bounds station positions. Target
+and baseline share training-only normalization. Validation RMSE is in ppb.
+No O3 satellite TIFF, mask, Hub download, or total-column baseline is used.
+Rebuild preparation and normalization before training; old column-O3 checkpoints
+are incompatible. Historical satellite O3 instructions above no longer apply.
+
+### Configurable source components
+
+`source_adapters.py` separates `RasterLabels` / `StationTableLabels`, `TimeMatcher`,
+and `BaselineBuilder`. `build_catalog` and `SourceDataset` dispatch on configuration,
+not pollutant names. Existing compact source configs are expanded by a compatibility
+resolver; `data_config.json` now declares these choices explicitly.
+
+For a new source, configure `label_type` (`raster` or `station_table`), `target_name`,
+`target_units`, `label_units`, `predictors`, `timing_policy`, and `baseline`. Station
+sources also specify `columns` mapping value/valid/latitude/longitude; station ID
+and time keys remain `station_id` and `target_time_utc`. Raster sources retain the
+original-observation mask requirement. Matching strategies retain the existing
+NO2 pass-midpoint/noon fallback, O3 interval, and meteorological interpolation rules.
+
+Baseline methods are `column` (unit-aware column conversion), `scaled_variable`
+(variable, input_units, scale, offset), and `dewpoint`. Station labels must already
+use target units; raster labels support identical units or supported column-unit
+conversions. New physical derivations require extending the baseline builder.
+Any configured source name can be passed to `train_model --sources`; model target
+names come from the readiness report. Hub fallback works for any configured source.
+
+Rebuild prepared indexes and normalization after migrating configuration: their
+signatures include the explicit adapter configuration. The tensor contracts, masks,
+chronological splitting, and training loss remain unchanged.

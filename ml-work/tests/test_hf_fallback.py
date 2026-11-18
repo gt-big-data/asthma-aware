@@ -20,13 +20,13 @@ class SatelliteFallbackTests(unittest.TestCase):
             self.assertEqual(errors, {})
 
     def test_missing_file_uses_cache_without_mutating_config(self):
-        cfg = {'sources': {'o3': {'labels': '/missing/o3.tif', 'huggingface': {'repo_id': 'test/data', 'filename': 'remote.tif', 'revision': 'abc'}}}}
+        cfg = {'sources': {'no2': {'labels': '/missing/o3.tif', 'huggingface': {'repo_id': 'test/data', 'filename': 'remote.tif', 'revision': 'abc'}}}}
         download = Mock(return_value='/cache/remote.tif')
         with patch.dict('sys.modules', {'huggingface_hub': SimpleNamespace(hf_hub_download=download)}):
             result, errors = resolve_satellite_labels(cfg)
         download.assert_called_once_with(repo_id='test/data', repo_type='dataset', filename='remote.tif', revision='abc')
-        self.assertEqual(result['sources']['o3']['labels'], '/cache/remote.tif')
-        self.assertEqual(cfg['sources']['o3']['labels'], '/missing/o3.tif')
+        self.assertEqual(result['sources']['no2']['labels'], '/cache/remote.tif')
+        self.assertEqual(cfg['sources']['no2']['labels'], '/missing/o3.tif')
         self.assertEqual(errors, {})
 
     def test_failure_is_source_specific(self):
