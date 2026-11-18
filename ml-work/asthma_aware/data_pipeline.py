@@ -368,6 +368,59 @@ def geos_fields(ref, names, readers, grid, coarse_shape):
     return result
 
 
+def prepare_geos_inputs(source, channels, cfg, grid, readers, references):
+    """Build the coarse inputs and fine baseline used in training and inference."""
+    needed = list(
+        dict.fromkeys(
+            channels
+            + (
+                MET[:3]
+                if source == "dewpoint"
+                else [cfg["baseline_variable"]]
+            )
+        )
+    )
+    fields = [
+        geos_fields(
+            ref,
+            needed,
+            readers,
+            grid,
+            cfg.get("coarse_shape", [18, 17]),
+        )
+        for ref in references
+    ]
+    f = {k: sum(x[k] for x in fields) / len(fields) for k in needed}
+    forecast = np.stack([f[k] for k in channels])
+    units = readers.open("nc", references[0]["path"])
+    if source in ("no2", "o3"):
+        var = cfg["baseline_variable"]
+        if (
+            source == "o3"
+            and cfg.get("baseline_quantity") != "total_o3_column"
+        ):
+            raise ValueError(
+                "O3 requires an explicitly declared total-column baseline"
+            )
+        baseline = f[var] * column_factor(units[var].attrs.get("units"))
+    elif source == "temperature":
+        baseline = f["air_temperature"] - 273.15
+    else:
+        baseline = dewpoint_c(
+            f["air_temperature"], f["specific_humidity"], f["surface_pressure"]
+        )
+    bounds = array_bounds(grid.height, grid.width, grid.affine)
+    baseline = regrid(
+        baseline,
+        from_bounds(*bounds, baseline.shape[1], baseline.shape[0]),
+        grid.crs,
+        grid,
+    )[None]
+    if not np.isfinite(baseline).all():
+        raise ValueError("Non-finite baseline")
+    return forecast, baseline
+
+
 class SourceDataset(Dataset):
     """One source, one split; prepared records have already passed input validation."""
 
@@ -420,55 +473,9 @@ class SourceDataset(Dataset):
         return len(self.records)
 
     def _raw(self, record):
-        needed = list(
-            dict.fromkeys(
-                self.channels
-                + (
-                    MET[:3]
-                    if self.source == "dewpoint"
-                    else [self.cfg["baseline_variable"]]
-                )
-            )
+        return prepare_geos_inputs(
+            self.source, self.channels, self.cfg, self.grid, self.readers, record["geos"]
         )
-        fields = [
-            geos_fields(
-                ref,
-                needed,
-                self.readers,
-                self.grid,
-                self.cfg.get("coarse_shape", [18, 17]),
-            )
-            for ref in record["geos"]
-        ]
-        f = {k: sum(x[k] for x in fields) / len(fields) for k in needed}
-        forecast = np.stack([f[k] for k in self.channels])
-        units = self.readers.open("nc", record["geos"][0]["path"])
-        if self.source in ("no2", "o3"):
-            var = self.cfg["baseline_variable"]
-            if (
-                self.source == "o3"
-                and self.cfg.get("baseline_quantity") != "total_o3_column"
-            ):
-                raise ValueError(
-                    "O3 requires an explicitly declared total-column baseline"
-                )
-            baseline = f[var] * column_factor(units[var].attrs.get("units"))
-        elif self.source == "temperature":
-            baseline = f["air_temperature"] - 273.15
-        else:
-            baseline = dewpoint_c(
-                f["air_temperature"], f["specific_humidity"], f["surface_pressure"]
-            )
-        bounds = array_bounds(self.grid.height, self.grid.width, self.grid.affine)
-        baseline = regrid(
-            baseline,
-            from_bounds(*bounds, baseline.shape[1], baseline.shape[0]),
-            self.grid.crs,
-            self.grid,
-        )[None]
-        if not np.isfinite(baseline).all():
-            raise ValueError("Non-finite baseline")
-        return forecast, baseline
 
     def __getitem__(self, i):
         record = self.records[i]

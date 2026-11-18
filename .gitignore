@@ -1,3 +1,7 @@
 .venv/
 .DS_Store
 
+# ML checkpoints are distributed separately; pin their identities in the manifest.
+/models/checkpoints/*.pt
+/models/prepared/
+
