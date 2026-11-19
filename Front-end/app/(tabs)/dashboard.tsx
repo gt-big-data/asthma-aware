@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -15,6 +15,10 @@ import { getUserLocation } from "../../constants/userLocation";
 import { api } from "../../lib/api";
 import { useAuth } from "../../providers/AuthProvider";
 import type { DashboardRisk } from "../../lib/api-client";
+import HourlyRiskTimeline from "../../components/HourlyRiskTimeline";
+import { riskColor as getRiskColor, riskLabel as getRiskLabel } from "../../lib/hourly-risk";
+import DashboardLocationPicker from "../../components/DashboardLocationPicker";
+import { useDashboardPlace } from "../../lib/use-dashboard-place";
 
 const ATLANTA = { latitude: 33.75, longitude: -84.39 };
 const US_STATE_ABBREVIATIONS: Record<string, string> = {
@@ -105,18 +109,6 @@ const VARIABLE_TRENDS = [
     change: "+5.0%",
   },
 ];
-
-function getRiskColor(score: number): string {
-  if (score < 40) return "#39845c";
-  if (score < 70) return "#9e6b1f";
-  return "#c54f49";
-}
-
-function getRiskLabel(score: number): string {
-  if (score < 40) return "Low";
-  if (score < 70) return "Moderate";
-  return "High";
-}
 
 function getDayLabels(): string[] {
   return Array.from({ length: 4 }, (_, offset) => {
@@ -247,48 +239,83 @@ function Sparkline({
 }
 
 export default function DashboardScreen() {
-  const { session } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const userId = session?.user.id;
+  const { place, ready: placeReady, error: placeError, select: selectPlace } = useDashboardPlace(userId);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [forecastNotice, setForecastNotice] = useState("");
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [cityAndState, setCityAndState] = useState("Locating...");
-  const [forecast, setForecast] = useState<DashboardRisk | null>(null);
+  const [loadedForecast, setForecast] = useState<DashboardRisk | null>(null);
+  const [loadedContext, setLoadedContext] = useState("");
   const [forecastStatus, setForecastStatus] = useState("LOADING");
+  const [reload, setReload] = useState(0);
+  const [focused, setFocused] = useState(false);
+  const contextKey = `${userId ?? "guest"}/${place?.id ?? "current"}`;
+  const contextReady = placeReady && !authLoading && loadedContext === contextKey;
+  const forecast = contextReady ? loadedForecast : null;
+  const displayStatus = contextReady ? forecastStatus : "LOADING";
+  const locationLabel = !placeReady || authLoading ? "Loading location…" : place
+    ? (place.label === place.name ? `${place.name}, GA` : `${place.label} · ${place.name}`)
+    : contextReady ? cityAndState : "Current location";
   const dayLabels = forecast?.days.map(({ date }, index) => index === 0 ? "Today"
     : new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }))
     ?? getDayLabels();
   const scores = forecast?.days.map(({ score }) => score) ?? [null, null, null, null];
 
   useFocusEffect(useCallback(() => {
+    setFocused(true);
+    return () => setFocused(false);
+  }, []));
+
+  useEffect(() => {
+    if (!focused || !placeReady || authLoading) return;
     let active = true;
-    setForecast(null);
-    setForecastStatus("LOADING");
+    const controller = new AbortController();
     let locationTimeout: ReturnType<typeof setTimeout>;
     async function loadForecast() {
-      const coords = await Promise.race([
-        getUserLocation(),
+      setForecast(null);
+      setLoadedContext(contextKey);
+      setForecastStatus("LOADING");
+      setForecastNotice("");
+      setExpandedDay(null);
+      const coords = place ?? await Promise.race([
+        getUserLocation().catch(() => null),
         new Promise<null>((resolve) => { locationTimeout = setTimeout(() => resolve(null), 8000); }),
       ]);
       clearTimeout(locationTimeout);
       if (!active) return;
 
       const { latitude, longitude } = coords ?? ATLANTA;
-      setCityAndState(coords ? "Current location" : "Atlanta, GA");
-      if (coords && Platform.OS !== "web") {
+      setCityAndState(place ? (place.label === place.name ? `${place.name}, GA` : `${place.label} · ${place.name}`)
+        : coords ? "Current location" : "Atlanta, GA");
+      if (coords && !place && Platform.OS !== "web") {
         void Location.reverseGeocodeAsync(coords).then(([address]) => {
           const label = address && getCityAndState(address);
           if (active && label) setCityAndState(label);
         }).catch(() => { /* Keep the current-location label. */ });
       }
       try {
-        const result = await api.dashboardRisk(latitude, longitude, !!userId);
+        const coverage = place ? { in_georgia: true, forecast_supported: place.forecast_supported }
+          : await api.locationCoverage(latitude, longitude, controller.signal);
+        if (!active) return;
+        if (!coverage.in_georgia || !coverage.forecast_supported) {
+          setForecastStatus("UNAVAILABLE");
+          setForecastNotice(!coverage.in_georgia ? "Your current location is outside Georgia. Choose a Georgia city to view its dashboard."
+            : "This Georgia location is outside the current forecast area. Choose another city to view available forecasts.");
+          return;
+        }
+        const result = await api.dashboardRisk(latitude, longitude, !!userId, controller.signal);
         if (active) { setForecast(result); setForecastStatus("UNAVAILABLE"); }
+        if (active && !coords) setForecastNotice("Device location is unavailable. Showing Atlanta, GA. Choose a city to change the location.");
       } catch {
-        if (active) setForecastStatus("UNAVAILABLE");
+        if (active) { setForecastStatus("UNAVAILABLE"); setForecastNotice("Could not load this location’s forecast. Try again or choose another city."); }
       }
     }
     void loadForecast();
-    return () => { active = false; clearTimeout(locationTimeout); };
-  }, [userId]));
+    const refresh = setInterval(() => setReload(value => value + 1), 5 * 60 * 1000);
+    return () => { active = false; controller.abort(); clearTimeout(locationTimeout); clearInterval(refresh); };
+  }, [userId, reload, focused, place, placeReady, authLoading, contextKey]);
 
   return (
     <ScrollView
@@ -301,24 +328,34 @@ export default function DashboardScreen() {
           <Text style={styles.eyebrow}>ASTHMA AWARE</Text>
           <Text style={styles.title}>Your dashboard</Text>
         </View>
-        <View style={styles.locationPill}>
+        <TouchableOpacity disabled={!placeReady || authLoading} onPress={() => setShowLocationPicker(true)} style={styles.locationPill}
+          accessibilityRole="button" accessibilityLabel={`Change dashboard location. ${locationLabel}`}>
           <Ionicons name="location-outline" size={15} color="#66766b" />
-          <Text style={styles.locationText}>{cityAndState}</Text>
-        </View>
+          <Text style={styles.locationText} numberOfLines={1}>{locationLabel}</Text>
+          <Ionicons name="chevron-down" size={12} color="#66766b" />
+        </TouchableOpacity>
       </View>
+      {!!((contextReady && forecastNotice) || placeError) && <Text style={styles.locationNotice}>{(contextReady && forecastNotice) || placeError}</Text>}
+      {showLocationPicker && <DashboardLocationPicker key={userId ?? "guest"} userId={userId} selected={place}
+        onSelect={async next => { await selectPlace(next); setReload(value => value + 1); }} onClose={() => setShowLocationPicker(false)} />}
 
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View>
-            <Text style={styles.cardTitle}>Today&apos;s Respiratory Risk</Text>
+            <Text style={styles.cardTitle}>Current respiratory risk</Text>
           </View>
         </View>
-        <RiskGauge score={scores[0]} status={forecastStatus} />
+        <RiskGauge score={forecast?.hourly?.[0]?.score ?? null} status={displayStatus} />
+        <Text style={styles.gaugeFootnote}>{displayStatus === "LOADING" ? "Loading today’s outlook…" : scores[0] === null ? "Today’s peak unavailable"
+          : `Today’s forecast peak ${scores[0]} / 100`}</Text>
       </View>
+
+      <HourlyRiskTimeline key={`${forecast?.source_run ?? "loading"}/${userId ?? "general"}`} forecast={forecast}
+        loading={displayStatus === "LOADING"} onRetry={() => setReload(value => value + 1)} />
 
       <View style={styles.sectionHeading}>
         <View>
-          <Text style={styles.sectionTitle}>4-day forecast</Text>
+          <Text style={styles.sectionTitle}>4-day overview</Text>
           <Text style={styles.sectionSubtitle}>
             {forecast?.personalization?.matched_logs ? "Personalized respiratory risk" : "General respiratory risk"}
             {forecast?.placeholder ? " · Development estimate" : ""}
@@ -373,7 +410,7 @@ export default function DashboardScreen() {
       <View style={styles.sectionHeading}>
         <View>
           <Text style={styles.sectionTitle}>Environmental trends</Text>
-          <Text style={styles.sectionSubtitle}>Past 7 days</Text>
+          <Text style={styles.sectionSubtitle}>Sample data · not location-specific</Text>
         </View>
         <Ionicons name="analytics-outline" size={20} color="#66766b" />
       </View>
@@ -449,6 +486,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   locationPill: {
+    maxWidth: "48%",
+    flexShrink: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
@@ -460,10 +499,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#eaf2ec",
   },
   locationText: {
+    flexShrink: 1,
     color: "#4b5b50",
     fontSize: 12,
     fontWeight: "600",
   },
+  locationNotice: { color: "#826b49", backgroundColor: "#f6f0e6", borderRadius: 12, padding: 12, fontSize: 12, lineHeight: 18 },
   card: {
     alignItems:'center',
     backgroundColor: "#ffffff",
@@ -585,6 +626,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   forecastRow: {
+    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 3,
@@ -616,6 +658,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   forecastDetails: {
+    width: "100%",
     borderTopWidth: 1,
     borderTopColor: "#dce5de",
     paddingTop: 12,

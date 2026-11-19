@@ -1,11 +1,17 @@
 import type { Coordinates, LocationSource } from "./logging";
 import type { MapForecast, MapFrameImage } from "./forecast-map";
+import type { RiskHour } from "./hourly-risk";
+import type { GeorgiaCity, SavedLocation } from "./saved-locations";
 
 export interface DashboardRisk {
+  source_run: string;
+  issued_at: string;
+  timezone: string;
   stale: boolean;
   placeholder: boolean;
   personalization?: { matched_logs: number; pending_logs: number; still_learning: boolean } | null;
   days: { date: string; score: number | null; available_hours: number }[];
+  hourly: RiskHour[];
 }
 
 export interface Profile { user_id: string; name: string | null; timezone: string }
@@ -64,12 +70,12 @@ export function createApiClient(options: {
       if (!response.ok) {
         const message = response.status === 401 ? "Your session has expired. Please sign in again."
           : response.status === 409 ? "This entry changed elsewhere. Reload it before saving again."
-          : response.status === 422 ? "Check the date and values, then try again."
+          : response.status === 422 ? "Check the entered values, then try again."
           : response.status === 503 ? "The service is temporarily unavailable. Please try again."
           : "Could not complete the request. Please try again.";
         throw new ApiError(response.status, message);
       }
-      return await response.json() as T;
+      return response.status === 204 ? undefined as T : await response.json() as T;
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(0, "Could not reach the service. Check your connection and try again.");
@@ -79,14 +85,22 @@ export function createApiClient(options: {
     }
   }
   return {
+    locationCoverage: (lat: number, lon: number, signal?: AbortSignal) => request<{ in_georgia: boolean; forecast_supported: boolean }>(
+      `/v1/locations/coverage?lat=${lat}&lon=${lon}`, "GET", undefined, false, signal),
+    searchCities: (query: string, signal?: AbortSignal) => request<{ items: GeorgiaCity[] }>(
+      `/v1/locations/cities?q=${encodeURIComponent(query)}`, "GET", undefined, false, signal),
+    city: (id: string, signal?: AbortSignal) => request<GeorgiaCity>(`/v1/locations/cities/${encodeURIComponent(id)}`, "GET", undefined, false, signal),
+    savedLocations: () => request<{ items: SavedLocation[] }>("/v1/locations"),
+    saveLocation: (id: string, label?: string) => request<SavedLocation>(`/v1/locations/${encodeURIComponent(id)}`, "PUT", { label }),
+    deleteLocation: (id: string) => request<void>(`/v1/locations/${encodeURIComponent(id)}`, "DELETE"),
     mapForecast: (signal?: AbortSignal) => request<MapForecast>("/v1/map/forecast", "GET", undefined, false, signal),
     mapFrame: (runId: string, index: number, signal?: AbortSignal) => request<MapFrameImage>(
       `/v1/map/frame?run_id=${encodeURIComponent(runId)}&index=${index}`, "GET", undefined, false, signal,
     ),
-    async dashboardRisk(lat: number, lon: number, usePersonalization = true) {
+    async dashboardRisk(lat: number, lon: number, usePersonalization = true, signal?: AbortSignal) {
       const signedIn = usePersonalization && !!await options.getAccessToken();
       const route = signedIn ? "personal-risk" : "risk";
-      return request<DashboardRisk>(`/v1/dashboard/${route}?lat=${lat}&lon=${lon}`, "GET", undefined, signedIn);
+      return request<DashboardRisk>(`/v1/dashboard/${route}?lat=${lat}&lon=${lon}`, "GET", undefined, signedIn, signal);
     },
     profile: () => request<Profile>("/v1/users/me"),
     setTimezone: (timezone: string) => request<Profile>("/v1/users/me", "PATCH", { timezone }),
