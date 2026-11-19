@@ -6,7 +6,7 @@ model module, import it here or Alembic will not see it.
 """
 
 from db.base import Base
-from db.models.application import ExposureSnapshot, OutboxEvent, PersonalizationRevision, Profile, SymptomLog, SymptomLogRevision
+from db.models.application import ExposureSnapshot, OutboxEvent, PersonalizationRevision, Profile, SavedLocation, SymptomLog, SymptomLogRevision
 from db.models.ingestion import (
     ISSUE_KINDS,
     RUN_STATUSES,
@@ -35,7 +35,7 @@ from db.models.reference import (
 from db.models.socioeconomic import SocioeconomicRecord, Zcta
 
 __all__ = [
-    "Profile", "SymptomLog", "SymptomLogRevision", "ExposureSnapshot", "PersonalizationRevision", "OutboxEvent",
+    "Profile", "SavedLocation", "SymptomLog", "SymptomLogRevision", "ExposureSnapshot", "PersonalizationRevision", "OutboxEvent",
     "Base",
     "DataSource",
     "Forecast",

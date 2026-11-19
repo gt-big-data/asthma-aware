@@ -19,8 +19,9 @@ from app.auth import ALGORITHMS
 from app.config import Settings
 from db import config
 
-HEAD = "0002_application"
-TABLES = {"profiles", "symptom_logs", "symptom_log_revisions", "exposure_snapshots", "personalization_revisions", "outbox_events"}
+HEAD = "0004_saved_locations"
+APPLICATION_REVISIONS = (["0002_application"], ["0003_personalization"], [HEAD])
+TABLES = {"profiles", "symptom_logs", "symptom_log_revisions", "exposure_snapshots", "personalization_revisions", "outbox_events", "saved_locations"}
 
 
 def check_signing_keys(project_url: str) -> dict:
@@ -58,11 +59,11 @@ def check_database(connection, mode: str) -> dict:
     tables = set(connection.scalars(text("SELECT tablename FROM pg_tables WHERE schemaname = 'app'")))
     result = {"database_role": identity["role"], "tls": True, "migration_revisions": revisions, "application_tables": sorted(tables)}
     if mode == "operator":
-        if revisions not in ([], ["0001_initial_schema"], [HEAD]):
+        if revisions not in ([], ["0001_initial_schema"], *APPLICATION_REVISIONS):
             raise ValueError("Unexpected migration revision; review the database history before applying migrations")
-        if tables and revisions != [HEAD]:
+        if tables and revisions not in APPLICATION_REVISIONS:
             raise ValueError("Existing app tables do not match the recorded revision; review before migrating")
-        if revisions != [HEAD] and not (identity["can_create_roles"] or identity["superuser"]):
+        if revisions in ([], ["0001_initial_schema"]) and not (identity["can_create_roles"] or identity["superuser"]):
             raise ValueError("Migration operator needs role-creation permission for migration 0002")
         result["next_step"] = "Application migration is already applied" if revisions == [HEAD] else "Review generated SQL, then apply Alembic migrations"
     else:

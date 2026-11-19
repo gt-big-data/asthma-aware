@@ -22,6 +22,22 @@ class Profile(TimestampMixin, Base):
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/New_York")
 
 
+class SavedLocation(TimestampMixin, Base):
+    __tablename__ = "saved_locations"
+    __table_args__ = (
+        CheckConstraint("city_id ~ '^13[0-9]{5}$'", name="georgia_city_id"),
+        CheckConstraint("length(trim(label)) BETWEEN 1 AND 80", name="label_valid"),
+        CheckConstraint("latitude BETWEEN 30 AND 36 AND longitude BETWEEN -86 AND -80", name="coordinates_valid"),
+        {"schema": SCHEMA},
+    )
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("app.profiles.user_id", ondelete="CASCADE"), primary_key=True)
+    city_id: Mapped[str] = mapped_column(String(7), primary_key=True)
+    label: Mapped[str] = mapped_column(String(80), nullable=False)
+    city_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+
+
 class SymptomLog(TimestampMixin, Base):
     __tablename__ = "symptom_logs"
     __table_args__ = (

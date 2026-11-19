@@ -7,6 +7,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.health import router as health_router
 from app.api.application import router as application_router
 from app.api.risk_map import router as risk_map_router
+from app.api.saved_locations import router as saved_locations_router
 from app.config import Settings
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -15,7 +16,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.add_middleware(
         CORSMiddleware,
         allow_origins=list(application.state.settings.cors_origins),
-        allow_methods=["GET", "PATCH", "PUT"],
+        allow_methods=["GET", "PATCH", "PUT", "DELETE"],
         allow_headers=["Authorization", "Content-Type"],
         expose_headers=["X-AsthmaAware-Data-Source"],
     )
@@ -23,6 +24,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(health_router)
     application.include_router(application_router)
     application.include_router(risk_map_router)
+    application.include_router(saved_locations_router)
     return application
 
 

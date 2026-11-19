@@ -94,6 +94,9 @@ return 401; unconfigured/unavailable authentication or database services return
 
 ## Population risk map
 
+Saved dashboard places use [the Georgia locations API](saved-locations.md).
+Migration 0004 adds the private owner-scoped saved-city table.
+
 The public hourly map is documented in [risk-map.md](risk-map.md).
 `GET /v1/map/forecast` lists available frames; `GET /v1/map/frame` returns
 a run-pinned risk image. Both share the dashboard forecast artifact and

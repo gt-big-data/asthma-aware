@@ -4,6 +4,9 @@ The NASA-driven hourly population map shares the dashboard's risk artifacts.
 See [map operation and API](docs/risk-map.md) and
 [Cloud Run/GCS deployment](docs/deploy-forecast-gcs.md).
 
+The dashboard supports [saved Georgia cities](docs/saved-locations.md), backed by
+private account bookmarks in migration 0004 and bundled Census location catalogs.
+
 One FastAPI application, independent data collectors, an environmental database
 layer, and a private application schema. Authenticated V1 profile and symptom-log
 endpoints are implemented, alongside NASA-driven dashboard/map risk forecasts
