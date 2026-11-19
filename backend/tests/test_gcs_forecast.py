@@ -32,15 +32,17 @@ def test_failed_upload_keeps_current_pointer(monkeypatch, tmp_path):
     assert all(call.args[0] != gcs.CURRENT for call in bucket.blob.call_args_list)
 
 
-@pytest.mark.parametrize("asset", ["layers", "risk", "history"])
+@pytest.mark.parametrize("asset", ["layers", "risk", "history", "map_fields"])
 def test_failed_derived_upload_keeps_current_pointer(monkeypatch, tmp_path, asset):
     bucket = Mock()
     layers_blob = Mock()
     layers_blob.upload_from_filename.side_effect = Forbidden("layers upload denied")
-    suffix = "/downscaled.nc" if asset == "layers" else "/risk.npz"
+    suffix = {"layers": "/downscaled.nc", "map_fields": "/map-fields.nc"}.get(asset, "/risk.npz")
     bucket.blob.side_effect = lambda key: layers_blob if key.endswith(suffix) else Mock()
     monkeypatch.setattr(gcs, "get_bucket", lambda name: bucket)
     run = forecast(datetime(2026, 11, 12, 9, tzinfo=timezone.utc))
+    if asset == "map_fields":
+        run = run.model_copy(update={"map_artifact": "map.nc", "map_artifact_sha256": "a" * 64})
     layers = tmp_path / "downscaled.nc"
 
     with pytest.raises(Forbidden):

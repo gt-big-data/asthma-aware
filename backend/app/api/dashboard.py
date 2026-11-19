@@ -70,7 +70,7 @@ def get_dashboard_risk(
 
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-AsthmaAware-Data-Source"] = "geos-cf"
-    return result
+    return geos_dashboard.with_forecast_details(result, run, now)
 
 
 @router.get("/v1/dashboard/personal-risk", response_model=geos_dashboard.DashboardForecast)
@@ -114,4 +114,4 @@ def get_personal_risk(
     except (geos_dashboard.ForecastUnavailable, OSError, ValueError):
         raise HTTPException(503, "Risk forecast or historical exposure is unavailable") from None
     response.headers["Cache-Control"] = "private, no-store"
-    return result
+    return geos_dashboard.with_forecast_details(result, run, now)

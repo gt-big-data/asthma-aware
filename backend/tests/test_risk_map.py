@@ -185,3 +185,97 @@ def test_gcs_map_reads_private_publication_and_reuses_download(published, monkey
         assert metadata["run_id"] == artifact.digest
         assert client.get("/v1/map/frame", params={"run_id": artifact.digest, "index": 40}).status_code == 200
     assert sum(call.args[0].endswith("risk.npz") for call in bucket.blob.call_args_list) == 1
+
+
+def test_physical_layer_routes_pin_layer_identity_and_reject_missing_layers(published, monkeypatch):
+    from app.api import risk_map as routes
+    from app.services.map_fields import SPECS, POLLUTION_COLORS
+    from app.services.risk_map import map_forecast
+    from types import SimpleNamespace
+    client, artifact, _, state, _, _ = published
+    label, unit, low, high = SPECS["no2"]
+    fields = SimpleNamespace(digest="b" * 64, times=artifact.times,
+        available={"no2": np.ones(len(artifact.times), bool)},
+        layers={"no2": dict(id="no2", label=label, unit=unit, minimum=low, maximum=high,
+            colors=POLLUTION_COLORS, description="Hourly concentration", processing="Native NASA")},
+        frame=lambda layer, time: np.full((420, 408), 7.))
+    monkeypatch.setattr(routes, "resolve_map_fields", lambda settings, run: fields)
+    metadata = client.get("/v1/map/forecast?layer=no2").json()
+    assert metadata["layer"]["unit"] == "ppb"
+    assert metadata["run_id"] == map_forecast(artifact, state["now"], fields, "no2").run_id
+    args = dict(layer="no2", run_id=metadata["run_id"], index=40)
+    assert client.get("/v1/map/frame", params=args).status_code == 200
+    args["layer"] = "risk"
+    assert client.get("/v1/map/frame", params=args).status_code == 409
+    assert client.get("/v1/map/forecast?layer=co").status_code == 404
+    assert client.get("/v1/map/forecast?layer=unknown").status_code == 422
+
+
+def test_personal_maps_require_authentication(published):
+    client, artifact, *_ = published
+    assert client.get("/v1/map/personal/forecast").status_code == 401
+    assert client.get("/v1/map/personal/frame", params=dict(run_id=artifact.digest, index=40)).status_code == 401
+    assert client.get("/v1/map/forecast").status_code == 200
+
+
+def test_personal_scores_match_dashboard_at_each_location_and_baseline(published):
+    from app.services.personalization_model import PersonalModel
+    from app.services.personal_risk_map import personal_frame_scores
+    client, artifact, _, state, _, _ = published
+    model = PersonalModel()
+    # No reports means no invented personal adjustment.
+    np.testing.assert_allclose(personal_frame_scores(artifact, 40, model),
+        artifact.general_scores[40][np.ix_(artifact.rows, artifact.columns)], equal_nan=True)
+    for _ in range(12):
+        model.update(np.array([1., .4, .2, -.1]), .08, 4.)
+    values = personal_frame_scores(artifact, 40, model)
+    from app.services.personalization_model import personal_scores
+    point = personal_scores(artifact.point(33.75, -84.39), artifact.ref, model)["score"][40, 0, 0]
+    row, col = int((34.98 - 33.75) / .01), int((-84.39 + 85.6) / .01)
+    assert values[row, col] == pytest.approx(point)
+    assert np.isnan(values[-1, -1])
+    assert not np.allclose(values, artifact.general_scores[40][np.ix_(artifact.rows, artifact.columns)], equal_nan=True)
+
+
+def test_personal_map_account_revision_isolation_private_headers_and_cache(published, monkeypatch):
+    from app.api import risk_map as routes
+    from app.auth import get_current_user_id
+    from app.dependencies import get_user_session
+    from app.services.personalization_model import PersonalModel
+    from app.services.risk_map import _images
+    client, artifact, _, _, _, _ = published
+    users = [uuid4(), uuid4()]
+    identity = {"user": users[0], "revision": 1}
+    model = PersonalModel()
+    monkeypatch.setattr(routes, "prepare_model", lambda *args: (model, identity["revision"], 2))
+    monkeypatch.setattr(routes, "saved_model", lambda *args: (model, identity["revision"]))
+    client.app.dependency_overrides[get_current_user_id] = lambda: identity["user"]
+    client.app.dependency_overrides[get_user_session] = lambda: object()
+    metadata = client.get("/v1/map/personal/forecast")
+    assert metadata.status_code == 200
+    assert metadata.headers["cache-control"] == "private, no-store"
+    assert "Authorization" in metadata.headers["vary"].split(", ")
+    first = metadata.json()
+    assert first["layer"]["id"] == "personal"
+    assert first["personalization"]["matched_logs"] == 0
+    assert first["personalization"]["pending_logs"] == 2
+    args = dict(run_id=first["run_id"], index=40)
+    before = list(_images)
+    frame = client.get("/v1/map/personal/frame", params=args)
+    assert frame.status_code == 200
+    assert frame.headers["cache-control"] == "private, no-store"
+    assert list(_images) == before  # Private images never enter shared cache.
+    assert decode_image(frame.json()["image"])[-1, -1, 3] == 0
+    identity["user"] = users[1]
+    assert client.get("/v1/map/personal/frame", params=args).status_code == 409
+    second = client.get("/v1/map/personal/forecast").json()
+    assert second["run_id"] != first["run_id"]
+    identity["user"] = users[0]
+    identity["revision"] = 2
+    assert client.get("/v1/map/personal/frame", params=args).status_code == 409
+    revised = client.get("/v1/map/personal/forecast").json()
+    assert revised["run_id"] != first["run_id"]
+    args["run_id"] = revised["run_id"]
+    args["index"] = 9999
+    assert client.get("/v1/map/personal/frame", params=args).status_code == 404
+    assert client.get("/v1/map/forecast").json()["run_id"] == artifact.digest

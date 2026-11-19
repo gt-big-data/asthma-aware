@@ -1,7 +1,8 @@
 import type { Coordinates, LocationSource } from "./logging";
-import type { MapForecast, MapFrameImage } from "./forecast-map";
+import type { MapForecast, MapFrameImage, MapLayerId } from "./forecast-map";
 import type { RiskHour } from "./hourly-risk";
 import type { GeorgiaCity, SavedLocation } from "./saved-locations";
+import type { ForecastDetails } from "./dashboard-insights";
 
 export interface DashboardRisk {
   source_run: string;
@@ -12,6 +13,7 @@ export interface DashboardRisk {
   personalization?: { matched_logs: number; pending_logs: number; still_learning: boolean } | null;
   days: { date: string; score: number | null; available_hours: number }[];
   hourly: RiskHour[];
+  forecast_details?: ForecastDetails | null;
 }
 
 export interface Profile { user_id: string; name: string | null; timezone: string }
@@ -93,9 +95,12 @@ export function createApiClient(options: {
     savedLocations: () => request<{ items: SavedLocation[] }>("/v1/locations"),
     saveLocation: (id: string, label?: string) => request<SavedLocation>(`/v1/locations/${encodeURIComponent(id)}`, "PUT", { label }),
     deleteLocation: (id: string) => request<void>(`/v1/locations/${encodeURIComponent(id)}`, "DELETE"),
-    mapForecast: (signal?: AbortSignal) => request<MapForecast>("/v1/map/forecast", "GET", undefined, false, signal),
-    mapFrame: (runId: string, index: number, signal?: AbortSignal) => request<MapFrameImage>(
-      `/v1/map/frame?run_id=${encodeURIComponent(runId)}&index=${index}`, "GET", undefined, false, signal,
+    mapForecast: (signal?: AbortSignal, layer: MapLayerId = "risk") => request<MapForecast>(
+      layer === "personal" ? "/v1/map/personal/forecast" : `/v1/map/forecast${layer === "risk" ? "" : `?layer=${layer}`}`,
+      "GET", undefined, layer === "personal", signal),
+    mapFrame: (runId: string, index: number, signal?: AbortSignal, layer: MapLayerId = "risk") => request<MapFrameImage>(
+      `/v1/map/${layer === "personal" ? "personal/" : ""}frame?run_id=${encodeURIComponent(runId)}&index=${index}${layer === "risk" || layer === "personal" ? "" : `&layer=${layer}`}`,
+      "GET", undefined, layer === "personal", signal,
     ),
     async dashboardRisk(lat: number, lon: number, usePersonalization = true, signal?: AbortSignal) {
       const signedIn = usePersonalization && !!await options.getAccessToken();

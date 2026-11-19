@@ -18,18 +18,30 @@ CELL_SIZE_METERS = 1000
 SOURCE_STEP = 0.25
 
 
+class ForecastInput(BaseModel):
+    variable: str = Field(min_length=1, max_length=80)
+    source_run: str | None = None
+    issued_at: AwareDatetime | None = None
+    collection: str | None = None
+
+
 class PublishedForecast(BaseModel):
     schema_version: Literal[1] = 1
     risk_artifact: str | None = None
+    map_artifact: str | None = None
+    map_artifact_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     source_run: str
     issued_at: AwareDatetime
     times: list[AwareDatetime] = Field(min_length=1, max_length=120)
     latitudes: list[FiniteFloat] = Field(min_length=1)
     longitudes: list[FiniteFloat] = Field(min_length=1)
     pm25: list[list[FiniteFloat | None]]
+    input_sources: list[ForecastInput] = Field(default_factory=list, max_length=64)
 
     @model_validator(mode="after")
     def validate_run(self):
+        if bool(self.map_artifact) != bool(self.map_artifact_sha256):
+            raise ValueError("Map artifacts require a checksum")
         if len(self.pm25) != len(self.times):
             raise ValueError("Expected one PM2.5 frame per valid time")
         cell_count = len(self.latitudes) * len(self.longitudes)
@@ -68,6 +80,16 @@ class HourlyRisk(BaseModel):
     drivers: list[RiskDriver] = Field(default_factory=list)
 
 
+class ForecastDetails(BaseModel):
+    forecast_start: AwareDatetime
+    forecast_end: AwareDatetime
+    source_remaining_hours: float
+    displayed_through: AwareDatetime | None = None
+    displayed_hours: int
+    scored_hours: int
+    input_sources: list[ForecastInput] = Field(default_factory=list)
+
+
 class DashboardForecast(BaseModel):
     source_run: str
     issued_at: AwareDatetime
@@ -80,6 +102,20 @@ class DashboardForecast(BaseModel):
     personalization: dict | None = None
     days: list[DailyRisk]
     hourly: list[HourlyRisk] = Field(default_factory=list)
+    forecast_details: ForecastDetails | None = None
+
+
+def with_forecast_details(result: DashboardForecast, run: PublishedForecast, now: datetime):
+    """Report source coverage separately from the dashboard's capped visible horizon."""
+    end = run.times[-1] + timedelta(minutes=30)
+    details = ForecastDetails(
+        forecast_start=run.times[0] - timedelta(minutes=30), forecast_end=end,
+        source_remaining_hours=round(max(0, (end - now).total_seconds() / 3600), 2),
+        displayed_through=result.hourly[-1].valid_at + timedelta(minutes=30) if result.hourly else None,
+        displayed_hours=len(result.hourly), scored_hours=sum(hour.score is not None for hour in result.hourly),
+        input_sources=run.input_sources,
+    )
+    return result.model_copy(update={"forecast_details": details})
 
 
 class OutsideForecastGrid(Exception):

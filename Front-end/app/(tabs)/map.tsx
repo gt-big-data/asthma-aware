@@ -1,36 +1,52 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import HeatmapView, { ATLANTA_BOUNDS, type MapBounds } from "../../components/HeatmapView";
 import { getCachedUserLocation, getUserLocation, type Coords } from "../../constants/userLocation";
 import { api } from "../../lib/api";
 import { ApiError } from "../../lib/api-client";
-import { createFrameCache, createFrameLoader, nearbyFrameIndices, inForecastBounds, type MapForecast, type MapFrameImage } from "../../lib/forecast-map";
+import { GENERAL_RISK_LAYER, PERSONAL_RISK_LAYER, type MapLayerId, createFrameCache, createFrameLoader, nearbyFrameIndices, inForecastBounds, type MapForecast, type MapFrameImage } from "../../lib/forecast-map";
 
-const frameCache = createFrameCache();
+import { useAuth } from "../../providers/AuthProvider";
+
+const publicFrameCache = createFrameCache();
 
 export default function MapScreen() {
+  const { session } = useAuth();
+  const userId = session?.user.id ?? null;
+  // Remount all personal state on sign-out/account changes, including the iframe.
+  return <UserMapScreen key={userId ?? "guest"} userId={userId} />;
+}
+
+function UserMapScreen({ userId }: { userId: string | null }) {
+  const router = useRouter();
+  const personalFrameCache = useMemo(() => createFrameCache(), []);
+
+  const [layer, setLayer] = useState<MapLayerId>(() => userId ? "personal" : "risk");
+  const [layers, setLayers] = useState([GENERAL_RISK_LAYER, PERSONAL_RISK_LAYER]);
+  const selectedTimeRef = useRef<string | undefined>(undefined);
   const [forecast, setForecast] = useState<MapForecast | null>(null);
   const [hoursAhead, setHoursAhead] = useState(0);
   const [loaded, setLoaded] = useState<MapFrameImage | null>(null);
   const [displayed, setDisplayed] = useState<MapFrameImage | null>(null);
   const [frameFailure, setFrameFailure] = useState<{ id: string; message: string } | null>(null);
-  const [status, setStatus] = useState("Loading NASA risk forecast…");
+  const [status, setStatus] = useState("Loading NASA forecast…");
   const [refresh, setRefresh] = useState(0);
   const [focused, setFocused] = useState(false);
   const [location, setLocation] = useState<Coords | null>(() => getCachedUserLocation());
   const [startBounds, setStartBounds] = useState<MapBounds>(ATLANTA_BOUNDS);
+  const frameCache = layer === "personal" ? personalFrameCache : publicFrameCache;
   const selected = forecast?.frames[hoursAhead];
   const frameId = `${forecast?.run_id}/${selected?.index}`;
   const raster = useMemo(() => loaded && forecast && selected
     && selected.available && loaded.run_id === forecast.run_id
-    ? { image: loaded.image, bounds: forecast.bounds, key: `${loaded.run_id}/${loaded.index}` } : null, [loaded, forecast, selected]);
+    ? { image: loaded.image, bounds: forecast.bounds, key: `${loaded.run_id}/${loaded.index}`, ...(layer !== "risk" ? { transition: "replace" as const } : {}) } : null, [loaded, forecast, selected, layer]);
   const initialized = useRef(false);
   const direction = useRef(1);
   const forecastRef = useRef(forecast);
   const positionRef = useRef(hoursAhead);
   useEffect(() => { forecastRef.current = forecast; positionRef.current = hoursAhead; }, [forecast, hoursAhead]);
-  const loader = useMemo(() => createFrameLoader((run, index, signal) => api.mapFrame(run, index, signal), frameCache), []);
+  const loader = useMemo(() => createFrameLoader((run, index, signal) => api.mapFrame(run, index, signal, layer), frameCache, { cancelActive: layer === "risk" }), [layer, frameCache]);
   const changeHour = useCallback((position: number) => {
     direction.current = position < positionRef.current ? -1 : 1;
     positionRef.current = position;
@@ -41,7 +57,15 @@ export default function MapScreen() {
       if (cached) setLoaded(cached);
     }
     setHoursAhead(position);
-  }, []);
+  }, [frameCache]);
+  const changeLayer = useCallback((next: MapLayerId) => {
+    if (next === layer) return;
+    selectedTimeRef.current = forecastRef.current?.frames[positionRef.current]?.valid_at ?? selectedTimeRef.current;
+    loader.stop();
+    forecastRef.current = null;
+    setForecast(null); setLoaded(null); setDisplayed(null); setFrameFailure(null);
+    setLayer(next);
+  }, [layer, loader]);
   const rasterShown = useCallback((key: string) => {
     if (loaded && key === `${loaded.run_id}/${loaded.index}`) setDisplayed(loaded);
   }, [loaded]);
@@ -54,18 +78,21 @@ export default function MapScreen() {
 
   useEffect(() => {
     if (!focused) return;
+    if (layer === "personal" && !userId) return;
     const controller = new AbortController();
     let active = true;
     async function load() {
-      setStatus("Loading NASA risk forecast…");
+      setStatus("Loading NASA forecast…");
       try {
-        const result = await api.mapForecast(controller.signal);
+        const result = await api.mapForecast(controller.signal, layer);
         if (!active) return;
         const previous = forecastRef.current;
-        const selectedTime = previous?.frames[positionRef.current]?.valid_at;
+        const selectedTime = previous?.frames[positionRef.current]?.valid_at ?? selectedTimeRef.current;
         const position = Math.max(0, result.frames.findIndex(frame => frame.valid_at === selectedTime));
         if (previous?.run_id !== result.run_id) { setLoaded(null); setDisplayed(null); loader.stop(); }
         setForecast(result);
+        setLayers([GENERAL_RISK_LAYER, PERSONAL_RISK_LAYER, ...(result.layers ?? []).filter(item => item.id !== "personal" && item.id !== "risk")]);
+        selectedTimeRef.current = undefined;
         setHoursAhead(position);
         positionRef.current = position;
         setStatus("");
@@ -74,14 +101,16 @@ export default function MapScreen() {
           setStartBounds([[cached.longitude - 0.425, cached.latitude - 0.3], [cached.longitude + 0.425, cached.latitude + 0.3]]);
         }
         initialized.current = true;
-      } catch {
-        if (active) setStatus("Could not refresh the risk forecast. Tap to retry.");
+      } catch (error) {
+        if (active) setStatus(layer === "personal" && error instanceof ApiError && error.status === 401
+          ? "Sign in from the Symptom Log tab to view your personalized asthma risk."
+          : "Could not refresh the forecast. Tap to retry.");
       }
     }
     void load();
     const timer = setInterval(() => setRefresh(value => value + 1), 5 * 60 * 1000);
     return () => { active = false; controller.abort(); clearInterval(timer); };
-  }, [focused, refresh, loader]);
+  }, [focused, refresh, loader, layer, userId]);
 
   useEffect(() => {
     let active = true;
@@ -103,18 +132,19 @@ export default function MapScreen() {
           nearbyFrameIndices(forecast.frames, hoursAhead, direction.current));
         if (!active) return;
         setLoaded(frame);
+        if (layer !== "risk") setFrameFailure(null);
       } catch (error) {
-        if (!active) return;
+        if (!active || (layer !== "risk" && error instanceof Error && error.name === "AbortError")) return;
         if (error instanceof ApiError && (error.status === 409 || error.status === 404)) {
           setRefresh(value => value + 1);
-        } else setFrameFailure({ id: frameId, message: "Risk layer unavailable. Tap to retry." });
+        } else setFrameFailure({ id: frameId, message: "Map layer unavailable. Tap to retry." });
       }
     }, cached ? 0 : 50);
     return () => { active = false; clearTimeout(timer); };
-  }, [forecast, selected, focused, refresh, frameId, hoursAhead, loader]);
+  }, [forecast, selected, focused, refresh, frameId, hoursAhead, loader, layer, frameCache]);
 
   const pending = selected?.available && (!displayed || displayed.run_id !== forecast?.run_id || displayed.index !== selected.index);
-  const visibleStatus = !forecast ? status : !selected?.available ? "No risk data for this hour."
+  const visibleStatus = layer === "personal" && !userId ? "Sign in from the Symptom Log tab to view your personalized asthma risk." : !forecast ? status : !selected?.available ? "No data for this hour."
     : frameFailure?.id === frameId && pending ? frameFailure.message
     : status;
 
@@ -123,16 +153,22 @@ export default function MapScreen() {
   });
   const validLabel = selected ? pending && displayed?.run_id === forecast?.run_id
     ? `Showing ${formatTime(displayed.valid_at)} · Selected ${formatTime(selected.valid_at)}`
-    : formatTime(selected.valid_at) : "";
-  const note = forecast ? ["General population risk", forecast.provisional ? "Development estimate" : "",
+    : pending && layer !== "risk" ? `Loading ${formatTime(selected.valid_at)}…` : formatTime(selected.valid_at) : "";
+  const descriptor = forecast?.layer ?? layers.find(item => item.id === layer) ?? GENERAL_RISK_LAYER;
+  const personalNote = layer === "personal" && forecast?.personalization
+    ? forecast.personalization.matched_logs === 0 ? "General baseline · No matched daily reports yet"
+      : `${forecast.personalization.matched_logs} matched daily reports${forecast.personalization.still_learning ? " · Learning your triggers" : ""}${forecast.personalization.pending_logs ? ` · ${forecast.personalization.pending_logs} awaiting exposure data` : ""}`
+    : "";
+  const note = forecast ? [descriptor.description, descriptor.processing, personalNote, forecast.provisional && layer === "risk" ? "Development estimate" : "",
     forecast.stale ? "NASA run older than 24h" : "", "Coverage limited to shaded area"].filter(Boolean).join(" · ") : "";
 
   return <View style={styles.root}>
     <HeatmapView key={JSON.stringify(startBounds)} raster={raster} hoursAhead={hoursAhead} maxHours={Math.max(0, (forecast?.frames.length ?? 1) - 1)}
       onHoursAheadChange={changeHour} onRasterShown={rasterShown} userLocation={location} visualization="heat" startBounds={startBounds}
       gridStepDegrees={forecast?.grid_step_degrees}
+      layer={descriptor} layers={layers} onLayerChange={changeLayer}
       status={visibleStatus} note={note} validLabel={validLabel} colors={forecast?.colors}
-      onRetry={() => setRefresh(value => value + 1)} />
+      onRetry={() => layer === "personal" && !userId ? router.push("/symptoms") : setRefresh(value => value + 1)} />
   </View>;
 }
 

@@ -150,3 +150,64 @@ test("obsolete map requests can be aborted and run changes remain identifiable",
     } });
   await assert.rejects(api.mapFrame("a".repeat(64), 52, controller.signal), error => error instanceof ApiError && error.status === 409);
 });
+
+
+test("physical map requests pin the selected layer without changing legacy risk URLs", async () => {
+  const calls: string[] = [];
+  const client = createApiClient({ baseUrl: "https://api.example.test", getAccessToken: async () => null,
+    fetcher: (async (url: string | URL | Request) => {
+      calls.push(String(url)); return new Response("{}", { status: 200 });
+    }) as typeof fetch });
+  await client.mapForecast(undefined, "temperature");
+  await client.mapFrame("abc", 42, undefined, "temperature");
+  await client.mapForecast();
+  assert.ok(calls[0].endsWith("/v1/map/forecast?layer=temperature"));
+  assert.ok(calls[1].endsWith("/v1/map/frame?run_id=abc&index=42&layer=temperature"));
+  assert.ok(calls[2].endsWith("/v1/map/forecast"));
+});
+
+
+test("physical scrubbing finishes active work and drops superseded queued hours", async () => {
+  const requests: { index: number; signal: AbortSignal; resolve: (frame: MapFrameImage) => void }[] = [];
+  const cache = createFrameCache();
+  const loader = createFrameLoader((run, index, signal) => new Promise(resolve => {
+    requests.push({ index, signal, resolve });
+  }), cache, { cancelActive: false });
+  const first = loader.select("physical", 1, [2, 3, 4]);
+  await flush();
+  const skipped = loader.select("physical", 40, [41]);
+  const rejected = assert.rejects(skipped, { name: "AbortError" });
+  const latest = loader.select("physical", 80, [81]);
+  await flush();
+  assert.deepEqual(requests.map(item => item.index), [1, 2]);
+  assert.ok(requests.every(item => !item.signal.aborted));
+  requests[0].resolve(imageFrame("physical", 1));
+  assert.equal((await first).index, 1);
+  await flush();
+  assert.deepEqual(requests.map(item => item.index), [1, 2, 80]);
+  requests[1].resolve(imageFrame("physical", 2));
+  await flush();
+  requests.find(item => item.index === 80)!.resolve(imageFrame("physical", 80));
+  assert.equal((await latest).index, 80);
+  await rejected;
+  assert.equal(cache.get("physical", 1)?.index, 1);
+  assert.equal(cache.get("physical", 40), undefined);
+  loader.stop();
+});
+
+
+test("personal maps use authenticated routes and never silently fall back to general risk", async () => {
+  const paths: string[] = [];
+  const api = createApiClient({ baseUrl: "https://api.example", getAccessToken: async () => "user-token",
+    fetcher: async (url, options) => {
+      paths.push(String(url));
+      assert.equal((options?.headers as Record<string,string>).Authorization, "Bearer user-token");
+      return new Response("{}", { status: 200 });
+    } });
+  await api.mapForecast(undefined, "personal");
+  await api.mapFrame("personal-id", 50, undefined, "personal");
+  assert.deepEqual(paths, ["https://api.example/v1/map/personal/forecast", "https://api.example/v1/map/personal/frame?run_id=personal-id&index=50"]);
+  const guest = createApiClient({ baseUrl: "https://api.example", getAccessToken: async () => null,
+    fetcher: async () => { assert.fail("Anonymous requests must not be sent"); } });
+  await assert.rejects(guest.mapForecast(undefined, "personal"), error => error instanceof ApiError && error.status === 401);
+});

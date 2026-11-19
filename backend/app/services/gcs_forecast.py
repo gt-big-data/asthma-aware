@@ -41,6 +41,8 @@ def read_artifact(bucket_name: str, publication_id: UUID) -> PublishedForecast:
     run = PublishedForecast.model_validate_json(blob.download_as_bytes(timeout=10))
     if run.risk_artifact is not None:
         run = run.model_copy(update={"risk_artifact": f"published/{publication_id}/risk.npz"})
+    if run.map_artifact is not None:
+        run = run.model_copy(update={"map_artifact": f"published/{publication_id}/map-fields.nc"})
     return run
 
 
@@ -58,13 +60,15 @@ def load_gcs_run(bucket_name: str) -> PublishedForecast:
 
 
 def publish_gcs(
-    bucket_name: str, source: Path, run: PublishedForecast, *, layers: Path | None = None, risk: Path | None = None, history: Path | None = None
+    bucket_name: str, source: Path, run: PublishedForecast, *, layers: Path | None = None, risk: Path | None = None, history: Path | None = None, map_fields: Path | None = None
 ) -> Publication:
     bucket = get_bucket(bucket_name)
     pointer = Publication(
         publication_id=uuid4(), issued_at=run.issued_at, has_downscaled_layers=layers is not None, has_risk=risk is not None,
     )
     prefix = f"raw/geos-cf/{pointer.publication_id}"
+    if bool(run.map_artifact) != (map_fields is not None):
+        raise ValueError("Map artifact pointer and upload must be published together")
     bucket.blob(f"{prefix}/forecast.nc").upload_from_filename(
         source, content_type="application/x-netcdf", if_generation_match=0, timeout=60,
     )
@@ -84,6 +88,11 @@ def publish_gcs(
     if history is not None:
         bucket.blob(f"history/{pointer.publication_id}/risk.npz").upload_from_filename(
             history, content_type="application/octet-stream", if_generation_match=0, timeout=60,
+        )
+
+    if map_fields is not None:
+        bucket.blob(f"published/{pointer.publication_id}/map-fields.nc").upload_from_filename(
+            map_fields, content_type="application/x-netcdf", if_generation_match=0, timeout=120,
         )
 
     for _ in range(5):

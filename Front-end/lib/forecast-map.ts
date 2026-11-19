@@ -1,4 +1,24 @@
+export type MapLayerId = "risk" | "personal" | "o3" | "no2" | "so2" | "pm25" | "temperature" | "pm10" | "co";
+export interface MapLayer {
+  id: MapLayerId; label: string; unit: string; minimum: number; maximum: number;
+  colors: string[]; description: string; processing: string; experimental: boolean;
+}
+export const GENERAL_RISK_LAYER: MapLayer = {
+  id: "risk", label: "General risk", unit: "score / 100", minimum: 0, maximum: 100,
+  colors: ["#2547a8", "#20b9c7", "#69cf71", "#f4d84a", "#e53935"],
+  description: "General population risk · not personalized", processing: "Rolling exposure model", experimental: false,
+};
+
+export const PERSONAL_RISK_LAYER: MapLayer = {
+  ...GENERAL_RISK_LAYER, id: "personal", label: "Personalized asthma risk",
+  description: "Your asthma risk · learned from daily symptom reports",
+  processing: "Same personalized scoring model as your dashboard",
+};
+
 export interface MapForecast {
+  personalization?: { matched_logs: number; pending_logs: number; revision: number; still_learning: boolean } | null;
+  layer?: MapLayer;
+  layers?: MapLayer[];
   run_id: string;
   source_run: string;
   issued_at: string;
@@ -20,7 +40,7 @@ export interface MapFrameImage {
   image: string;
 }
 
-export interface MapRaster { image: string; bounds: MapForecast["bounds"]; key?: string }
+export interface MapRaster { image: string; bounds: MapForecast["bounds"]; key?: string; transition?: "replace" }
 
 /** Geographic cell edges, anchored to the forecast footprint rather than rounded city coordinates. */
 export function createCellGrid(bounds: MapForecast["bounds"], step: number) {
@@ -104,7 +124,7 @@ type FrameJob = {
 
 /** Two requests maximum, shared promises, and a replaceable foreground-first queue. */
 export function createFrameLoader(fetchFrame: (run: string, index: number, signal: AbortSignal) => Promise<MapFrameImage>,
-  cache: FrameCache = createFrameCache()) {
+  cache: FrameCache = createFrameCache(), options: { cancelActive?: boolean } = {}) {
   const jobs = new Map<string, FrameJob>();
   const active = new Set<FrameJob>();
   let queue: FrameJob[] = [];
@@ -138,7 +158,11 @@ export function createFrameLoader(fetchFrame: (run: string, index: number, signa
     select(run: string, index: number, neighbors: number[]) {
       const indices = [...new Set([index, ...neighbors])];
       const wanted = new Set(indices.map(i => key(run, i)));
-      for (const [id, job] of jobs) if (!wanted.has(id)) cancel(job);
+      for (const [id, job] of jobs) {
+        // Finishing an active physical-field request avoids filling the API
+        // thread pool with work whose HTTP requests were already abandoned.
+        if (!wanted.has(id) && (!active.has(job) || options.cancelActive !== false)) cancel(job);
+      }
       const target = cache.get(run, index);
       queue = [];
       for (const i of indices) {

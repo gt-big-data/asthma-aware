@@ -19,6 +19,9 @@ import HourlyRiskTimeline from "../../components/HourlyRiskTimeline";
 import { riskColor as getRiskColor, riskLabel as getRiskLabel } from "../../lib/hourly-risk";
 import DashboardLocationPicker from "../../components/DashboardLocationPicker";
 import { useDashboardPlace } from "../../lib/use-dashboard-place";
+import LowerRiskPeriods from "../../components/LowerRiskPeriods";
+import ForecastDetailsPanel from "../../components/ForecastDetailsPanel";
+import { useDashboardClock } from "../../lib/use-dashboard-clock";
 
 const ATLANTA = { latitude: 33.75, longitude: -84.39 };
 const US_STATE_ABBREVIATIONS: Record<string, string> = {
@@ -239,6 +242,7 @@ function Sparkline({
 }
 
 export default function DashboardScreen() {
+  const now = useDashboardClock();
   const { session, loading: authLoading } = useAuth();
   const userId = session?.user.id;
   const { place, ready: placeReady, error: placeError, select: selectPlace } = useDashboardPlace(userId);
@@ -353,6 +357,8 @@ export default function DashboardScreen() {
       <HourlyRiskTimeline key={`${forecast?.source_run ?? "loading"}/${userId ?? "general"}`} forecast={forecast}
         loading={displayStatus === "LOADING"} onRetry={() => setReload(value => value + 1)} />
 
+      <LowerRiskPeriods forecast={forecast} loading={displayStatus === "LOADING"} now={now} />
+
       <View style={styles.sectionHeading}>
         <View>
           <Text style={styles.sectionTitle}>4-day overview</Text>
@@ -451,6 +457,7 @@ export default function DashboardScreen() {
           );
         })}
       </View>
+      <ForecastDetailsPanel forecast={forecast} now={now} />
     </ScrollView>
   );
 }

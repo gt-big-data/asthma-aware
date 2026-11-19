@@ -1,12 +1,15 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
-import { PanResponder, Platform, StyleSheet, View, TouchableOpacity, Text } from "react-native";
+import { PanResponder, Platform, StyleSheet, View, TouchableOpacity, Text, ScrollView } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import { createCellGrid, type MapRaster } from "../lib/forecast-map";
+import { GENERAL_RISK_LAYER, createCellGrid, type MapLayer, type MapLayerId, type MapRaster } from "../lib/forecast-map";
 
 export type MapBounds = [[number, number], [number, number]];
 export const ATLANTA_BOUNDS: MapBounds = [[-84.80, 33.45], [-83.95, 34.05]];
 interface MapLocation { latitude: number; longitude: number }
 interface HeatmapViewProps {
+  layer?: MapLayer;
+  layers?: MapLayer[];
+  onLayerChange?: (layer: MapLayerId) => void;
   raster: MapRaster | null;
   hoursAhead: number;
   maxHours: number;
@@ -76,7 +79,8 @@ function setRaster(raster) {
     if(version!==rasterVersion) return;
     cancelAnimationFrame(animation);
     const bounds=JSON.stringify(raster.bounds);
-    const blend=hasImage && drawnBounds===bounds && riskCanvas.width===image.width && riskCanvas.height===image.height;
+    const exact=raster.transition==="replace";
+    const blend=!exact && hasImage && drawnBounds===bounds && riskCanvas.width===image.width && riskCanvas.height===image.height;
     if(blend) {
       previousCanvas.width=riskCanvas.width;previousCanvas.height=riskCanvas.height;
       previousContext.drawImage(riskCanvas,0,0);
@@ -111,7 +115,16 @@ function setRaster(raster) {
       riskContext.globalAlpha=1;riskContext.globalCompositeOperation="source-over";
       map.triggerRepaint();
       if(fraction<1) animation=requestAnimationFrame(draw);
-      else {source.pause();hasImage=true;drawnBounds=bounds;post({type:"frame-shown",key:raster.key});}
+      else if(exact) {
+        // A physical concentration frame must be complete, never a blend of
+        // hours. Acknowledge only after MapLibre renders the final texture.
+        hasImage=true;drawnBounds=bounds;
+        map.once("render",()=>{
+          if(version!==rasterVersion) return;
+          source.pause();post({type:"frame-shown",key:raster.key});
+        });
+        map.triggerRepaint();
+      } else {source.pause();hasImage=true;drawnBounds=bounds;post({type:"frame-shown",key:raster.key});}
     }
     draw(start);
     updateGridVisibility();
@@ -144,7 +157,8 @@ try {
 }
 
 export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChange,onRasterShown,userLocation,
-  visualization="heat",gridStepDegrees=0.01,startBounds=ATLANTA_BOUNDS,status,note,validLabel,colors,onRetry}: HeatmapViewProps) {
+  layer=GENERAL_RISK_LAYER,layers=[GENERAL_RISK_LAYER],onLayerChange,visualization="heat",gridStepDegrees=0.01,startBounds=ATLANTA_BOUNDS,status,note,validLabel,colors,onRetry}: HeatmapViewProps) {
+  const [layerMenu, setLayerMenu] = useState(false);
   const [mapHtml] = useState(() => buildMapHtml(startBounds));
   const webviewRef = useRef<WebView<object>>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -156,8 +170,8 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
   const cellGrid = useMemo(() => rasterBounds ? createCellGrid(rasterBounds,gridStepDegrees) : null,
     [rasterBounds,gridStepDegrees]);
   const [mapError,setMapError] = useState("");
-  const latest = useRef({raster,userLocation,mode,showCellLines,cellGrid,onRasterShown});
-  useEffect(() => { latest.current={raster,userLocation,mode,showCellLines,cellGrid,onRasterShown}; });
+  const latest = useRef({raster,userLocation,mode,showCellLines,cellGrid,onRasterShown,layerId:layer.id});
+  useEffect(() => { latest.current={raster,userLocation,mode,showCellLines,cellGrid,onRasterShown,layerId:layer.id}; });
   const send = useCallback((message: object) => {
     iframeRef.current?.contentWindow?.postMessage(message,"*");
     webviewRef.current?.injectJavaScript(`window.mapCommand(${JSON.stringify(message)});true;`);
@@ -173,7 +187,10 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
         send({type:"location",location:current.userLocation});
         send({type:"mode",mode:current.mode});
         send({type:"grid",visible:current.showCellLines,data:current.cellGrid});
-      } else if(message.type==="frame-shown") latest.current.onRasterShown?.(message.key);
+      } else if(message.type==="frame-shown") {
+        if(latest.current.layerId!=="risk") setMapError("");
+        latest.current.onRasterShown?.(message.key);
+      }
       else if(message.type==="error") setMapError(message.message);
     } catch { /* Ignore messages unrelated to the map bridge. */ }
   },[send]);
@@ -221,10 +238,24 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
       </TouchableOpacity>
     </View>
     <View style={styles.mapLegend}>
+      <TouchableOpacity onPress={() => setLayerMenu(value => !value)} accessibilityRole="button"
+        accessibilityLabel="Choose map layer" accessibilityState={{expanded: layerMenu}} style={styles.layerTrigger}>
+        <Text style={styles.mapLegendTitle}>{layer.label} ▾</Text>
+        <Text style={styles.mapLegendCaption}>Map layer</Text>
+      </TouchableOpacity>
+      {layerMenu && <ScrollView style={styles.layerMenu} accessibilityRole="radiogroup" accessibilityLabel="Map layers">
+        {layers.map(option => <TouchableOpacity key={option.id} accessibilityRole="radio"
+          accessibilityLabel={option.label} accessibilityState={{checked: option.id === layer.id}}
+          style={[styles.layerOption, option.id === layer.id && styles.layerSelected]}
+          onPress={() => { onLayerChange?.(option.id); setLayerMenu(false); }}>
+          <Text style={styles.mapLegendText}>{option.label}</Text>
+          <Text style={styles.mapLegendCaption}>{option.unit}</Text>
+        </TouchableOpacity>)}
+      </ScrollView>}
       {userLocation&&<View style={styles.locationLegendRow}><View style={styles.locationLegendDot}/><Text style={styles.mapLegendText}>Your location</Text></View>}
-      <View style={styles.intensityLegend}><Text style={styles.mapLegendTitle}>General risk score</Text>
-        <View style={styles.intensityGradient}>{(colors??["#2547a8","#20b9c7","#69cf71","#f4d84a","#e53935"]).map(color=><View key={color} style={[styles.intensityColor,{backgroundColor:color}]}/>)}</View>
-        <View style={styles.intensityLabels}><Text style={styles.mapLegendCaption}>0 · Lower</Text><Text style={styles.mapLegendCaption}>100 · Higher</Text></View>
+      <View style={styles.intensityLegend}><Text style={styles.mapLegendTitle}>{layer.unit}</Text>
+        <View style={styles.intensityGradient}>{(colors??layer.colors).map(color=><View key={color} style={[styles.intensityColor,{backgroundColor:color}]}/>)}</View>
+        <View style={styles.intensityLabels}><Text style={styles.mapLegendCaption}>{(layer.id === "risk" || layer.id === "personal") ? "0 · Lower" : `≤${layer.minimum}`}</Text><Text style={styles.mapLegendCaption}>{(layer.id === "risk" || layer.id === "personal") ? "100 · Higher" : `≥${layer.maximum}`}</Text></View>
       </View>
     </View>
     <View style={styles.timeline}>
@@ -255,6 +286,10 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
 }
 
 const styles = StyleSheet.create({
+  layerTrigger: { gap: 3, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: "#e1e8e3" },
+  layerMenu: { maxHeight: 230 },
+  layerOption: { paddingVertical: 8, paddingHorizontal: 6, borderRadius: 6, gap: 2 },
+  layerSelected: { backgroundColor: "#e7f2e9" },
   zoomControls: {
     position: "absolute",
     top: 174,

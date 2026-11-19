@@ -119,3 +119,30 @@ requires a job image with PyTorch and `ml-work` installed, and the versioned
 checkpoints accessible at the path passed to `--model-dir`.
 
 The [personalization integration](personalization.md) supplies four-pollutant risk when a reference is configured.
+
+## Dashboard planning and source details
+
+The dashboard highlights up to three nonoverlapping lower-risk periods in the
+next 48 hours, using the same location-specific hourly scores shown in its
+timeline (including personalization when available). Periods must contain at
+least two remaining hours. The client first finds sustained scores at least
+five points below the outlook's median; if none exist, it shows sustained Low
+scores (below 40). Missing hours split periods. The strongest periods by mean
+score are displayed chronologically, with their actual score range and peak
+risk band. Lower relative risk is never presented as a guarantee of safety.
+
+Both dashboard endpoints include optional `forecast_details`: source interval
+start/end, remaining source hours, displayed horizon, counts of scored hourly
+intervals, and recorded per-variable initialization/run/collection metadata.
+The source interval ends 30 minutes after NASA's final midpoint timestamp;
+it can extend beyond the dashboard's capped horizon. Publication records
+per-variable metadata when supplied, otherwise the validated shared run
+metadata. Current collectors pin inputs to one initialization and reject mixed
+run batches. Older publications without input provenance remain readable and
+are explicitly labeled as having no per-variable timing records.
+
+The frontend's subdued, collapsed NASA details panel sits at the bottom of the
+dashboard. Expanding it groups inputs by recorded run/time, so differing times
+or unknown timestamps are visible. Initialization time is distinguished from
+download time, and forecast timing is distinguished from historical analysis
+used in the rolling risk calculation.

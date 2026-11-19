@@ -1,6 +1,6 @@
 # NASA population-risk map
 
-The map uses the dashboard's exposure artifact, general-risk function and fixed
+The General risk layer uses the dashboard's exposure artifact, general-risk function and fixed
 reference distribution. It is public and does not use symptom reports or
 individual personalization. Scores are relative 0–100 ranks against the
 configured reference, not a probability of an asthma attack.
@@ -119,3 +119,86 @@ Verification covers hourly general scores versus dashboard daily maxima,
 missing-cell transparency, fixed colors, spatial alignment, run transitions,
 expiry and cold-cache cloud reads. A personalized dashboard can differ because
 it blends individual symptom-based adjustments; the map stays population risk.
+
+
+## Physical forecast layers
+
+The layer picker defaults to **General risk**, which is never personalized.
+Published physical layers are ozone (ppb), surface NO2 (ppb), SO2 (ppb), PM2.5
+(µg/m³), and temperature (°C). Pollutant concentrations are hourly NASA/model
+outputs, **not AQI**, and are separate from the rolling exposures used for risk.
+The NO2 column checkpoint is not a surface NO2 model and is not used here.
+
+When publishing a risk artifact, the publisher creates `map-fields.nc` from the exact raw NASA source and optional
+matching model output. It verifies model source SHA, timestamps, units, and the
+0.01° footprint. Learned O3 and temperature remain at fine resolution; native
+surface NO2/SO2/PM2.5 stay compact on their source grid and are copied to fine
+cells only while rendering. No inference runs inside an API request.
+
+The publication JSON pins the map artifact by filename and SHA-256. Local
+publication moves this file before advancing the JSON; GCS uploads it privately
+to `published/<publication-id>/map-fields.nc` before advancing `published/current.json`.
+Cloud Run verifies the checksum and retains at most two cached physical-field
+files. Each request reads one hourly field. The current artifact is about 90 MB;
+include local caches and existing risk artifacts in Cloud Run memory sizing.
+No extra bucket, credentials, or database migration is needed. Deploy the updated
+publisher and API together and publish a new run to enable the physical layers.
+Legacy runs with no map artifact continue to offer General risk only.
+
+Both endpoints accept `layer=risk|o3|no2|so2|pm25|temperature|pm10|co`.
+Metadata includes available layers, units, processing method, and fixed scale.
+A physical-layer run ID includes risk artifact identity, map checksum, and layer,
+so the existing image caches cannot mix layers. Switching layers preserves the
+selected valid time and clears the previous variable before changing its legend.
+Missing layers return 404; missing cells are transparent; unavailable hours are
+explicit. There is no invented data or conversion from column NO2 to surface NO2.
+
+Fixed display scales (not health thresholds) are 0–100 ppb O3, 0–10 ppb NO2, 0–2 ppb SO2,
+0–75 µg/m³ PM2.5, and −10–45°C temperature. Values beyond these bounds use the
+end colors; legends label saturation with ≤/≥. Scales stay fixed across hours.
+Optional PM10 (0–150 µg/m³) and CO (0–2 ppm) appear only if present with valid
+units in a future raw source. Current NASA downloads do not request these fields.
+Adding them to risk-model inputs requires a separate ML contract/model change.
+
+
+Physical layers replace decoded hourly images atomically rather than blending
+concentrations from different hours. The selected timestamp is distinguished from
+the last displayed hour while loading. General risk retains its existing smooth
+transitions and loader behavior. Physical-frame requests finish active work and
+replace queued obsolete hours, avoiding cancellation storms during scrubbing.
+The API reads direct serialized NetCDF slices instead of reopening/decoding the
+entire xarray dataset per frame. Physical run IDs include a renderer version to
+invalidate old images after palette changes; the general-risk ID is unchanged.
+
+
+## Personalized asthma-risk layer
+
+The picker also offers **Personalized asthma risk**. Sign in through Symptom Log
+first. This is a separate authenticated layer; General risk remains public and
+unchanged. No matched completed reports means the personal model returns the
+general baseline, with an explicit note. Finalized symptom reports matched to
+historical exposures gradually adjust risk using the same `personal_scores`
+function, reference, and uncertainty weighting as the dashboard. Each map cell
+represents the user's predicted risk if exposed at that cell, not other residents'
+risk or an asthma-attack probability.
+
+`GET /v1/map/personal/forecast` verifies the Supabase bearer token and uses the
+existing owner-scoped database session/RLS. It rebuilds the user's model from
+finalized matched daily reports (including GCS history sync when configured),
+then returns a run ID tied to the account, forecast, model state, and revision.
+`GET /v1/map/personal/frame?run_id=...&index=...` reads that user's latest committed
+revision, verifies model/reference compatibility and the run ID, and scores only
+one hourly exposure slice on the 0.01° grid. Changed revisions return 409 so the
+client reloads metadata. Frame requests do not download historical analysis or
+retrain the model. Pending historical matches are reported by metadata.
+
+Both responses use `Cache-Control: private, no-store` and `Vary: Authorization`.
+Personal PNGs bypass the shared server image cache and are never uploaded to
+GCS. The frontend uses a separate in-memory personal cache and remounts map state
+and the renderer on account changes/sign-out. Public caches contain only public
+layers. Physical layers and personal maps use complete-frame replacement; the
+General risk renderer retains its existing smooth transitions.
+
+Cloud Run uses the existing private GCS publication, history, Supabase JWT
+verification, and runtime database connection. No new bucket, IAM role, database
+migration, or ML checkpoint is required for this layer.

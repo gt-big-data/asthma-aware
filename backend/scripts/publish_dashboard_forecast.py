@@ -12,7 +12,7 @@ import pandas as pd
 import xarray as xr
 
 from app.config import Settings
-from app.services.geos_dashboard import PublishedForecast, load_run
+from app.services.geos_dashboard import ForecastInput, PublishedForecast, load_run
 from ingestion.geos_cf.fetch_forecast import region_area, run, validate_forecast
 
 
@@ -31,6 +31,12 @@ def prepare_run(source: Path) -> PublishedForecast:
                 [float(value) if isfinite(value) and value >= 0 else None for value in frame]
                 for frame in data.pm25.transpose("time", "lat", "lon").values.reshape(120, -1)
             ],
+            input_sources=[ForecastInput(
+                variable=name,
+                source_run=data[name].attrs.get("forecast_run") or data.attrs["forecast_run"],
+                issued_at=pd.Timestamp(data[name].attrs.get("initialization_time") or data.attrs["initialization_time"]).to_pydatetime(),
+                collection=data[name].attrs.get("source_collection") or None,
+            ) for name in data.data_vars],
         )
 
     now = datetime.now(timezone.utc)
@@ -152,10 +158,16 @@ def main():
             forecast = forecast.model_copy(update={"risk_artifact": f"risk-{uuid4()}.npz"})
         if fine_active and reference is None:
             raise ValueError("Activating fine-grid risk requires a fixed downscaled reference")
+        map_fields = None
+        if risk is not None:
+            from app.services.map_fields import write_map_fields
+            map_fields = Path(temporary) / "map-fields.nc"
+            map_digest = write_map_fields(source, layers, map_fields)
+            forecast = forecast.model_copy(update={"map_artifact": f"map-fields-{uuid4()}.nc", "map_artifact_sha256": map_digest})
         if bucket:
             from app.services.gcs_forecast import publish_gcs
 
-            publication = publish_gcs(bucket, source, forecast, layers=layers, risk=risk, history=history_artifact)
+            publication = publish_gcs(bucket, source, forecast, layers=layers, risk=risk, history=history_artifact, map_fields=map_fields)
             print(f"Current forecast issued at {publication.issued_at}: gs://{bucket}/{publication.artifact}")
         else:
             if layers is not None:
@@ -168,6 +180,8 @@ def main():
                 history_artifact.replace(archive / f"analysis-{uuid4()}.npz")
             if risk is not None:
                 risk.replace(args.output.parent / forecast.risk_artifact)
+            if map_fields is not None:
+                map_fields.replace(args.output.parent / forecast.map_artifact)
             write_local_run(forecast, args.output)
             print(f"Published GEOS-CF {forecast.source_run} to {args.output}")
 
