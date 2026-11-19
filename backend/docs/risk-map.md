@@ -202,3 +202,29 @@ General risk renderer retains its existing smooth transitions.
 Cloud Run uses the existing private GCS publication, history, Supabase JWT
 verification, and runtime database connection. No new bucket, IAM role, database
 migration, or ML checkpoint is required for this layer.
+
+
+## Cell inspection and dashboard coordinates
+
+Tapping the map selects the exact 0.01° cell and outlines its edges. The popup
+shows the cell center, selected forecast time, risk score, and (for environmental
+layers) the hourly variable value/units. Environmental layers display the general
+risk at that cell; Personalized asthma risk displays the signed-in user's score.
+Popup data waits for the selected raster hour and is invalidated on hour, run,
+layer, or account changes, so old readings cannot be relabeled as a new hour.
+
+`GET /v1/map/cell` takes the same run ID, index, and layer as a public frame plus
+`lat`/`lon`. `/v1/map/personal/cell` requires the same bearer token and user/model
+identity as a personal frame, with private/no-store responses. Point queries use
+the raster's source-cell mapping and the same risk function; personal queries
+score only one cell. Missing values remain null. Responses include canonical
+cell center/edges and Georgia/forecast coverage flags.
+
+**Use for dashboard** verifies Georgia coverage and remembers the selected cell
+center as the dashboard location. The dashboard location picker also accepts
+manual latitude/longitude and offers **Choose on map**: in that mode, tapping a
+Georgia cell selects it directly and returns to the dashboard. Cancel exits
+without changing the location. Coordinate selections are device preferences,
+separated by account (and guest), and revalidated against the Georgia boundary
+when restored. Existing city bookmarks remain account-backed and unchanged.
+No database migration, map/geocoder API key, or additional GCS artifact is needed.

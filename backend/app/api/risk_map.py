@@ -130,3 +130,57 @@ def personal_frame(response: Response, run_id: str = Query(pattern=r"^[a-f0-9]{6
         raise HTTPException(503, "Could not render personalized risk") from None
     return dict(run_id=run_id, layer="personal", index=index, valid_at=selected.valid_at,
         available=selected.available, image=image)
+
+
+@router.get("/cell")
+def cell(response: Response, run_id: str = Query(pattern=r"^[a-f0-9]{64}$"), index: int = Query(ge=0),
+    lat: float = Query(ge=-90, le=90, allow_inf_nan=False), lon: float = Query(ge=-180, le=180, allow_inf_nan=False),
+    layer: LayerId = "risk", now: datetime = Depends(utc_now), context=Depends(current_artifact)):
+    from app.services.map_cells import cell_details
+    artifact, fields = context
+    try:
+        metadata = map_forecast(artifact, now, fields, layer)
+    except LayerUnavailable:
+        raise HTTPException(404, "This layer is not available") from None
+    except (ForecastUnavailable, ValueError):
+        raise HTTPException(503, "No usable forecast is available") from None
+    if metadata.run_id != run_id:
+        raise HTTPException(409, "Forecast changed; reload map metadata")
+    if not any(item.index == index for item in metadata.frames):
+        raise HTTPException(404, "Hour is outside the available forecast")
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return cell_details(artifact, index, lat, lon, fields, layer)
+    except ValueError:
+        raise HTTPException(404, "Cell is outside the forecast grid") from None
+    except OSError:
+        raise HTTPException(503, "Could not read the selected cell") from None
+
+
+@router.get("/personal/cell")
+def personal_cell(response: Response, run_id: str = Query(pattern=r"^[a-f0-9]{64}$"), index: int = Query(ge=0),
+    lat: float = Query(ge=-90, le=90, allow_inf_nan=False), lon: float = Query(ge=-180, le=180, allow_inf_nan=False),
+    user: UUID = Depends(get_current_user_id), session: Session = Depends(get_user_session, scope="function"),
+    now: datetime = Depends(utc_now), context=Depends(current_artifact)):
+    from app.services.map_cells import cell_details
+    artifact, fields = context
+    try:
+        metadata = map_forecast(artifact, now, fields)
+    except (ForecastUnavailable, ValueError):
+        raise HTTPException(503, "No usable forecast is available") from None
+    try:
+        model, revision = saved_model(session, user, artifact)
+        if personal_run_id(artifact, user, model, revision) != run_id:
+            raise ValueError("Personal model changed")
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(409, "Personal model or forecast changed; reload map metadata") from None
+    if not any(item.index == index for item in metadata.frames):
+        raise HTTPException(404, "Hour is outside the available forecast")
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Vary"] = "Authorization"
+    try:
+        return cell_details(artifact, index, lat, lon, fields, "personal", model)
+    except ValueError:
+        raise HTTPException(404, "Cell is outside the forecast grid") from None
+    except OSError:
+        raise HTTPException(503, "Could not read the selected cell") from None

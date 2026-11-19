@@ -205,6 +205,9 @@ def test_physical_layer_routes_pin_layer_identity_and_reject_missing_layers(publ
     assert metadata["run_id"] == map_forecast(artifact, state["now"], fields, "no2").run_id
     args = dict(layer="no2", run_id=metadata["run_id"], index=40)
     assert client.get("/v1/map/frame", params=args).status_code == 200
+    details = client.get("/v1/map/cell", params={**args,"lat":33.755,"lon":-84.385}).json()
+    assert details["layer_value"] == 7 and details["layer_unit"] == "ppb"
+    assert details["risk_kind"] == "general"
     args["layer"] = "risk"
     assert client.get("/v1/map/frame", params=args).status_code == 409
     assert client.get("/v1/map/forecast?layer=co").status_code == 404
@@ -279,3 +282,48 @@ def test_personal_map_account_revision_isolation_private_headers_and_cache(publi
     args["index"] = 9999
     assert client.get("/v1/map/personal/frame", params=args).status_code == 404
     assert client.get("/v1/map/forecast").json()["run_id"] == artifact.digest
+
+
+def test_cell_matches_raster_grid_score_hour_and_missing_data(published):
+    client, artifact, _, _, _, _ = published
+    args = dict(run_id=artifact.digest,index=40,lat=33.755,lon=-84.385)
+    result = client.get("/v1/map/cell",params=args)
+    assert result.status_code == 200
+    data = result.json()
+    assert data["latitude"] == 33.755 and data["longitude"] == -84.385
+    assert data["bounds"] == [-84.39,33.75,-84.38,33.76]
+    assert data["risk_score"] == round(float(artifact.general_scores[40,artifact.rows[data["row"]],artifact.columns[data["column"]]]))
+    assert data["in_georgia"] and data["forecast_supported"]
+    assert data["risk_kind"] == "general" and data["valid_at"].startswith("2026-11-12T01:30")
+    assert client.get("/v1/map/cell",params={**args,"run_id":"0"*64}).status_code == 409
+    assert client.get("/v1/map/cell",params={**args,"index":0}).status_code == 404
+    assert client.get("/v1/map/cell",params={**args,"lon":-81.52}).status_code == 404
+    assert client.get("/v1/map/cell",params={**args,"lat":30.78}).status_code == 404
+    missing = client.get("/v1/map/cell",params={**args,"lat":31.,"lon":-82.}).json()
+    assert missing["risk_score"] is None
+    border = client.get("/v1/map/cell",params={**args,"lat":33.7,"lon":-85.55}).json()
+    assert not border["in_georgia"]
+
+
+def test_personal_cell_uses_own_model_and_blocks_anonymous_or_cross_account(published,monkeypatch):
+    from app.api import risk_map as routes
+    from app.auth import get_current_user_id
+    from app.dependencies import get_user_session
+    from app.services.personal_risk_map import personal_run_id,personal_frame_scores
+    from app.services.personalization_model import PersonalModel
+    client,artifact,*_ = published
+    user=uuid4();model=PersonalModel()
+    for _ in range(5): model.update(np.ones(4),.05,4.)
+    args=dict(run_id=personal_run_id(artifact,user,model,1),index=40,lat=33.755,lon=-84.385)
+    assert client.get("/v1/map/personal/cell",params=args).status_code == 401
+    client.app.dependency_overrides[get_current_user_id] = lambda:user
+    client.app.dependency_overrides[get_user_session] = lambda:object()
+    monkeypatch.setattr(routes,"saved_model",lambda *args:(model,1))
+    result=client.get("/v1/map/personal/cell",params=args)
+    assert result.status_code == 200
+    data=result.json()
+    assert data["risk_kind"] == "personal"
+    assert data["risk_score"] == round(float(personal_frame_scores(artifact,40,model)[data["row"],data["column"]]))
+    assert result.headers["cache-control"] == "private, no-store"
+    client.app.dependency_overrides[get_current_user_id] = lambda:uuid4()
+    assert client.get("/v1/map/personal/cell",params=args).status_code == 409
