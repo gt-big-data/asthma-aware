@@ -69,13 +69,14 @@ function UserMapScreen({ userId }: { userId: string | null }) {
       if (cached) setLoaded(cached);
     }
     setHoursAhead(position);
+    setFrameFailure(null);
   }, [frameCache]);
   const changeLayer = useCallback((next: MapLayerId) => {
     if (next === layer) return;
     selectedTimeRef.current = forecastRef.current?.frames[positionRef.current]?.valid_at ?? selectedTimeRef.current;
     loader.stop();
     forecastRef.current = null;
-    setForecast(null); setLoaded(null); setDisplayed(null); setFrameFailure(null);
+    setForecast(null); setLoaded(null); setDisplayed(null); setFrameFailure(null); setStatus("Loading NASA forecast…");
     setLayer(next);
   }, [layer, loader]);
   const rasterShown = useCallback((key: string) => {
@@ -95,6 +96,7 @@ function UserMapScreen({ userId }: { userId: string | null }) {
     let active = true;
     async function load() {
       setStatus("Loading NASA forecast…");
+      setFrameFailure(null);
       try {
         const result = await api.mapForecast(controller.signal, layer);
         if (!active) return;
@@ -222,6 +224,9 @@ function UserMapScreen({ userId }: { userId: string | null }) {
       onHoursAheadChange={changeHour} onRasterShown={rasterShown} userLocation={location} visualization="heat" startBounds={startBounds}
       gridStepDegrees={forecast?.grid_step_degrees}
       layer={descriptor} layers={layers} onLayerChange={changeLayer}
+      loadingLabel={focused && !(layer === "personal" && !userId) &&
+        (status === "Loading NASA forecast…" || (pending && frameFailure?.id !== frameId && !status))
+        ? `Loading ${descriptor.label} layer…` : undefined}
       onCellPress={clickCell} selectionBounds={cellLocation?.bounds} selectionMode={picking}
       onCancelSelection={() => { if (!selectionBusy) { router.setParams({pickDashboard:undefined}); router.replace("/dashboard"); } }}
       status={selectionError || (selectionBusy ? "Selecting dashboard location…" : visibleStatus)} note={note} validLabel={validLabel} colors={forecast?.colors}

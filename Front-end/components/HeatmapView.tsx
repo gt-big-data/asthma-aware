@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import { PanResponder, Platform, StyleSheet, View, TouchableOpacity, Text, ScrollView } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
+import LoadingFeedback from "./LoadingFeedback";
 import { GENERAL_RISK_LAYER, createCellGrid, type MapLayer, type MapLayerId, type MapRaster } from "../lib/forecast-map";
 
 export type MapBounds = [[number, number], [number, number]];
@@ -24,6 +25,7 @@ interface HeatmapViewProps {
   gridStepDegrees?: number;
   startBounds?: MapBounds;
   status: string;
+  loadingLabel?: string;
   note: string;
   validLabel: string;
   colors?: string[];
@@ -174,12 +176,13 @@ try {
 }
 
 export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChange,onRasterShown,userLocation,
-  onCellPress,selectionBounds,selectionMode=false,onCancelSelection,layer=GENERAL_RISK_LAYER,layers=[GENERAL_RISK_LAYER],onLayerChange,visualization="heat",gridStepDegrees=0.01,startBounds=ATLANTA_BOUNDS,status,note,validLabel,colors,onRetry}: HeatmapViewProps) {
+  onCellPress,selectionBounds,selectionMode=false,onCancelSelection,layer=GENERAL_RISK_LAYER,layers=[GENERAL_RISK_LAYER],onLayerChange,visualization="heat",gridStepDegrees=0.01,startBounds=ATLANTA_BOUNDS,status,loadingLabel,note,validLabel,colors,onRetry}: HeatmapViewProps) {
   const [layerMenu, setLayerMenu] = useState(false);
   const [mapHtml] = useState(() => buildMapHtml(startBounds));
   const webviewRef = useRef<WebView<object>>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const ready = useRef(false);
+  const [mapLoading, setMapLoading] = useState(true);
   const [timelineWidth,setTimelineWidth] = useState(0);
   const [mode,setMode] = useState(visualization);
   const [showCellLines,setShowCellLines] = useState(false);
@@ -198,6 +201,7 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
       const message=JSON.parse(text);
       if(message.type==="ready") {
         ready.current=true;
+        setMapLoading(false);
         setMapError("");
         const current=latest.current;
         send({type:"raster",raster:current.raster});
@@ -211,7 +215,7 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
         if(latest.current.layerId!=="risk") setMapError("");
         latest.current.onRasterShown?.(message.key);
       }
-      else if(message.type==="error") setMapError(message.message);
+      else if(message.type==="error") { setMapLoading(false); setMapError(message.message); }
     } catch { /* Ignore messages unrelated to the map bridge. */ }
   },[send]);
   useEffect(() => {
@@ -236,7 +240,7 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
   const changeHour=(delta:number)=>onHoursAheadChange(Math.min(maxHours,Math.max(0,hoursAhead+delta)));
   const progress=maxHours>0?hoursAhead/maxHours*100:0;
   const ticks=Array.from(new Set([0,Math.round(maxHours/4),Math.round(maxHours/2),Math.round(maxHours*3/4),maxHours]));
-  const reload=()=>{setMapError("");ready.current=false;if(Platform.OS==="web"){if(iframeRef.current) iframeRef.current.srcdoc=mapHtml;}else webviewRef.current?.reload();onRetry();};
+  const reload=()=>{setMapError("");setMapLoading(true);ready.current=false;if(Platform.OS==="web"){if(iframeRef.current) iframeRef.current.srcdoc=mapHtml;}else webviewRef.current?.reload();onRetry();};
   return <View style={StyleSheet.absoluteFill}>
     {Platform.OS==="web" ? <iframe ref={iframeRef} title="Forecast map" srcDoc={mapHtml} sandbox="allow-scripts"
       style={{width:"100%",height:"100%",border:0,display:"block"}}/> :
@@ -277,6 +281,9 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
           <Text style={styles.mapLegendCaption}>{option.unit}</Text>
         </TouchableOpacity>)}
       </ScrollView>}
+      {!mapError && (mapLoading || loadingLabel) && <View pointerEvents="none" style={{ paddingVertical: 6 }}>
+        <LoadingFeedback label={mapLoading ? "Loading map…" : loadingLabel!} />
+      </View>}
       {userLocation&&<View style={styles.locationLegendRow}><View style={styles.locationLegendDot}/><Text style={styles.mapLegendText}>Your location</Text></View>}
       <View style={styles.intensityLegend}><Text style={styles.mapLegendTitle}>{layer.unit}</Text>
         <View style={styles.intensityGradient}>{(colors??layer.colors).map(color=><View key={color} style={[styles.intensityColor,{backgroundColor:color}]}/>)}</View>

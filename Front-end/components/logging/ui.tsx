@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import LoadingFeedback from "../LoadingFeedback";
 
 export const colors = { background: "#f4f7f4", card: "#ffffff", border: "#dce5de", text: "#1f2d25", muted: "#66766b", accent: "#2d6a4f", error: "#b42318", success: "#39845c" };
 export function Button({ title, onPress, disabled = false, secondary = false }: {
@@ -15,7 +16,7 @@ export function Notice({ children, error = false }: { children: ReactNode; error
   return <Text accessibilityLiveRegion="polite" style={[styles.note, error && { color: colors.error }]}>{children}</Text>;
 }
 export function Loading({ title }: { title: string }) {
-  return <View style={styles.loading}><ActivityIndicator color={colors.accent} /><Text style={styles.note}>{title}</Text></View>;
+  return <View style={styles.loading}><LoadingFeedback label={title} /></View>;
 }
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },

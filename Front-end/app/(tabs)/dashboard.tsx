@@ -243,7 +243,11 @@ export default function DashboardScreen() {
     >
       <View style={styles.header}>
         <View>
-          <Text style={styles.eyebrow}>ASTHMA AWARE</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Text style={styles.eyebrow}>ASTHMA AWARE</Text>
+              {focused && (displayStatus === "LOADING" || trends.key !== contextKey || trends.loading) &&
+                <LoadingFeedback compact label="Loading dashboard" />}
+            </View>
           <Text style={styles.title}>Your dashboard</Text>
         </View>
         <TouchableOpacity disabled={!placeReady || authLoading} onPress={() => setShowLocationPicker(true)} style={styles.locationPill}
