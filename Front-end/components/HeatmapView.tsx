@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import { PanResponder, Platform, StyleSheet, View, TouchableOpacity, Text } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import type { MapRaster } from "../lib/forecast-map";
+import { createCellGrid, type MapRaster } from "../lib/forecast-map";
 
 export type MapBounds = [[number, number], [number, number]];
 export const ATLANTA_BOUNDS: MapBounds = [[-84.80, 33.45], [-83.95, 34.05]];
@@ -11,8 +11,10 @@ interface HeatmapViewProps {
   hoursAhead: number;
   maxHours: number;
   onHoursAheadChange: (hours: number) => void;
+  onRasterShown?: (key: string) => void;
   userLocation: MapLocation | null;
   visualization?: "cells" | "heat";
+  gridStepDegrees?: number;
   startBounds?: MapBounds;
   status: string;
   note: string;
@@ -29,7 +31,25 @@ function buildMapHtml(startBounds: MapBounds): string {
 </head><body><div id="map"></div>
 <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script><script>
 const START_BOUNDS = ${JSON.stringify(startBounds)};
-let map, ready=false, currentRaster=null, mode="heat", marker=null;
+let map, ready=false, currentRaster=null, mode="heat", marker=null, gridVisible=false;
+const riskCanvas=document.createElement("canvas"), riskContext=riskCanvas.getContext("2d");
+const previousCanvas=document.createElement("canvas"), previousContext=previousCanvas.getContext("2d");
+let rasterVersion=0, animation=0, hasImage=false, drawnBounds="";
+function updateGridVisibility() {
+  if(ready && map.getLayer("cell-lines")) map.setLayoutProperty("cell-lines","visibility",gridVisible && currentRaster?"visible":"none");
+}
+function setGrid(message) {
+  gridVisible=!!message.visible;
+  if(!ready) return;
+  if(message.data) {
+    if(map.getSource("cell-grid")) map.getSource("cell-grid").setData(message.data);
+    else map.addSource("cell-grid",{type:"geojson",data:message.data});
+    if(!map.getLayer("cell-lines")) map.addLayer({id:"cell-lines",type:"line",source:"cell-grid",minzoom:8,
+      paint:{"line-color":"#243e32","line-width":0.6,
+        "line-opacity":["interpolate",["linear"],["zoom"],8,0,9,0.12,11,0.24,15,0.3]}});
+  }
+  updateGridVisibility();
+}
 function post(message) {
   const text=JSON.stringify(message);
   if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(text);
@@ -40,17 +60,64 @@ function setMode(next) {
   if(ready && map.getLayer("risk")) map.setPaintProperty("risk","raster-resampling",mode==="cells"?"nearest":"linear");
 }
 function setRaster(raster) {
+  if(ready && map.getSource("risk") && raster && currentRaster && raster.key===currentRaster.key && raster.image===currentRaster.image) return;
   currentRaster=raster;
   if(!ready) return;
-  if(map.getLayer("risk")) map.removeLayer("risk");
-  if(map.getSource("risk")) map.removeSource("risk");
-  if(!raster) return;
-  const [w,s,e,n]=raster.bounds;
-  map.addSource("risk",{type:"image",url:raster.image,coordinates:[[w,n],[e,n],[e,s],[w,s]]});
-  map.addLayer({id:"risk",type:"raster",source:"risk",paint:{
-    "raster-opacity":0.65,"raster-fade-duration":0,
-    "raster-resampling":mode==="cells"?"nearest":"linear"
-  }});
+  const version=++rasterVersion;
+  if(!raster) {
+    cancelAnimationFrame(animation);
+    if(map.getSource("risk")) map.getSource("risk").pause();
+    if(map.getLayer("risk")) map.setLayoutProperty("risk","visibility","none");
+    hasImage=false;updateGridVisibility();return;
+  }
+  // Decode offscreen while the existing texture remains visible.
+  const image=new Image();
+  image.onload=()=>{
+    if(version!==rasterVersion) return;
+    cancelAnimationFrame(animation);
+    const bounds=JSON.stringify(raster.bounds);
+    const blend=hasImage && drawnBounds===bounds && riskCanvas.width===image.width && riskCanvas.height===image.height;
+    if(blend) {
+      previousCanvas.width=riskCanvas.width;previousCanvas.height=riskCanvas.height;
+      previousContext.drawImage(riskCanvas,0,0);
+    }
+    if(riskCanvas.width!==image.width || riskCanvas.height!==image.height) {
+      riskCanvas.width=image.width;riskCanvas.height=image.height;
+    }
+    const [w,s,e,n]=raster.bounds, coordinates=[[w,n],[e,n],[e,s],[w,s]];
+    if(!map.getSource("risk")) {
+      map.addSource("risk",{type:"canvas",canvas:riskCanvas,coordinates,animate:false});
+      map.addLayer({id:"risk",type:"raster",source:"risk",paint:{
+        "raster-opacity":0.65,"raster-fade-duration":0,
+        "raster-resampling":mode==="cells"?"nearest":"linear"
+      }},map.getLayer("cell-lines")?"cell-lines":undefined);
+    } else map.getSource("risk").setCoordinates(coordinates);
+    map.setLayoutProperty("risk","visibility","visible");
+    const source=map.getSource("risk");
+    source.play();
+    const duration=blend && !window.matchMedia("(prefers-reduced-motion: reduce)").matches?140:0;
+    const start=performance.now();
+    function draw(now) {
+      if(version!==rasterVersion) {source.pause();return;}
+      const fraction=duration?Math.min(1,(now-start)/duration):1;
+      const weight=fraction*fraction*(3-2*fraction);
+      riskContext.clearRect(0,0,riskCanvas.width,riskCanvas.height);
+      riskContext.globalCompositeOperation="source-over";
+      if(blend && fraction<1) {
+        riskContext.globalAlpha=1-weight;riskContext.drawImage(previousCanvas,0,0);
+        riskContext.globalCompositeOperation="lighter";
+        riskContext.globalAlpha=weight;riskContext.drawImage(image,0,0);
+      } else {riskContext.globalAlpha=1;riskContext.drawImage(image,0,0);}
+      riskContext.globalAlpha=1;riskContext.globalCompositeOperation="source-over";
+      map.triggerRepaint();
+      if(fraction<1) animation=requestAnimationFrame(draw);
+      else {source.pause();hasImage=true;drawnBounds=bounds;post({type:"frame-shown",key:raster.key});}
+    }
+    draw(start);
+    updateGridVisibility();
+  };
+  image.onerror=()=>{if(version===rasterVersion) post({type:"error",message:"Risk image could not load. Tap to retry."})};
+  image.src=raster.image;
 }
 function setLocation(location) {
   if(marker) { marker.remove(); marker=null; }
@@ -60,6 +127,7 @@ function command(message) {
   if(message.type==="raster") setRaster(message.raster);
   if(message.type==="location") setLocation(message.location);
   if(message.type==="mode") setMode(message.mode);
+  if(message.type==="grid") setGrid(message);
   if(message.type==="zoom-in" && map) map.zoomIn();
   if(message.type==="zoom-out" && map) map.zoomOut();
 }
@@ -75,17 +143,21 @@ try {
 </script></body></html>`;
 }
 
-export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChange,userLocation,
-  visualization="heat",startBounds=ATLANTA_BOUNDS,status,note,validLabel,colors,onRetry}: HeatmapViewProps) {
+export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChange,onRasterShown,userLocation,
+  visualization="heat",gridStepDegrees=0.01,startBounds=ATLANTA_BOUNDS,status,note,validLabel,colors,onRetry}: HeatmapViewProps) {
   const [mapHtml] = useState(() => buildMapHtml(startBounds));
   const webviewRef = useRef<WebView<object>>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const ready = useRef(false);
   const [timelineWidth,setTimelineWidth] = useState(0);
   const [mode,setMode] = useState(visualization);
+  const [showCellLines,setShowCellLines] = useState(false);
+  const rasterBounds = raster?.bounds;
+  const cellGrid = useMemo(() => rasterBounds ? createCellGrid(rasterBounds,gridStepDegrees) : null,
+    [rasterBounds,gridStepDegrees]);
   const [mapError,setMapError] = useState("");
-  const latest = useRef({raster,userLocation,mode});
-  useEffect(() => { latest.current={raster,userLocation,mode}; });
+  const latest = useRef({raster,userLocation,mode,showCellLines,cellGrid,onRasterShown});
+  useEffect(() => { latest.current={raster,userLocation,mode,showCellLines,cellGrid,onRasterShown}; });
   const send = useCallback((message: object) => {
     iframeRef.current?.contentWindow?.postMessage(message,"*");
     webviewRef.current?.injectJavaScript(`window.mapCommand(${JSON.stringify(message)});true;`);
@@ -100,7 +172,9 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
         send({type:"raster",raster:current.raster});
         send({type:"location",location:current.userLocation});
         send({type:"mode",mode:current.mode});
-      } else if(message.type==="error") setMapError(message.message);
+        send({type:"grid",visible:current.showCellLines,data:current.cellGrid});
+      } else if(message.type==="frame-shown") latest.current.onRasterShown?.(message.key);
+      else if(message.type==="error") setMapError(message.message);
     } catch { /* Ignore messages unrelated to the map bridge. */ }
   },[send]);
   useEffect(() => {
@@ -114,6 +188,7 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
   useEffect(() => { if(ready.current) send({type:"raster",raster}); },[raster,send]);
   useEffect(() => { if(ready.current) send({type:"location",location:userLocation}); },[userLocation,send]);
   useEffect(() => { if(ready.current) send({type:"mode",mode}); },[mode,send]);
+  useEffect(() => { if(ready.current) send({type:"grid",visible:showCellLines,data:cellGrid}); },[showCellLines,cellGrid,send]);
   const selectPosition=useCallback((x:number)=>{
     if(timelineWidth>0 && maxHours>0) onHoursAheadChange(Math.round(Math.max(0,Math.min(x/timelineWidth,1))*maxHours));
   },[timelineWidth,maxHours,onHoursAheadChange]);
@@ -137,8 +212,14 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
     <View style={styles.modeToggle}>{(["heat","cells"] as const).map(option=><TouchableOpacity key={option}
       style={[styles.modeBtn,mode===option&&styles.modeBtnActive]} onPress={()=>setMode(option)}
       accessibilityRole="button" accessibilityState={{selected:mode===option}}>
-      <Text style={[styles.modeText,mode===option&&styles.modeTextActive]}>{option==="heat"?"Heat":"Grid"}</Text>
-    </TouchableOpacity>)}</View>
+      <Text style={[styles.modeText,mode===option&&styles.modeTextActive]}>{option==="heat"?"Heat":"Cells"}</Text>
+    </TouchableOpacity>)}
+      <TouchableOpacity style={[styles.cellLineBtn,showCellLines&&styles.modeBtnActive]} onPress={()=>setShowCellLines(value=>!value)}
+        accessibilityRole="switch" accessibilityLabel="Show forecast cell lines" accessibilityState={{checked:showCellLines}}>
+        <Text style={[styles.modeText,showCellLines&&styles.modeTextActive]}>Cell lines</Text>
+        <Text style={[styles.cellLineCaption,showCellLines&&styles.modeTextActive]}>{gridStepDegrees}° · {showCellLines?"On":"Off"}</Text>
+      </TouchableOpacity>
+    </View>
     <View style={styles.mapLegend}>
       {userLocation&&<View style={styles.locationLegendRow}><View style={styles.locationLegendDot}/><Text style={styles.mapLegendText}>Your location</Text></View>}
       <View style={styles.intensityLegend}><Text style={styles.mapLegendTitle}>General risk score</Text>
@@ -149,7 +230,8 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
     <View style={styles.timeline}>
       <View style={styles.timelineHeading}><Text style={styles.timelineTitle}>Forecast timeline</Text>
         <Text style={styles.timelineValue}>{hoursAhead===0?"Now":`+${hoursAhead}h`}</Text></View>
-      {!!validLabel&&<Text style={styles.timelineNote}>{validLabel}</Text>}
+      {!!validLabel&&<Text style={[styles.timelineNote,styles.timelineTimestamp]} numberOfLines={1}
+        ellipsizeMode="tail" accessibilityLabel={validLabel}>{validLabel}</Text>}
       <View {...pan.panHandlers} style={styles.timelineTrackTouchArea} onLayout={event=>setTimelineWidth(event.nativeEvent.layout.width)}
         accessible focusable accessibilityRole="adjustable" accessibilityLabel="Forecast timeline"
         accessibilityValue={{min:0,max:maxHours,now:hoursAhead,text:validLabel}}
@@ -175,7 +257,7 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
 const styles = StyleSheet.create({
   zoomControls: {
     position: "absolute",
-    top: 145,
+    top: 174,
     right: 14,
     gap: 8,
   },
@@ -206,7 +288,7 @@ const styles = StyleSheet.create({
     borderColor: "#dce5de",
   },
   modeBtn: {
-    width: 52,
+    width: 78,
     paddingVertical: 7,
     alignItems: "center",
   },
@@ -220,6 +302,18 @@ const styles = StyleSheet.create({
   },
   modeTextActive: {
     color: "#ffffff",
+  },
+  cellLineBtn: {
+    width: 78,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#dce5de",
+    gap: 2,
+  },
+  cellLineCaption: {
+    color: "#748178",
+    fontSize: 9,
   },
   mapLegend: {
     position: "absolute",
@@ -310,6 +404,10 @@ const styles = StyleSheet.create({
   timelineNote: {
     color: "#748178",
     fontSize: 10,
+  },
+  timelineTimestamp: {
+    height: 14,
+    lineHeight: 14,
   },
   timelineTrackTouchArea: {
     height: 30,

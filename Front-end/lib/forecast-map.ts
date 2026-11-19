@@ -20,7 +20,37 @@ export interface MapFrameImage {
   image: string;
 }
 
-export interface MapRaster { image: string; bounds: MapForecast["bounds"] }
+export interface MapRaster { image: string; bounds: MapForecast["bounds"]; key?: string }
+
+/** Geographic cell edges, anchored to the forecast footprint rather than rounded city coordinates. */
+export function createCellGrid(bounds: MapForecast["bounds"], step: number) {
+  const [west, south, east, north] = bounds;
+  if (![...bounds, step].every(Number.isFinite) || step <= 0 || west >= east || south >= north) {
+    throw new Error("Invalid forecast grid");
+  }
+  const columns = Math.round((east - west) / step);
+  const rows = Math.round((north - south) / step);
+  if (columns < 1 || rows < 1 || columns + rows > 5000
+      || Math.abs(columns * step - (east - west)) > 1e-7
+      || Math.abs(rows * step - (north - south)) > 1e-7) {
+    throw new Error("Forecast bounds must align with the cell size");
+  }
+  const features = [];
+  const edge = (value: number) => Number(value.toFixed(10));
+  for (let column = 0; column <= columns; column++) {
+    const longitude = edge(west + column * step);
+    features.push({ type: "Feature" as const, properties: {}, geometry: {
+      type: "LineString" as const, coordinates: [[longitude, south], [longitude, north]],
+    } });
+  }
+  for (let row = 0; row <= rows; row++) {
+    const latitude = edge(north - row * step);
+    features.push({ type: "Feature" as const, properties: {}, geometry: {
+      type: "LineString" as const, coordinates: [[west, latitude], [east, latitude]],
+    } });
+  }
+  return { type: "FeatureCollection" as const, features };
+}
 
 export function inForecastBounds(latitude: number, longitude: number, bounds: MapForecast["bounds"]) {
   const [west, south, east, north] = bounds;
@@ -28,16 +58,110 @@ export function inForecastBounds(latitude: number, longitude: number, bounds: Ma
 }
 
 // Bounded image cache shared across tab visits, keyed by immutable run.
-export function createFrameCache(limit = 12) {
+export function createFrameCache(limit = 48, maxBytes = 16 * 1024 * 1024) {
   const frames = new Map<string, MapFrameImage>();
+  let bytes = 0;
+  const size = (frame: MapFrameImage) => frame.image.length * 2;
   const key = (runId: string, index: number) => `${runId}/${index}`;
   return {
-    get: (runId: string, index: number) => frames.get(key(runId, index)),
+    get: (runId: string, index: number) => {
+      const id = key(runId, index);
+      const frame = frames.get(id);
+      if (frame) { frames.delete(id); frames.set(id, frame); }
+      return frame;
+    },
     put: (frame: MapFrameImage) => {
       const id = key(frame.run_id, frame.index);
-      frames.delete(id);
+      const previous = frames.get(id);
+      if (previous) { frames.delete(id); bytes -= size(previous); }
+      if (size(frame) > maxBytes) return;
       frames.set(id, frame);
-      while (frames.size > limit) frames.delete(frames.keys().next().value!);
+      bytes += size(frame);
+      while (frames.size > limit || bytes > maxBytes) {
+        const oldest = frames.keys().next().value!;
+        bytes -= size(frames.get(oldest)!);
+        frames.delete(oldest);
+      }
+    },
+  };
+}
+
+/** Prefer the direction of travel; never fetch known unavailable hours. */
+export function nearbyFrameIndices(frames: MapForecast["frames"], position: number, direction = 1) {
+  const positions = [position];
+  for (let distance = 1; distance <= 8; distance++) {
+    positions.push(position + direction * distance);
+    if (distance <= 3) positions.push(position - direction * distance);
+  }
+  return positions.filter(i => i >= 0 && i < frames.length && frames[i].available).map(i => frames[i].index);
+}
+
+type FrameCache = ReturnType<typeof createFrameCache>;
+type FrameJob = {
+  run: string; index: number; controller: AbortController; promise: Promise<MapFrameImage>;
+  resolve: (frame: MapFrameImage) => void; reject: (error: unknown) => void;
+};
+
+/** Two requests maximum, shared promises, and a replaceable foreground-first queue. */
+export function createFrameLoader(fetchFrame: (run: string, index: number, signal: AbortSignal) => Promise<MapFrameImage>,
+  cache: FrameCache = createFrameCache()) {
+  const jobs = new Map<string, FrameJob>();
+  const active = new Set<FrameJob>();
+  let queue: FrameJob[] = [];
+  const key = (run: string, index: number) => `${run}/${index}`;
+  const abortError = () => Object.assign(new Error("Obsolete map frame"), { name: "AbortError" });
+  function pump() {
+    while (active.size < 2 && queue.length) {
+      const job = queue.shift()!;
+      if (job.controller.signal.aborted) continue;
+      active.add(job);
+      void Promise.resolve().then(() => fetchFrame(job.run, job.index, job.controller.signal)).then(frame => {
+        if (job.controller.signal.aborted) throw abortError();
+        if (frame.run_id !== job.run || frame.index !== job.index || !frame.available || !frame.image) {
+          throw new Error("Mismatched or unavailable forecast frame");
+        }
+        cache.put(frame);
+        job.resolve(frame);
+      }).catch(job.reject).finally(() => {
+        active.delete(job);
+        if (jobs.get(key(job.run, job.index)) === job) jobs.delete(key(job.run, job.index));
+        pump();
+      });
+    }
+  }
+  function cancel(job: FrameJob) {
+    job.controller.abort();
+    job.reject(abortError());
+    jobs.delete(key(job.run, job.index));
+  }
+  return {
+    select(run: string, index: number, neighbors: number[]) {
+      const indices = [...new Set([index, ...neighbors])];
+      const wanted = new Set(indices.map(i => key(run, i)));
+      for (const [id, job] of jobs) if (!wanted.has(id)) cancel(job);
+      const target = cache.get(run, index);
+      queue = [];
+      for (const i of indices) {
+        if (cache.get(run, i)) continue;
+        const id = key(run, i);
+        let job = jobs.get(id);
+        if (!job) {
+          let resolve!: FrameJob["resolve"], reject!: FrameJob["reject"];
+          const promise = new Promise<MapFrameImage>((yes, no) => { resolve = yes; reject = no; });
+          // Neighbor failures are opportunistic; the selected caller still observes rejection.
+          void promise.catch(() => {});
+          job = { run, index: i, controller: new AbortController(), promise, resolve, reject };
+          jobs.set(id, job);
+        }
+        if (!active.has(job)) queue.push(job);
+      }
+      const result = target ? Promise.resolve(target) : jobs.get(key(run, index))!.promise;
+      pump();
+      return result;
+    },
+    stop() {
+      queue = [];
+      for (const job of jobs.values()) cancel(job);
     },
   };
 }
