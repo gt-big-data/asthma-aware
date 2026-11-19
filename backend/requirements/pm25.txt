@@ -1,0 +1,5 @@
+-r ingestion.txt
+# PM2.5 daily grid, gap filling and 1 km downscaling (ingestion/pm25/)
+scipy>=1.11,<2
+scikit-learn>=1.4,<2
+shapely>=2,<3
