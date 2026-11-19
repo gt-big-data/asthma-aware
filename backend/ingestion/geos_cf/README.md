@@ -187,9 +187,10 @@ half-written file.
 
 ## Historical data: `fetch_analysis.py`
 
-The forecast archive can't supply a past year. Weather forecasts are kept for only ~17 days
-(air-quality forecasts go back to Aug 2025), and forecasts are predictions anyway.
-For history, use the **analysis**: GEOS-CF's continuous hourly reconstruction of past
+The standard v2 OPeNDAP forecast archive can't supply a past year of weather forecasts:
+weather forecasts are kept for only ~17 days (air-quality forecasts go back to Aug 2025).
+For historical **forecasts**, use the separate v1 archive downloader described below.
+For a historical reconstruction, use the **analysis**: GEOS-CF's continuous hourly reconstruction of past
 conditions, made by running the model alongside observations. Weather fields are tightly tied
 to observations. Pollutants are mostly model chemistry, with limited satellite constraints, so
 treat them as estimates and use EPA AirNow/AQS for measured values.
@@ -258,3 +259,124 @@ so the two versions never end up in one file.
 
 The forecast archive also lives on that S3 bucket as `geos-cf-v2-fcst-latest.zarr`, but only
 for the latest run.
+
+## Historical v1 forecasts: `fetch_forecast_history.py`
+
+Use this downloader for 0–72-hour forecast training. It defaults to **v1** daily
+12 UTC initializations, retrieving surface NO₂/O₃ plus lowest-layer temperature,
+specific humidity, surface pressure and boundary-layer height. It does not request
+`tropcol_no2` or its XGC collection by default. The existing operational
+`fetch_forecast.py` command above continues to fetch recent v2 forecasts.
+`--hours N` selects the first N hourly intervals of each run (1–72; default 72).
+
+From `backend/`, with the existing 2023 reference file:
+
+```bash
+# Inspect archive availability first (no forecast fields downloaded).
+python -m ingestion.geos_cf.fetch_forecast_history \
+  --model-version v1 \
+  --reference data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc \
+  --output data/geos_cf/forecasts_2023
+# Add --download to retrieve those runs; --max-runs 1 bounds a smoke check.
+```
+
+For a smaller **0–24-hour** dataset, use a separate output directory and Hub
+folder so existing 72-hour downloads remain usable:
+
+```bash
+python -m ingestion.geos_cf.fetch_forecast_history \
+  --model-version v1 --hours 24 \
+  --reference data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc \
+  --output data/geos_cf/forecasts_2023_24h \
+  --download --delete-after-upload
+```
+
+With this reference, the plan decreases from 96 runs × 72 hours to 72 runs × 24
+hours: 75% fewer hourly records per collection. Run planning excludes older
+initializations that cannot contribute within 24 hours. Each collection stops
+after its 24 requested hours have been found, including during tar streaming.
+The printed full archive size stays the same; actual bytes transferred depend on
+the member order, so elapsed time is not guaranteed to decrease by 75%.
+Outputs end in `_h000-024.nc`, and the default Hub folder becomes
+`geos_cf/forecasts_2023_24h/`. Authenticate as described below before downloading.
+
+Downloads now upload each completed regional run to the **dataset**
+[`ShreyD06/AsthmaAware`](https://huggingface.co/datasets/ShreyD06/AsthmaAware),
+under `geos_cf/forecasts_2023/` for the output directory above. Install the ingestion
+requirements and authenticate with a write-capable token before downloading:
+
+```bash
+pip install -r requirements/ingestion.txt
+hf auth login
+python -m ingestion.geos_cf.fetch_forecast_history \
+  --model-version v1 \
+  --reference data/geos_cf/geos_cf_v1_analysis_bbox_30.78_34.98_-85.6_-81.52_20230101-20231206_first5days.nc \
+  --output data/geos_cf/forecasts_2023 \
+  --download --delete-after-upload
+```
+
+`HF_TOKEN` is also supported. Inventory-only commands never require credentials
+or contact Hugging Face. The download command fails before NASA access if no token
+is configured or the dataset cannot be read. A token must allow writes to this
+dataset; an upload permission error keeps the local run for retry.
+
+Each run's compressed NetCDF, metadata sidecar, and updated manifest are uploaded
+in one commit. Both files' remote sizes and Git/LFS checksums are verified before
+`--delete-after-upload` removes the local pair. Without that flag, local files are
+kept. Upload or verification failure stops further fetching and retains the files.
+Rerunning retries an existing valid local file without fetching it again, or skips
+a verified remote run even when its local copy has already been removed. The small
+local manifest retains the upload receipts and last Hub revision.
+
+`--hf-repo OWNER/DATASET` selects another existing dataset, `--hf-prefix FOLDER`
+changes the remote folder (default `geos_cf/OUTPUT_DIRECTORY_NAME`), and
+`--no-upload` preserves the local-only workflow. A request fingerprint prevents
+mixing different model versions, grids, variables, horizons or observation timestamps in
+the same remote folder; choose a new prefix when changing those inputs.
+`--max-runs` can change between resumptions without changing the fingerprint.
+
+The multi-GB figure is **NASA transfer bandwidth**, not the regional file size.
+Only the compressed regional forecast is uploaded; the raw NASA tar is never
+saved or uploaded. Hub storage with cleanup bounds local disk use, but does not
+reduce NASA streaming traffic.
+
+After cleanup, download the published folder on the machine that will train:
+
+```bash
+hf download ShreyD06/AsthmaAware --repo-type dataset \
+  --include 'geos_cf/forecasts_2023/*' --local-dir data/hf_forecasts
+```
+
+Point the ML config's `geos_manifest` to
+`../backend/data/hf_forecasts/geos_cf/forecasts_2023/manifest.json`.
+The current ML loader requires local NetCDF files; upload receipts alone do not
+make a cleaned local output directory ready for training. A bounded inventory or
+download is still marked incomplete in the published manifest.
+
+The reference supplies only grid coordinates and selected valid timestamps; it
+never supplies forecast values. Its first-five-days selection is preserved,
+including earlier runs needed to cover those observations within the chosen horizon.
+`--model-version v2` explicitly selects v2 and its 09 UTC initializations, but does
+not bypass missing historical meteorology. `--variables` selects a different set
+of supported fields; v1 does not provide PM10.
+
+The fetcher combines the NCCS v1 AQC files with MET from NASA's
+[separate tar archive](https://gmao.gsfc.nasa.gov/gmaoftp/geoscf/forecasts/archive/).
+It can also use archived CHM for surface NO₂/O₃ if AQC is missing or the portal
+listing fails. HTTP range reads subset the files where supported. When the archive
+server ignores ranges, it streams members in order, buffers one global NetCDF
+member at a time, and stops after finding the requested hours. No global archive is
+saved to disk, but a run may transfer several GB.
+
+Each output contains exactly `--hours` hourly means: +0.5 through +23.5 hours
+for `--hours 24`, or +0.5 through +71.5 hours for the default 72-hour request.
+It retains
+initialization, valid times, lead times and source version. Source URLs and download
+time are retained in metadata. Missing fields, units or hours fail that run;
+analyses are never substituted. Reruns resume compatible completed outputs.
+`inventory.json` records availability checks; `manifest.json` records actual
+downloads and failures. A bounded `--max-runs` request is marked incomplete.
+
+The ML NO₂ configuration still needs surface-station labels and a surface baseline
+before it can train on these default downloads; the existing satellite-column
+labels cannot supervise a surface-concentration model.
