@@ -65,15 +65,28 @@ def main():
     parser.add_argument("--reference", type=Path, default=os.getenv("RISK_REFERENCE_PATH") or None, help="Fixed historical reference NPZ")
     parser.add_argument("--history", type=Path, nargs="+", help="NASA analysis files covering preceding hours")
     parser.add_argument("--model-dir", type=Path, help="Generate experimental layers using checkpoints in this directory")
+    parser.add_argument("--models", nargs="+", choices=("temperature", "dewpoint", "no2", "o3"),
+                        help="Select checkpoints; defaults to available supported models")
+    parser.add_argument("--model-threads", type=int, default=2, help="CPU threads for optional model inference")
     args = parser.parse_args()
+    if args.models and args.model_dir is None:
+        parser.error("--models requires --model-dir")
+    if args.model_threads < 1:
+        parser.error("--model-threads must be positive")
     reference_object = os.getenv("RISK_REFERENCE_OBJECT", "").strip()
     if args.input is not None:
         source = args.input
-    elif (args.reference is not None or reference_object) and args.model_dir is None:
+    elif args.model_dir is not None or args.reference is not None or reference_object:
         from scripts.fetch_risk_forecast import download
         source = download()
     else:
         source = run(region_area("georgia"), Path("data/geos_cf"))
+    if args.model_dir is not None:
+        import torch
+        from scripts.downscale_forecast import required_variables
+        from scripts.fetch_model_forecast import enrich
+        torch.set_num_threads(args.model_threads)
+        source = enrich(source, required_variables(args.model_dir, args.models), Path("data/geos_cf"))
     bucket = Settings.from_env().forecast_gcs_bucket
     forecast = prepare_run(source)
     if not bucket:
@@ -112,7 +125,7 @@ def main():
             from scripts.downscale_forecast import write_layers
 
             layers = Path(temporary) / "downscaled.nc"
-            write_layers(source, args.model_dir, layers)
+            write_layers(source, args.model_dir, layers, sources=args.models)
         if bucket:
             from app.services.gcs_forecast import publish_gcs
 

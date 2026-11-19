@@ -12,6 +12,11 @@
       "sha256": "dbd570b53d955c4038eaa509aa7a2876a14482b40b87f2617f7c4082edd1060e"
     },
     {
+      "file": "o3_best.pt",
+      "bytes": 40423487,
+      "sha256": "9444d777b47431b541973c954be8194900baa35ae74c74d536cb10331f46c735"
+    },
+    {
       "file": "temperature_best.pt",
       "bytes": 40418997,
       "sha256": "1df4000c4ec457c75646a6a3cabc39750d1b6e4b0762756ad591af96c1de26c9"

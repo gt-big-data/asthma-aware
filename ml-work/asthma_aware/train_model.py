@@ -18,7 +18,7 @@ def initialize_training(
     configs = {
         source: SourceModelConfig(
             forecast_channels=len(loader.dataset.channels),
-            target_names=(TARGETS[source],),
+            target_names=(loader.dataset.report["target"],),
             geography_channels=0,
             time_channels=4,
             **architecture
@@ -155,11 +155,12 @@ def train(epochs=20, sources=("temperature", "dewpoint"), learning_rate=1e-3):
                     raise RuntimeError(f"{source}: no training updates")
 
                 validation_mse = evaluate(model, validation_loader)
-                validation_rmse_c = math.sqrt(validation_mse) * normalization["target_std"] # convert to Celsius
+                validation_rmse = math.sqrt(validation_mse) * normalization["target_std"]
+                target_units = bundle["reports"][source]["target_units"]
                 print(
                     f"{source} | epoch {epoch:02d} | "
                     f"train normalized MSE={training['mean_batch_loss']:.4f} | "
-                    f"validation RMSE={validation_rmse_c:.3f} °C"
+                    f"validation RMSE={validation_rmse:.6g} {target_units}"
                 )
 
                 if validation_mse < best_validation:
@@ -183,7 +184,7 @@ def train(epochs=20, sources=("temperature", "dewpoint"), learning_rate=1e-3):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train independent downscaling models.")
     parser.add_argument("--epochs", type=int, default=20)
-    parser.add_argument("--sources", nargs="+", choices=tuple(TARGETS), default=["temperature", "dewpoint"])
+    parser.add_argument("--sources", nargs="+", default=["temperature", "dewpoint"])
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     args = parser.parse_args()
     train(epochs=args.epochs, sources=args.sources, learning_rate=args.learning_rate)

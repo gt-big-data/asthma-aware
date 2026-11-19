@@ -35,7 +35,7 @@ import xarray as xr
 MET = ["air_temperature", "specific_humidity", "surface_pressure", "pbl_height"]
 TARGETS = {
     "no2": "tropospheric_no2_column",
-    "o3": "total_o3_column",
+    "o3": "surface_o3_ppb",
     "temperature": "temperature_c",
     "dewpoint": "dewpoint_c",
 }
@@ -50,6 +50,7 @@ EXPECTED_UNITS = {
     "specific_humidity": {"kg kg-1"},
     "surface_pressure": {"pa", "Pa"},
     "pbl_height": {"m"},
+    "o3": {"mol mol-1", "mol/mol"},
 }
 TIME_CONVENTION = "hourly means stamped at the center of the hour"
 
@@ -369,17 +370,11 @@ def geos_fields(ref, names, readers, grid, coarse_shape):
 
 
 def prepare_geos_inputs(source, channels, cfg, grid, readers, references):
-    """Build the coarse inputs and fine baseline used in training and inference."""
-    needed = list(
-        dict.fromkeys(
-            channels
-            + (
-                MET[:3]
-                if source == "dewpoint"
-                else [cfg["baseline_variable"]]
-            )
-        )
-    )
+    """Shared training/inference preprocessing, including metadata-driven baselines."""
+    from .source_adapters import source_config, BaselineBuilder
+    cfg = source_config(source, cfg)
+    baseline_builder = BaselineBuilder(cfg)
+    needed = list(dict.fromkeys(channels + baseline_builder.variables))
     fields = [
         geos_fields(
             ref,
@@ -393,22 +388,7 @@ def prepare_geos_inputs(source, channels, cfg, grid, readers, references):
     f = {k: sum(x[k] for x in fields) / len(fields) for k in needed}
     forecast = np.stack([f[k] for k in channels])
     units = readers.open("nc", references[0]["path"])
-    if source in ("no2", "o3"):
-        var = cfg["baseline_variable"]
-        if (
-            source == "o3"
-            and cfg.get("baseline_quantity") != "total_o3_column"
-        ):
-            raise ValueError(
-                "O3 requires an explicitly declared total-column baseline"
-            )
-        baseline = f[var] * column_factor(units[var].attrs.get("units"))
-    elif source == "temperature":
-        baseline = f["air_temperature"] - 273.15
-    else:
-        baseline = dewpoint_c(
-            f["air_temperature"], f["specific_humidity"], f["surface_pressure"]
-        )
+    baseline = baseline_builder.build(f, units)
     bounds = array_bounds(grid.height, grid.width, grid.affine)
     baseline = regrid(
         baseline,
@@ -429,7 +409,10 @@ class SourceDataset(Dataset):
     ):
         self.bundle = bundle
         self.source = source
-        self.cfg = bundle["config"]["sources"][source]
+        from .source_adapters import source_config, make_label_adapter, BaselineBuilder
+        self.cfg = source_config(source, bundle["config"]["sources"][source])
+        self.label_adapter = make_label_adapter(self.cfg)
+        self.baseline_builder = BaselineBuilder(self.cfg)
         if not allow_unready:
             own_paths = set(bundle["config"]["geos_files"]) | {
                 self.cfg[k]
@@ -473,54 +456,12 @@ class SourceDataset(Dataset):
         return len(self.records)
 
     def _raw(self, record):
-        return prepare_geos_inputs(
-            self.source, self.channels, self.cfg, self.grid, self.readers, record["geos"]
-        )
+        return prepare_geos_inputs(self.source, self.channels, self.cfg, self.grid, self.readers, record["geos"])
 
     def __getitem__(self, i):
         record = self.records[i]
         forecast, baseline = self._raw(record)
-        if self.source in ("no2", "o3"):
-            label = self.readers.open("tif", self.cfg["labels"])
-            mask = self.readers.open("tif", self.cfg["observation_mask"])
-            a = (
-                label.read(record["band"], masked=True)
-                .astype(np.float32)
-                .filled(np.nan)
-            )
-            m = mask.read(record["band"], masked=True).filled(0) == 1
-            a = np.where(m & np.isfinite(a), a, np.nan) * column_factor(
-                self.cfg["label_units"]
-            )
-            targets = regrid(
-                a, label.transform, label.crs, self.grid, method=Resampling.nearest
-            )[None]
-            valid = np.isfinite(targets)
-            extra = {}
-        else:
-            if self.station_data is None:
-                df = pd.read_parquet(self.cfg["labels"])
-                df["target_time_utc"] = pd.to_datetime(df.target_time_utc, utc=True)
-                self.station_data = df.set_index(["target_time_utc", "station_id"])
-            idx = pd.MultiIndex.from_product(
-                [[utc(record["target_time"])], self.station_ids],
-                names=["target_time_utc", "station_id"],
-            )
-            obs = self.station_data.reindex(idx)
-            p = self.source
-            values = pd.to_numeric(obs[p + "_c"], errors="coerce").to_numpy(
-                dtype=np.float32
-            )
-            rr, cc, inside = indices(
-                self.grid, obs[p + "_latitude"], obs[p + "_longitude"]
-            )
-            valid = (
-                obs[p + "_valid"].fillna(False).to_numpy(dtype=bool)
-                & inside
-                & np.isfinite(values)
-            )[:, None]
-            targets = values[:, None]
-            extra = {"rows": torch.from_numpy(rr), "cols": torch.from_numpy(cc)}
+        targets, valid, extra = self.label_adapter.load_targets(record, self)
         targets = np.where(valid, targets, 0).astype(np.float32)
         if self.normalization:
             n = self.normalization
@@ -707,8 +648,7 @@ def resolve_satellite_labels(cfg):
     """Resolve local-first satellite labels and observation masks before fingerprinting."""
     cfg = copy.deepcopy(cfg)
     errors = {}
-    for source in ("no2", "o3"):
-        sc = cfg["sources"].get(source)
+    for source, sc in cfg["sources"].items():
         if not sc:
             continue
         remote = sc.get("huggingface")
@@ -740,6 +680,9 @@ def resolve_satellite_labels(cfg):
 
 def build_catalog(cfg):
     """Discover actual dates and preflight all candidate tensors; never train."""
+    from .source_adapters import source_config, make_label_adapter, TimeMatcher, BaselineBuilder
+    cfg = copy.deepcopy(cfg)
+    cfg["sources"] = {name: source_config(name, sc) for name, sc in cfg["sources"].items()}
     cfg, download_errors = resolve_satellite_labels(cfg)
     lookup, geo_inventory = inspect_geos(cfg["geos_files"])
     bundle = {
@@ -766,21 +709,9 @@ def build_catalog(cfg):
             }
     bundle["fingerprints"] = fingerprints
     for source, sc in cfg["sources"].items():
-        if source not in TARGETS:
-            raise ValueError(f"Unknown source {source}")
-        sc.setdefault(
-            "predictors",
-            (["no2"] if source == "no2" else ["o3"] if source == "o3" else []) + MET,
-        )
-        sc.setdefault(
-            "baseline_variable",
-            {
-                "no2": "tropcol_no2",
-                "o3": "totalcol_o3",
-                "temperature": "air_temperature",
-                "dewpoint": "derived",
-            }[source],
-        )
+        adapter = make_label_adapter(sc)
+        matcher = TimeMatcher(sc)
+        baseline = BaselineBuilder(sc)
         grid = Grid(**sc.get("grid", cfg.get("grid", {})))
         grid.validate()
         report = {
@@ -788,201 +719,19 @@ def build_catalog(cfg):
             "blockers": [],
             "warnings": [],
             "excluded_samples": [],
-            "target": TARGETS[source],
-            "target_units": "mol/m2" if source in ("no2", "o3") else "degC",
+            "target": sc["target_name"],
+            "target_units": sc["target_units"],
             "grid": grid.as_dict(),
         }
         if source in download_errors:
             report["blockers"].append(download_errors[source])
-        catalog = []
-        records = []
-        if source in ("no2", "o3"):
-            sidecar = {}
-            if sc.get("acquisition_sidecar"):
-                for entry in json.loads(Path(sc["acquisition_sidecar"]).read_text()):
-                    key = (
-                        str(
-                            (
-                                Path(sc["acquisition_sidecar"]).parent / entry["file"]
-                            ).resolve()
-                        ),
-                        int(entry["band"]),
-                    )
-                    if key in sidecar:
-                        raise ValueError("Duplicate acquisition sidecar key")
-                    sidecar[key] = utc(entry["acquisition_time"]).isoformat()
-                report["warnings"].append(
-                    "Acquisition metadata retained; assumed-noon matching remains active"
-                )
-            if not Path(sc["labels"]).exists():
-                report["blockers"].append("Satellite label file is missing")
-            else:
-                with rasterio.open(sc["labels"]) as src:
-                    if not src.crs:
-                        raise ValueError("Satellite raster has no CRS")
-                    unit = sc.get("label_units") or src.tags().get("units")
-                    try:
-                        column_factor(unit)
-                        sc["label_units"] = unit
-                    except ValueError as exc:
-                        report["blockers"].append(str(exc))
-                    mask_band_tags = {}
-                    mask_path = sc.get("observation_mask")
-                    if not mask_path or not Path(mask_path).exists():
-                        report["blockers"].append(
-                            "Original-observation mask is required; filled labels are not observations"
-                        )
-                    else:
-                        with rasterio.open(mask_path) as mask:
-                            mask_band_tags = {i: mask.tags(i) for i in mask.indexes}
-                            if (mask.crs, mask.transform, mask.shape, mask.count) != (
-                                src.crs,
-                                src.transform,
-                                src.shape,
-                                src.count,
-                            ):
-                                report["blockers"].append(
-                                    "Observation mask grid/band count differs from labels"
-                                )
-                            else:
-                                for band in range(1, mask.count + 1):
-                                    vals = mask.read(band, masked=True).compressed()
-                                    if not np.isin(vals, [0, 1]).all():
-                                        report["blockers"].append(
-                                            "Observation mask must contain only 0/1"
-                                        )
-                                        break
-                                    if (
-                                        mask.descriptions[band - 1]
-                                        and satellite_day(mask.descriptions[band - 1])
-                                        != satellite_day(src.descriptions[band - 1])
-                                    ):
-                                        report["blockers"].append(
-                                            "Mask band dates differ from label dates"
-                                        )
-                                        break
-                    dates = set()
-                    for band, description in enumerate(src.descriptions, 1):
-                        if not description:
-                            raise ValueError(f'{sc["labels"]} band {band} lacks date')
-                        date = satellite_day(description)
-                        if date.date() in dates:
-                            raise ValueError(
-                                "Duplicate satellite date; use an explicit orbit index instead"
-                            )
-                        dates.add(date.date())
-                        policy = sc.get("timing_policy", "assumed_noon_interval")
-                        known = sidecar.get((str(Path(sc["labels"]).resolve()), band))
-                        reported = None
-                        no_pass = False
-                        if policy == "nearest_collection_within_1h":
-                            tags = src.tags(band)
-                            no_pass = tags.get("status", "").startswith("no satellite pass")
-                            if tags.get("status") == "observed" and tags.get("datetime"):
-                                reported = utc(tags["datetime"]).isoformat()
-                            # A sidecar is an explicit acquisition timestamp; rounded
-                            # raster timestamps remain separately identified as estimates.
-                            match_time = known or reported
-                            matched = nearest_geos_time(match_time, lookup) if match_time else None
-                        elif policy == "weighted_pass_midpoints_within_1h":
-                            pass_tags = mask_band_tags.get(band, src.tags(band))
-                            no_pass = pass_tags.get("n_passes") == "0"
-                            reported = weighted_pass_time(date, pass_tags)
-                            match_time = known or reported
-                            matched = nearest_geos_time(match_time, lookup) if match_time else None
-                        elif policy == "assumed_noon_interval":
-                            noon = date + pd.Timedelta(hours=12, minutes=30)
-                            matched = noon.isoformat() if noon.isoformat() in lookup else None
-                        else:
-                            raise ValueError(f"Unknown satellite timing policy: {policy}")
-                        fallback = no_pass and not known
-                        if fallback:
-                            noon = date + pd.Timedelta(hours=12, minutes=30)
-                            matched = noon.isoformat() if noon.isoformat() in lookup else None
-                        metadata = {
-                            "timing_fallback_reason": "no_satellite_pass" if fallback else None,
-                            "actual_acquisition_time": known,
-                            "reported_collection_time": reported,
-                            "collection_time_precision": (
-                                "pixel_count_weighted_pass_midpoint" if policy == "weighted_pass_midpoints_within_1h"
-                                else "rounded_hour"
-                            ) if reported and not known else None,
-                            "timing_method": "assumed_noon_interval" if fallback else policy,
-                        }
-                        catalog.append({
-                            "file": sc["labels"], "band": band,
-                            "date": date.date().isoformat(), **metadata,
-                        })
-                        if matched is not None:
-                            records.append({
-                                "target_time": matched, "band": band,
-                                "geos": [lookup[matched]], **metadata,
-                                "time_offset_minutes": (
-                                    (utc(matched) - utc(known or reported)).total_seconds() / 60
-                                    if not fallback and policy in ("nearest_collection_within_1h", "weighted_pass_midpoints_within_1h") else None
-                                ),
-                            })
-
-        else:
-            if not Path(sc["labels"]).exists():
-                report["blockers"].append("Station label file is missing")
-            else:
-                df = pd.read_parquet(sc["labels"])
-                required = [
-                    "station_id",
-                    "target_time_utc",
-                    source + "_c",
-                    source + "_valid",
-                    source + "_latitude",
-                    source + "_longitude",
-                ]
-                if any(k not in df for k in required):
-                    raise ValueError(f"{source}: missing station columns")
-                df["target_time_utc"] = pd.to_datetime(df.target_time_utc, utc=True)
-                if df.duplicated(["station_id", "target_time_utc"]).any():
-                    raise ValueError("Duplicate station/hour labels")
-                if not df[source + "_valid"].dropna().isin([True, False]).all():
-                    raise ValueError("Invalid station mask")
-                rr, cc, inside = indices(
-                    grid, df[source + "_latitude"], df[source + "_longitude"]
-                )
-                valid = (
-                    df[source + "_valid"].fillna(False).to_numpy(dtype=bool)
-                    & inside
-                    & np.isfinite(pd.to_numeric(df[source + "_c"], errors="coerce"))
-                )
-                report["station_ids"] = sorted(
-                    df.loc[valid, "station_id"].unique().tolist()
-                )
-                for timestamp in sorted(df.loc[valid, "target_time_utc"].unique()):
-                    timestamp = utc(timestamp)
-                    catalog.append(
-                        {
-                            "target_time": timestamp.isoformat(),
-                            "date": timestamp.date().isoformat(),
-                        }
-                    )
-                    refs = station_pair(timestamp, lookup)
-                    if refs:
-                        records.append(
-                            {
-                                "target_time": timestamp.isoformat(),
-                                "geos": refs,
-                                "timing_method": "interpolated_hourly_means_to_station_hour",
-                            }
-                        )
-                if source == "dewpoint":
-                    report["derivation"] = (
-                        "Magnus liquid-water Td: e=q*p/(0.622+0.378*q); l=ln(e/610.94); Td=243.04*l/(17.625-l), degC"
-                    )
+        catalog, records = adapter.catalog(grid, lookup, report, matcher)
+        if baseline.method == "dewpoint":
+            report["derivation"] = "Magnus liquid-water Td: e=q*p/(0.622+0.378*q); l=ln(e/610.94); Td=243.04*l/(17.625-l), degC"
         report["label_entries"] = len(catalog)
         report["temporal_matches"] = len(records)
         if not records:
             report["blockers"].append("No matching GEOS times for this source")
-        if source == "o3" and sc.get("baseline_quantity") != "total_o3_column":
-            report["blockers"].append(
-                "Explicit total_o3_column baseline quantity declaration is required"
-            )
         # Only assess files that would be used for this source; missing dates in
         # another source never prevent a ready source from running.
         used = {ref["path"] for r in records for ref in r["geos"]}
@@ -990,19 +739,16 @@ def build_catalog(cfg):
             if inventory["path"] not in used:
                 continue
             variables = inventory["variables"]
-            needed = sc["predictors"] + (
-                MET[:3] if source == "dewpoint" else [sc["baseline_variable"]]
-            )
+            needed = sc["predictors"] + baseline.variables
             missing = set(needed) - variables.keys()
             if missing:
                 report["blockers"].append(
                     "Missing GEOS variables: " + ", ".join(sorted(missing))
                 )
-            if source in ("no2", "o3") and sc["baseline_variable"] in variables:
-                try:
-                    column_factor(variables[sc["baseline_variable"]]["units"])
-                except ValueError as exc:
-                    report["blockers"].append(str(exc))
+            try:
+                baseline.validate(variables)
+            except ValueError as exc:
+                report["blockers"].append(str(exc))
         bundle["catalogs"][source] = catalog
         bundle["indexes"][source] = records
         bundle["reports"][source] = report

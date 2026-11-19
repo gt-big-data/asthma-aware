@@ -12,7 +12,10 @@ from ingestion.geos_cf import fetch_forecast as nasa
 def _fetch_chunks(init, specs, area, *, latest):
     """A moving alias is usable only if every batch matches the pinned run."""
     run_id = nasa.run_id_for(init)
-    url = nasa.collection_url(nasa.AQC_COLLECTION, None if latest else run_id)
+    collections = {spec.collection for spec in specs}
+    if len(collections) != 1:
+        raise ValueError("Each batch must use exactly one NASA collection")
+    url = nasa.collection_url(next(iter(collections)), None if latest else run_id)
     names, times, lon_max = nasa.remote_call(nasa._read_inventory, url, what=f"Checking {url}", retries=2)
     expected = pd.date_range(init + pd.Timedelta(minutes=30), periods=120, freq="h").values
     if not np.array_equal(times, expected):
