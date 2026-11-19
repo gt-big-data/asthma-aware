@@ -85,7 +85,7 @@ class ExposureSnapshot(TimestampMixin, Base):
 
     __tablename__ = "exposure_snapshots"
     __table_args__ = (
-        UniqueConstraint("log_id", "log_revision", name="uq_exposures_log_revision"),
+        UniqueConstraint("log_id", "log_revision", "pipeline_version", name="uq_exposures_log_revision_pipeline"),
         ForeignKeyConstraint(["log_id", "user_id"], ["app.symptom_logs.id", "app.symptom_logs.user_id"], ondelete="CASCADE"),
         ForeignKeyConstraint(["log_id", "log_revision"], ["app.symptom_log_revisions.log_id", "app.symptom_log_revisions.revision"], ondelete="CASCADE"),
         CheckConstraint("log_revision > 0", name="log_revision_positive"),

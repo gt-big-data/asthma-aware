@@ -22,12 +22,14 @@ def main():
     if settings.forecast_gcs_bucket:
         from app.services.gcs_forecast import load_gcs_run, sync_history
         run = load_gcs_run(settings.forecast_gcs_bucket)
-        archive = sync_history(settings.forecast_gcs_bucket)
     else:
         run = load_run(Path(settings.dashboard_forecast_path))
     artifact = resolve_artifact(settings, run)
     if artifact is None:
         raise ValueError("Publish a risk artifact with a fixed reference first")
+    if settings.forecast_gcs_bucket:
+        archive = sync_history(settings.forecast_gcs_bucket,
+            pipeline=artifact.metadata["preprocessing"] if artifact.metadata["preprocessing"].startswith("surface-o3-unet-") else None)
     for user_id in args.user_id:
         with get_session_factory()() as session, session.begin():
             session.execute(text("SET LOCAL ROLE asthmaaware_api"))

@@ -13,6 +13,33 @@ from db.models.application import ExposureSnapshot, PersonalizationRevision
 from tests.test_application_api import api, owned_session, BODY
 
 
+def test_reprocessing_keeps_immutable_exposures_for_each_pipeline(api, engine, risk_files, monkeypatch):
+    from types import SimpleNamespace
+    from app.services.risk_artifacts import FINE_PREFIX, load_artifact
+    from db.repositories import personalization as learning
+    client, state = api
+    _, path, archives = risk_files
+    native = load_artifact(path)
+    assert client.put("/v1/symptoms/2026-11-01", json=BODY).status_code == 200
+    now = datetime(2026, 11, 2, 6, tzinfo=timezone.utc)
+    with owned_session(engine, state["user"]) as session:
+        model, _, _ = learning.rebuild_personalization(session, state["user"], native, archives, now)
+        assert model.n_logs == 1
+        pipeline = FINE_PREFIX + "a" * 64
+        archive = SimpleNamespace(metadata={"preprocessing": pipeline, "product": "analysis"},
+            digest="new-history", day=lambda *args: np.array([10., 20., 5., 15.]))
+        current = SimpleNamespace(metadata={"preprocessing": pipeline, "reference_id": "new-reference"}, ref=native.ref)
+        monkeypatch.setattr(learning, "load_artifact", lambda path: archive)
+        model, _, pending = learning.rebuild_personalization(session, state["user"], current, archives, now)
+        assert model.n_logs == 1 and pending == 0
+        rows = list(session.scalars(select(ExposureSnapshot)))
+        assert len(rows) == 2
+        assert {row.pipeline_version for row in rows} == {native.metadata["preprocessing"], pipeline}
+        model, _, _ = learning.rebuild_personalization(session, state["user"], current, archives, now)
+        assert model.n_logs == 1
+        assert session.scalar(select(func.count()).select_from(ExposureSnapshot)) == 2
+
+
 @pytest.fixture
 def risk_files(tmp_path):
     lat, lon = np.arange(30.25, 35.01, 0.25), np.arange(-85.5, -80.74, 0.25)

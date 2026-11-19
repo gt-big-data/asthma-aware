@@ -9,17 +9,17 @@ from sqlalchemy import select
 from app.services.personalization_model import (
     FEATURE_VERSION, MODEL_VERSION, PersonalModel, general_risk,
 )
-from app.services.risk_artifacts import load_artifact
+from app.services.risk_artifacts import load_artifact, PREPROCESSING
 from db.models.application import ExposureSnapshot, OutboxEvent, PersonalizationRevision, SymptomLog
 from db.repositories.application import ensure_profile
 
 
-def match_day(log, archives):
+def match_day(log, archives, pipeline=PREPROCESSING):
     start = datetime.combine(log.log_date, time.min, ZoneInfo(log.timezone)).astimezone(timezone.utc)
     end = log.finalizes_at
     for path in archives:
         artifact = load_artifact(path)
-        if artifact.metadata["product"] != "analysis" or artifact.metadata["preprocessing"] != "native-surface-nearest-001deg-v1":
+        if artifact.metadata["product"] != "analysis" or artifact.metadata["preprocessing"] != pipeline:
             continue
         try:
             values = artifact.day(log.latitude, log.longitude, start, end)
@@ -41,14 +41,15 @@ def rebuild_personalization(session, user_id, artifact, archive_dir: Path, now):
     inputs = []
     pending = 0
     snapshots = {(row.log_id, row.log_revision): row for row in session.scalars(
-        select(ExposureSnapshot).where(ExposureSnapshot.user_id == user_id)
+        select(ExposureSnapshot).where(ExposureSnapshot.user_id == user_id,
+                                      ExposureSnapshot.pipeline_version == artifact.metadata["preprocessing"])
     )}
     for log in logs:
         snapshot = snapshots.get((log.id, log.revision))
         if snapshot is None:
             if archives is None:
                 archives = sorted(archive_dir.glob("*.npz"), key=lambda path: path.stat().st_mtime_ns, reverse=True)
-            matched = match_day(log, archives)
+            matched = match_day(log, archives, artifact.metadata["preprocessing"])
             if matched is None:
                 pending += 1
                 continue

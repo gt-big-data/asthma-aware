@@ -53,6 +53,11 @@ forecast and --history with one or more analysis NetCDF files to reuse downloads
 Incomplete historical coverage leaves affected risk hours unavailable.
 The command stores immutable risk/history artifacts before switching current.json.
 The optional --model-dir still produces the experimental checkpoint layers.
+When O3 is selected, it activates learned surface ozone on the 0.01° risk grid;
+the historical inputs and fixed reference must use that same checkpoint.
+See [fine-grid activation](o3-downscaling.md#fine-grid-risk-activation).
+Migration 0005 keeps separate immutable exposures for each pipeline version;
+learning uses only the pipeline associated with the current forecast.
 
 The compact NPZ stores shared source exposure values and explicit row/column
 mapping for the 0.01° grid, reference values, source hashes, versions and times.

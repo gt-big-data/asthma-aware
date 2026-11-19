@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
 from unittest.mock import Mock
+from types import SimpleNamespace
+import json
+import numpy as np
 from uuid import uuid4
 
 import pytest
@@ -71,3 +74,36 @@ def test_concurrent_newer_publication_wins_and_can_be_read(monkeypatch, tmp_path
     assert gcs.load_gcs_run("test") == newer
     assert gcs.load_gcs_run("test") == newer
     artifact.download_as_bytes.assert_called_once()
+
+
+def test_fine_history_sync_bounds_archives_and_filters_preprocessing(monkeypatch, tmp_path):
+    pipeline = "surface-o3-unet-nearest-001deg-v1:" + "a" * 64
+    sources = {}
+    blobs = []
+    for day, version in [(1, pipeline), (2, pipeline), (3, pipeline), (4, "native")]:
+        key = f"history/{uuid4()}/risk.npz"
+        source = tmp_path / f"history-{day}.npz"
+        np.savez_compressed(source, metadata=json.dumps({"preprocessing": version}))
+        sources[key] = source
+        blobs.append(SimpleNamespace(name=key, time_created=datetime(2026, 11, day, tzinfo=timezone.utc)))
+    bucket = Mock()
+    bucket.list_blobs.return_value = blobs
+    monkeypatch.setattr(gcs, "get_bucket", lambda name: bucket)
+    monkeypatch.setattr(gcs, "cached_risk_file", lambda bucket, key: sources[key])
+    monkeypatch.setattr(gcs, "gettempdir", lambda: str(tmp_path))
+    archive = gcs.sync_history("test", pipeline)
+    assert {path.name for path in archive.glob("*.npz")} == {"history-2.npz", "history-3.npz"}
+
+
+def test_download_cache_evicts_least_recently_used_files(tmp_path):
+    gcs._risk_files.clear()
+    paths = [tmp_path / f"{i}.npz" for i in range(5)]
+    for path in paths[:4]:
+        path.write_bytes(b"artifact")
+        gcs.remember_risk_file(path)
+    gcs.remember_risk_file(paths[0])
+    paths[4].write_bytes(b"new artifact")
+    gcs.remember_risk_file(paths[4])
+    assert paths[0].exists() and not paths[1].exists()
+    assert len(gcs._risk_files) == 4
+    gcs._risk_files.clear()

@@ -86,25 +86,30 @@ Install the checkout's ML package in the publisher environment. From `backend/`:
 
 ```powershell
 python -m pip install -r requirements.txt -r requirements/ingestion.txt
-python -m pip install -e ../ml-work
-python -m scripts.publish_dashboard_forecast --model-dir ../models/checkpoints
+python -m pip install -e "../ml-work[data]"
+python -m scripts.publish_dashboard_forecast --model-dir ../models/checkpoints --models o3
 ```
 
 Add `--input PATH` to reuse a current NetCDF run. The publisher loads the
-three checkpoints with PyTorch's weights-only loader and uses the same input
+selected checkpoints with PyTorch's weights-only loader and uses the same input
 preparation as training. It uses the checkpoint's feature order and scaler,
-the GEOS-CF valid time in UTC, and the aligned coarse baseline. The resulting
-compressed NetCDF contains hourly temperature and dew point in °C and
-tropospheric NO₂ column in mol/m². The grid is the checkpoints' native
+the checkpoint's UTC timing policy, and the aligned coarse baseline. Missing
+predictors are fetched in batches from the same pinned NASA initialization.
+Supported layers are temperature and dew point in °C,
+tropospheric NO₂ column in mol/m², and surface O₃ in ppb. Omit `--models` to
+select all supported checkpoints present. The grid is the checkpoints' native
 420 × 408 at 0.01° in EPSG:4326. Each variable records its checkpoint SHA-256,
 training data signature, epoch, and input order.
 
 Hourly fields are preserved for later scoring and map queries. A physically
-invalid negative NO₂ column remains missing. Missing model inputs or non-finite
+invalid negative NO₂ column or O₃ concentration remains missing. Missing model inputs or non-finite
 inference output fail the optional publication before advancing the dashboard
 forecast. The layers are marked experimental because the checkpoints were
 trained on analysis and forecast skill has yet to be validated. The dashboard
-uses surface pollutant inputs for risk rather than the experimental column layers.
+uses native surface pollutant inputs when no O₃ checkpoint is selected.
+Selecting O₃ with a matching calibrated reference activates individual 0.01°
+exposures and scores for the dashboard and map. See [O3 downscaling](o3-downscaling.md)
+for setup, historical processing, supporting model outputs, and cloud resource needs.
 
 Locally the job prints the generated layer file location alongside the dashboard
 artifact. In GCS it uploads `published/<publication-id>/downscaled.nc` before

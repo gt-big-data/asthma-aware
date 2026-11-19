@@ -1,12 +1,14 @@
 """Hourly population-risk rasters from the same versioned artifact as the dashboard.
 
-Scores stay compact on NASA's source grid in storage. Expand only one frame to
-the 0.01-degree serving grid, then encode a small transparent PNG in memory.
+Artifacts may contain native shared scores or individual 0.01-degree scores.
+Read only one frame, then encode a transparent PNG in memory.
 No database, filesystem writes, image library, or public bucket is required.
 """
 import base64
 import struct
 import zlib
+from collections import OrderedDict
+from threading import Lock
 from datetime import timedelta
 from functools import lru_cache
 
@@ -92,7 +94,20 @@ def encode_png(rgba):
             + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
 
 
-@lru_cache(maxsize=24)
 def map_image(artifact, index):
     """Bounded per-process cache; immutable artifact identity prevents mixed runs."""
-    return "data:image/png;base64," + base64.b64encode(encode_png(frame_rgba(artifact, index))).decode("ascii")
+    key = (artifact.digest, index)
+    with _image_lock:
+        if key in _images:
+            _images.move_to_end(key)
+            return _images[key]
+    result = "data:image/png;base64," + base64.b64encode(encode_png(frame_rgba(artifact, index))).decode("ascii")
+    with _image_lock:
+        _images[key] = result
+        while len(_images) > 24:
+            _images.popitem(last=False)
+    return result
+
+
+_images = OrderedDict()
+_image_lock = Lock()

@@ -1,5 +1,8 @@
 """Cloud Storage publication and reads for dashboard forecasts."""
 import logging
+import json
+from collections import OrderedDict
+from threading import Lock
 from functools import lru_cache
 from pathlib import Path
 from tempfile import gettempdir
@@ -108,7 +111,6 @@ def publish_gcs(
     raise RuntimeError("The GCS forecast pointer changed repeatedly during publication")
 
 
-@lru_cache(maxsize=16)
 def cached_risk_file(bucket_name: str, key: str) -> Path:
     parts = key.split("/")
     if len(parts) != 3 or parts[0] not in ("published", "history") or parts[2] != "risk.npz":
@@ -118,14 +120,16 @@ def cached_risk_file(bucket_name: str, key: str) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{parts[0]}-{publication_id}.npz"
     if path.exists():
+        remember_risk_file(path)
         return path
     pending = directory / f".{uuid4()}.tmp"
     try:
-        get_bucket(bucket_name).blob(key).download_to_filename(pending, timeout=30)
+        get_bucket(bucket_name).blob(key).download_to_filename(pending, timeout=120)
         from app.services.risk_artifacts import load_artifact
 
         load_artifact(pending)
         pending.replace(path)
+        remember_risk_file(path)
         return path
     except (GoogleAPIError, GoogleAuthError, ValueError, OSError) as error:
         raise ForecastUnavailable("Risk artifact is unavailable") from error
@@ -133,14 +137,43 @@ def cached_risk_file(bucket_name: str, key: str) -> Path:
         pending.unlink(missing_ok=True)
 
 
-def sync_history(bucket_name: str) -> Path:
+_risk_files = OrderedDict()
+_risk_file_lock = Lock()
+
+
+def remember_risk_file(path):
+    with _risk_file_lock:
+        _risk_files[path] = None
+        _risk_files.move_to_end(path)
+        while len(_risk_files) > 4:
+            old, _ = _risk_files.popitem(last=False)
+            try:
+                old.unlink(missing_ok=True)
+            except PermissionError:
+                logger.info("Retained risk file currently read by another request")
+
+
+cached_risk_file.cache_clear = _risk_files.clear
+
+
+def sync_history(bucket_name: str, pipeline=None) -> Path:
     directory = Path(gettempdir()) / "asthmaaware-risk-history" / bucket_name
+    if pipeline:
+        import hashlib
+        directory /= hashlib.sha256(pipeline.encode()).hexdigest()
     directory.mkdir(parents=True, exist_ok=True)
     try:
-        for blob in get_bucket(bucket_name).list_blobs(prefix="history/"):
-            if not blob.name.endswith("/risk.npz"):
-                continue
+        blobs = [blob for blob in get_bucket(bucket_name).list_blobs(prefix="history/") if blob.name.endswith("/risk.npz")]
+        if pipeline:
+            blobs.sort(key=lambda blob: blob.time_created, reverse=True)
+        retained = set()
+        for blob in blobs:
             source = cached_risk_file(bucket_name, blob.name)
+            if pipeline:
+                import numpy as np
+                with np.load(source, allow_pickle=False) as saved:
+                    if json.loads(str(saved["metadata"]))["preprocessing"] != pipeline:
+                        continue
             target = directory / source.name
             if not target.exists():
                 # Hard links are atomic and avoid copying the artifact for each request.
@@ -148,6 +181,13 @@ def sync_history(bucket_name: str) -> Path:
                     target.hardlink_to(source)
                 except FileExistsError:
                     pass
+            retained.add(target)
+            if pipeline and len(retained) == 2:
+                break
+        if pipeline:
+            for old in directory.glob("*.npz"):
+                if old not in retained:
+                    old.unlink(missing_ok=True)
     except (GoogleAPIError, GoogleAuthError, ValueError, OSError) as error:
         raise ForecastUnavailable("Historical exposure archive is unavailable") from error
     return directory

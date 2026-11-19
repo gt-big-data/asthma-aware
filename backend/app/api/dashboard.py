@@ -100,7 +100,8 @@ def get_personal_risk(
             archive_dir = Path(settings.risk_archive_dir)
             if settings.forecast_gcs_bucket:
                 from app.services.gcs_forecast import sync_history
-                archive_dir = sync_history(settings.forecast_gcs_bucket)
+                archive_dir = sync_history(settings.forecast_gcs_bucket,
+                    pipeline=artifact.metadata["preprocessing"] if artifact.metadata["preprocessing"].startswith("surface-o3-unet-") else None)
             # Reject unavailable locations and expired forecasts before writing derived state.
             risk_dashboard(artifact, lat, lon, now)
             model, revision, pending = rebuild_personalization(session, user, artifact, archive_dir, now)

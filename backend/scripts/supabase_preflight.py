@@ -19,8 +19,8 @@ from app.auth import ALGORITHMS
 from app.config import Settings
 from db import config
 
-HEAD = "0004_saved_locations"
-APPLICATION_REVISIONS = (["0002_application"], ["0003_personalization"], [HEAD])
+HEAD = "0005_exposure_pipelines"
+APPLICATION_REVISIONS = (["0002_application"], ["0003_personalization"], ["0004_saved_locations"], [HEAD])
 TABLES = {"profiles", "symptom_logs", "symptom_log_revisions", "exposure_snapshots", "personalization_revisions", "outbox_events", "saved_locations"}
 
 

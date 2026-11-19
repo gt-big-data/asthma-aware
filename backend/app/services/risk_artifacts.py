@@ -1,6 +1,11 @@
 """Versioned exposure artifacts on the 0.01-degree serving grid."""
 import hashlib
 import json
+import shutil
+import re
+from tempfile import gettempdir
+from uuid import uuid4
+from zipfile import ZipFile
 from functools import lru_cache
 from pathlib import Path
 
@@ -16,6 +21,11 @@ CHANNELS = ("o3", "no2", "so2", "pm25")
 LATITUDES = 34.975 - 0.01 * np.arange(420)
 LONGITUDES = -85.595 + 0.01 * np.arange(408)
 PREPROCESSING = "native-surface-nearest-001deg-v1"
+FINE_PREFIX = "surface-o3-unet-nearest-001deg-v1:"
+
+
+def supported_preprocessing(value):
+    return isinstance(value, str) and (value == PREPROCESSING or bool(re.fullmatch(re.escape(FINE_PREFIX) + "[0-9a-f]{64}", value)))
 
 
 def read_surface(path: Path) -> xr.Dataset:
@@ -67,14 +77,15 @@ def grid_mapping(latitudes, longitudes):
 
 
 def reference_id(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
 
 
 def load_reference(path: Path):
     with np.load(path, allow_pickle=False) as saved:
         ref = ReferenceStats(*(saved[key] for key in ("mean", "std", "clean", "eta_sorted")))
         metadata = json.loads(str(saved["metadata"]))
-    if metadata["preprocessing"] != PREPROCESSING:
+    if not supported_preprocessing(metadata["preprocessing"]):
         raise ValueError("Reference preprocessing mismatch")
     if any(a.shape != (4,) or not np.isfinite(a).all() for a in (ref.mean, ref.std, ref.clean)):
         raise ValueError("Invalid reference channel statistics")
@@ -124,6 +135,8 @@ def build_artifact(paths: list[Path], reference: Path, output: Path, *, issued_a
     E = exposure(cube).astype(np.float32)
     rows, columns = grid_mapping(latitudes, longitudes)
     ref, ref_metadata = load_reference(reference)
+    if ref_metadata["preprocessing"] != PREPROCESSING:
+        raise ValueError("Native sources cannot use a downscaled reference")
     if not np.isfinite(E).all(axis=1).any():
         raise ValueError("No valid risk windows; at least 78 preceding hours are required")
     metadata = {
@@ -145,15 +158,16 @@ def build_artifact(paths: list[Path], reference: Path, output: Path, *, issued_a
 
 class RiskArtifact:
     def __init__(self, path: Path):
+        self.digest = reference_id(path)
         with np.load(path, allow_pickle=False) as data:
+            self.metadata = json.loads(str(data["metadata"]))
             self.times = pd.DatetimeIndex(data["times"].astype("datetime64[ns]")).tz_localize("UTC")
-            self.E = data["E"]
+            mapped = self.metadata.get("storage") == "mmap-npz-v1"
+            self.E = mapped_array(path, "E", self.digest) if mapped else data["E"]
             self.rows, self.columns = data["source_rows"], data["source_columns"]
             self.ref = ReferenceStats(*(data[key] for key in ("mean", "std", "clean", "eta_sorted")))
-            self.metadata = json.loads(str(data["metadata"]))
             # Older published runs remain readable. New publishers persist this cube.
-            self.general_scores = data["general_scores"] if "general_scores" in data else None
-        self.digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            self.general_scores = (mapped_array(path, "general_scores", self.digest) if mapped else data["general_scores"]) if "general_scores" in data else None
         if any(name not in self.metadata for name in (
             "model_version", "feature_version", "preprocessing", "reference_id",
             "provisional", "issued_at", "source_run", "product",
@@ -165,22 +179,30 @@ class RiskArtifact:
             raise ValueError("Invalid risk reference normalization")
         if not len(self.ref.eta_sorted) or not np.isfinite(self.ref.eta_sorted).all() or np.any(np.diff(self.ref.eta_sorted) < 0):
             raise ValueError("Invalid risk reference percentiles")
-        if self.metadata["model_version"] != MODEL_VERSION or self.metadata["preprocessing"] != PREPROCESSING:
+        if (self.metadata["model_version"] != MODEL_VERSION
+                or self.metadata["feature_version"] != FEATURE_VERSION
+                or not supported_preprocessing(self.metadata["preprocessing"])):
             raise ValueError("Incompatible risk artifact")
         if self.E.ndim != 4 or self.E.shape[:2] != (len(self.times), 4) or len(self.rows) != 420 or len(self.columns) != 408:
             raise ValueError("Invalid risk artifact dimensions")
         if (self.rows.min() < 0 or self.rows.max() >= self.E.shape[2]
                 or self.columns.min() < 0 or self.columns.max() >= self.E.shape[3]):
             raise ValueError("Risk artifact grid mapping is invalid")
+        if self.metadata["preprocessing"].startswith(FINE_PREFIX) and (
+                self.E.shape[2:] != (420, 408)
+                or not np.array_equal(self.rows, np.arange(420))
+                or not np.array_equal(self.columns, np.arange(408))):
+            raise ValueError("Fine artifacts require individual 0.01-degree exposure cells")
         if not self.times.is_unique or not self.times.is_monotonic_increasing or not np.all(np.diff(self.times.asi8) == 3600000000000):
             raise ValueError("Risk artifact timeline is not consecutive hourly")
         if self.general_scores is None:
             self.general_scores = general_risk(self.E, self.ref).score.astype(np.float32)
         if self.general_scores.shape != (len(self.times), *self.E.shape[2:]):
             raise ValueError("Invalid general score dimensions")
-        finite_scores = self.general_scores[np.isfinite(self.general_scores)]
-        if np.isinf(self.general_scores).any() or np.any((finite_scores < 0) | (finite_scores > 100)):
-            raise ValueError("Invalid general scores")
+        for scores in self.general_scores:
+            finite_scores = scores[np.isfinite(scores)]
+            if np.isinf(scores).any() or np.any((finite_scores < 0) | (finite_scores > 100)):
+                raise ValueError("Invalid general scores")
 
     def point(self, lat: float, lon: float):
         row = int(np.floor((34.98 - lat) / 0.01))
@@ -199,9 +221,39 @@ class RiskArtifact:
         return values.mean(axis=0)[:, 0, 0].astype(float)
 
 
-@lru_cache(maxsize=3)
+def mapped_array(path, name, digest):
+    """Decode immutable fine cubes once to local disk, rather than keeping GB in RAM."""
+    directory = Path(gettempdir()) / "asthmaaware-risk-arrays" / digest
+    directory.mkdir(parents=True, exist_ok=True)
+    output = directory / f"{name}.npy"
+    if not output.exists():
+        pending = directory / f".{uuid4()}.tmp"
+        try:
+            with ZipFile(path) as archive, archive.open(f"{name}.npy") as source, pending.open("wb") as target:
+                shutil.copyfileobj(source, target, length=1024 * 1024)
+            pending.replace(output)
+        finally:
+            pending.unlink(missing_ok=True)
+    return np.load(output, mmap_mode="r", allow_pickle=False)
+
+
+def prune_array_cache(keep):
+    root = Path(gettempdir()) / "asthmaaware-risk-arrays"
+    if root.exists():
+        directories = sorted(root.iterdir(), key=lambda path: path.stat().st_mtime_ns, reverse=True)
+        for directory in directories[3:]:
+            if directory.name != keep:
+                # Linux mappings remain valid after unlink. Windows retains any
+                # directory still mapped by another request until a later pass.
+                shutil.rmtree(directory, ignore_errors=True)
+
+
+@lru_cache(maxsize=2)
 def cached_artifact(path: Path, modified: int, size: int):
-    return RiskArtifact(path)
+    result = RiskArtifact(path)
+    if result.metadata.get("storage") == "mmap-npz-v1":
+        prune_array_cache(result.digest)
+    return result
 
 
 def load_artifact(path: Path):

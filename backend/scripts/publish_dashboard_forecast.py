@@ -1,6 +1,7 @@
 """Publish a validated NASA run for the dashboard."""
 import argparse
 import os
+import shutil
 from datetime import datetime, timedelta, timezone
 from math import isfinite
 from pathlib import Path
@@ -64,7 +65,9 @@ def main():
     parser.add_argument("--output", type=Path, default=Path("data/dashboard/current.json"))
     parser.add_argument("--reference", type=Path, default=os.getenv("RISK_REFERENCE_PATH") or None, help="Fixed historical reference NPZ")
     parser.add_argument("--history", type=Path, nargs="+", help="NASA analysis files covering preceding hours")
-    parser.add_argument("--model-dir", type=Path, help="Generate experimental layers using checkpoints in this directory")
+    parser.add_argument("--model-dir", type=Path, default=os.getenv("DOWNSCALE_MODEL_DIR") or None,
+                        help="Generate model layers; defaults to DOWNSCALE_MODEL_DIR")
+    parser.add_argument("--model-prefix", default=os.getenv("MODEL_GCS_PREFIX"), help="Versioned GCS checkpoint prefix; verifies the pinned manifest")
     parser.add_argument("--models", nargs="+", choices=("temperature", "dewpoint", "no2", "o3"),
                         help="Select checkpoints; defaults to available supported models")
     parser.add_argument("--model-threads", type=int, default=2, help="CPU threads for optional model inference")
@@ -73,6 +76,12 @@ def main():
         parser.error("--models requires --model-dir")
     if args.model_threads < 1:
         parser.error("--model-threads must be positive")
+    if args.model_prefix:
+        if args.model_dir is None or not Settings.from_env().forecast_gcs_bucket:
+            parser.error("--model-prefix requires --model-dir and FORECAST_GCS_BUCKET")
+        from scripts.fetch_checkpoints import download as download_checkpoints
+        from app.services.gcs_forecast import get_bucket
+        download_checkpoints(get_bucket(Settings.from_env().forecast_gcs_bucket), args.model_prefix, args.model_dir, args.models)
     reference_object = os.getenv("RISK_REFERENCE_OBJECT", "").strip()
     if args.input is not None:
         source = args.input
@@ -87,11 +96,24 @@ def main():
         from scripts.fetch_model_forecast import enrich
         torch.set_num_threads(args.model_threads)
         source = enrich(source, required_variables(args.model_dir, args.models), Path("data/geos_cf"))
+    fine_active = False
+    if args.model_dir is not None:
+        from scripts.downscale_forecast import selected_sources
+        fine_active = "o3" in selected_sources(args.model_dir, args.models)
     bucket = Settings.from_env().forecast_gcs_bucket
     forecast = prepare_run(source)
     if not bucket:
         args.output.parent.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(dir=args.output.parent if not bucket else None) as temporary:
+        layers = None
+        risk_source = source
+        if args.model_dir is not None:
+            from scripts.prepare_fine_risk import prepare_layers
+            layers = Path(temporary) / "downscaled.nc"
+            shutil.copyfile(prepare_layers(source, args.model_dir, args.models), layers)
+            if fine_active:
+                from app.services.fine_risk import write_surface
+                risk_source = write_surface(source, layers, Path(temporary) / "surface.nc")
         risk = None
         history_artifact = None
         reference = args.reference
@@ -106,12 +128,20 @@ def main():
 
             history = args.history
             if history is None:
-                from scripts.fetch_risk_analysis import download
+                if fine_active:
+                    from scripts.fetch_model_analysis import download
+                else:
+                    from scripts.fetch_risk_analysis import download
                 first = pd.Timestamp(forecast.times[0]).tz_convert("UTC").tz_localize(None)
                 history = [download(first - pd.Timedelta(hours=78 + 6 * 24), first)]
+            if fine_active:
+                from scripts.prepare_fine_risk import prepare
+                from app.services.fine_risk import build_fine_artifact
+                history = [prepare(path, args.model_dir) for path in history]
+                build_artifact = build_fine_artifact
             risk = Path(temporary) / "risk.npz"
             build_artifact(
-                [*history, source], reference, risk,
+                [*history, risk_source], reference, risk,
                 issued_at=forecast.issued_at.isoformat(), source_run=forecast.source_run, product="forecast",
             )
             history_artifact = Path(temporary) / "history.npz"
@@ -120,12 +150,8 @@ def main():
                 issued_at=forecast.issued_at.isoformat(), source_run="historical-analysis", product="analysis",
             )
             forecast = forecast.model_copy(update={"risk_artifact": f"risk-{uuid4()}.npz"})
-        layers = None
-        if args.model_dir is not None:
-            from scripts.downscale_forecast import write_layers
-
-            layers = Path(temporary) / "downscaled.nc"
-            write_layers(source, args.model_dir, layers, sources=args.models)
+        if fine_active and reference is None:
+            raise ValueError("Activating fine-grid risk requires a fixed downscaled reference")
         if bucket:
             from app.services.gcs_forecast import publish_gcs
 
