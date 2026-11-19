@@ -21,10 +21,12 @@ class Settings:
     dashboard_forecast_path: str = "data/dashboard/current.json"
     forecast_gcs_bucket: str = ""
     risk_archive_dir: str = "data/risk/history"
+    environmental_trends_path: str = "data/dashboard/environmental-trends.json"
 
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
+            environmental_trends_path=os.getenv("ENVIRONMENTAL_TRENDS_PATH", "data/dashboard/environmental-trends.json"),
             risk_archive_dir=os.getenv("RISK_ARCHIVE_DIR", "data/risk/history"),
             forecast_gcs_bucket=os.getenv("FORECAST_GCS_BUCKET", "").strip(),
             dashboard_forecast_path=os.getenv("DASHBOARD_FORECAST_PATH", "data/dashboard/current.json"),

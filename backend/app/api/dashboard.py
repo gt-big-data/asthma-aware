@@ -115,3 +115,20 @@ def get_personal_risk(
         raise HTTPException(503, "Risk forecast or historical exposure is unavailable") from None
     response.headers["Cache-Control"] = "private, no-store"
     return geos_dashboard.with_forecast_details(result, run, now)
+
+
+@router.get("/v1/dashboard/environmental-trends")
+def get_environmental_trends(request: Request,response: Response,
+    lat: float=Query(ge=-90,le=90,allow_inf_nan=False),lon: float=Query(ge=-180,le=180,allow_inf_nan=False),
+    now: datetime=Depends(utc_now)):
+    from app.services.environmental_trends import environmental_trends
+    from google.api_core.exceptions import GoogleAPIError
+    from google.auth.exceptions import GoogleAuthError
+    try:
+        result=environmental_trends(request.app.state.settings,lat,lon,now)
+    except LookupError:
+        raise HTTPException(404,"Location is outside Georgia or analysis coverage") from None
+    except (OSError,ValueError,geos_dashboard.ForecastUnavailable,GoogleAPIError,GoogleAuthError):
+        raise HTTPException(503,"Historical NASA analysis is unavailable") from None
+    response.headers["Cache-Control"]="no-store"
+    return result

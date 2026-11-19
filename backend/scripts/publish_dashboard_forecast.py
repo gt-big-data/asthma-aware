@@ -1,5 +1,6 @@
 """Publish a validated NASA run for the dashboard."""
 import argparse
+import logging
 import os
 import shutil
 from datetime import datetime, timedelta, timezone
@@ -184,6 +185,15 @@ def main():
                 map_fields.replace(args.output.parent / forecast.map_artifact)
             write_local_run(forecast, args.output)
             print(f"Published GEOS-CF {forecast.source_run} to {args.output}")
+
+    # Trends use an independent analysis pointer, so their freshness is not tied
+    # to the forecast initialization or the ML/risk artifact's history window.
+    try:
+        from scripts.publish_environmental_trends import publish_latest
+        analysis = publish_latest()
+        print(f"Environmental trends analysis through {analysis.observed_through.isoformat()}")
+    except Exception:
+        logging.getLogger(__name__).exception("Environmental trends refresh failed; kept the last published analysis")
 
 
 if __name__ == "__main__":
