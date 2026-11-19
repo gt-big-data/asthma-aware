@@ -20,14 +20,18 @@ SEASONS = {12: "DJF", 1: "DJF", 2: "DJF", 3: "MAM", 4: "MAM", 5: "MAM",
            6: "JJA", 7: "JJA", 8: "JJA", 9: "SON", 10: "SON", 11: "SON"}
 
 
-def weekly_blocks(year):
-    """7-day blocks from Jan 1; the last block absorbs the remaining 1-2 days."""
-    start, end = dt.date(year, 1, 1), dt.date(year + 1, 1, 1)
+def weekly_blocks_range(start, end):
+    """7-day blocks from ``start`` up to ``end`` (exclusive); a short tail joins the last block."""
     days = [start + dt.timedelta(d) for d in range((end - start).days)]
     blocks = [days[i:i + 7] for i in range(0, len(days), 7)]
-    if len(blocks[-1]) < 7:
+    if len(blocks) > 1 and len(blocks[-1]) < 7:
         blocks[-2].extend(blocks.pop())
     return blocks
+
+
+def weekly_blocks(year):
+    """7-day blocks from Jan 1; the last block absorbs the remaining 1-2 days."""
+    return weekly_blocks_range(dt.date(year, 1, 1), dt.date(year + 1, 1, 1))
 
 
 def weekly_split(year=2023, seed=2023, validation_per_season=2, test_per_season=2, gap_days=1):
@@ -37,7 +41,23 @@ def weekly_split(year=2023, seed=2023, validation_per_season=2, test_per_season=
     shuffled with ``seed``; the first ``validation_per_season`` become validation, the next
     ``test_per_season`` test, the rest train.
     """
-    blocks = weekly_blocks(year)
+    mapping, summary = _split_blocks(weekly_blocks(year), seed, validation_per_season, test_per_season, gap_days)
+    return mapping, dict({"year": year}, **summary)
+
+
+def weekly_split_range(start, end, seed=2023, validation_per_season=2, test_per_season=2, gap_days=1):
+    """``weekly_split`` over any date range: blocks start on ``start``; ``end`` is exclusive.
+
+    Dates are ``datetime.date`` or "YYYY-MM-DD". Same seasonal rule and gaps as ``weekly_split``;
+    a season with several years' weeks (e.g. two autumns) is still one season.
+    """
+    start, end = (d if isinstance(d, dt.date) else dt.date.fromisoformat(d) for d in (start, end))
+    mapping, summary = _split_blocks(weekly_blocks_range(start, end), seed, validation_per_season,
+                                     test_per_season, gap_days)
+    return mapping, dict({"start": start.isoformat(), "end": end.isoformat()}, **summary)
+
+
+def _split_blocks(blocks, seed, validation_per_season, test_per_season, gap_days):
     rng = random.Random(seed)
     by_season = {}
     for i, block in enumerate(blocks):
@@ -68,7 +88,7 @@ def weekly_split(year=2023, seed=2023, validation_per_season=2, test_per_season=
         for day in drop:
             mapping[day.isoformat()] = "gap"
     summary = {
-        "year": year, "seed": seed, "gap_days": gap_days,
+        "seed": seed, "gap_days": gap_days,
         "weeks": {s: sum(1 for i in label if label[i] == s) for s in ("train", "validation", "test")},
         "days": {s: sum(1 for v in mapping.values() if v == s) for s in ("train", "validation", "test", "gap")},
         "weeks_by_season": {

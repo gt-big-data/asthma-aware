@@ -1,0 +1,38 @@
+{
+  "geos_files": [
+    "../backend/data/geos_cf/geos_cf_v2_analysis_bbox_30.78_34.98_-85.6_-81.52_20250805-20261101.nc"
+  ],
+  "grid": {
+    "crs": "EPSG:4326",
+    "width": 408,
+    "height": 420,
+    "transform": [
+      0.01,
+      0,
+      -85.6,
+      0,
+      -0.01,
+      34.98
+    ]
+  },
+  "sources": {
+    "no2": {
+      "labels": "NO2_GA_2025_26_filled_umol_m2.tif",
+      "label_units": "umol/m2",
+      "observation_mask": "NO2_GA_2025_26_mask_observed.tif",
+      "baseline_variable": "tropcol_no2",
+      "predictors": [
+        "no2",
+        "air_temperature",
+        "specific_humidity",
+        "surface_pressure",
+        "pbl_height"
+      ],
+      "coarse_shape": [
+        18,
+        17
+      ],
+      "timing_policy": "weighted_pass_midpoints_within_1h"
+    }
+  }
+}
