@@ -1,6 +1,6 @@
 {
   "geos_files": [
-    "../backend/data/geos_cf/geos_cf_v2_analysis_bbox_30.78_34.98_-85.6_-81.52_20250805-20261101.nc"
+    "../backend/data/geos_cf/geos_cf_analysis_bbox_30.78_34.98_-85.6_-81.52_20250805-20261101.nc"
   ],
   "grid": {
     "crs": "EPSG:4326",
