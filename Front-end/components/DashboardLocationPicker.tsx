@@ -1,9 +1,10 @@
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../lib/api";
-import { fromSavedPlace, type DashboardPlace, type GeorgiaCity, type SavedLocation } from "../lib/saved-locations";
+import { coordinatePlace, fromSavedPlace, type DashboardPlace, type GeorgiaCity, type SavedLocation } from "../lib/saved-locations";
 
 export default function DashboardLocationPicker({ userId, selected, onSelect, onClose }: {
   userId?: string;
@@ -11,6 +12,9 @@ export default function DashboardLocationPicker({ userId, selected, onSelect, on
   onSelect: (place: DashboardPlace | null) => Promise<void>;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const [latitude, setLatitude] = useState(selected?.kind === "coordinates" ? String(selected.latitude) : "");
+  const [longitude, setLongitude] = useState(selected?.kind === "coordinates" ? String(selected.longitude) : "");
   const [query, setQuery] = useState("");
   const [cities, setCities] = useState<GeorgiaCity[]>([]);
   const [saved, setSaved] = useState<SavedLocation[]>([]);
@@ -49,6 +53,17 @@ export default function DashboardLocationPicker({ userId, selected, onSelect, on
     catch { setError("Could not select this place. Try again."); }
     finally { setBusy(false); }
   }
+  async function chooseCoordinates() {
+    setBusy(true); setError("");
+    try {
+      if (!latitude.trim() || !longitude.trim()) throw new Error("Enter both latitude and longitude.");
+      const place = coordinatePlace(Number(latitude.trim()), Number(longitude.trim()), false);
+      const coverage = await api.locationCoverage(place.latitude, place.longitude);
+      if (!coverage.in_georgia) throw new Error("Choose coordinates within Georgia.");
+      await onSelect({ ...place, forecast_supported: coverage.forecast_supported }); onClose();
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not select these coordinates."); }
+    finally { setBusy(false); }
+  }
   async function save() {
     if (!draft) return;
     setBusy(true); setError("");
@@ -77,13 +92,30 @@ export default function DashboardLocationPicker({ userId, selected, onSelect, on
             <Ionicons name="close" size={23} color="#52715d" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.subtitle}>City-center forecasts · Georgia only</Text>
+        <Text style={styles.subtitle}>City or precise coordinates · Georgia only</Text>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
           <TouchableOpacity disabled={busy} style={styles.current} onPress={() => void choose(null)} accessibilityRole="button" accessibilityLabel="Use current location">
             <Ionicons name="locate-outline" size={20} color="#2d6a4f" /><View style={styles.flex}>
               <Text style={styles.rowTitle}>Current location</Text><Text style={styles.small}>Use your device’s location</Text></View>
             {!selected && <Ionicons name="checkmark-circle" size={19} color="#2d6a4f" />}
           </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Choose coordinates</Text>
+          <Text style={styles.note}>Enter a Georgia location, or select a 0.01° cell on the forecast map.</Text>
+          <View style={styles.actions}>
+            <TextInput accessibilityLabel="Dashboard latitude" placeholder="Latitude, e.g. 33.755" value={latitude}
+              onChangeText={setLatitude} editable={!busy} keyboardType="numbers-and-punctuation" maxLength={20} style={[styles.labelInput,styles.flex]} />
+            <TextInput accessibilityLabel="Dashboard longitude" placeholder="Longitude, e.g. -84.385" value={longitude}
+              onChangeText={setLongitude} editable={!busy} keyboardType="numbers-and-punctuation" maxLength={20} style={[styles.labelInput,styles.flex]} />
+          </View>
+          <View style={styles.actions}>
+            <TouchableOpacity disabled={busy} style={styles.viewButton} onPress={() => void chooseCoordinates()} accessibilityRole="button" accessibilityLabel="Use dashboard coordinates">
+              <Text style={styles.viewText}>Use coordinates</Text>
+            </TouchableOpacity>
+            <TouchableOpacity disabled={busy} style={styles.saveButton} onPress={() => { onClose(); router.push({pathname:"/map",params:{pickDashboard:"1"}}); }} accessibilityRole="button" accessibilityLabel="Choose dashboard grid cell on map">
+              <Text style={styles.saveText}>Choose on map</Text>
+            </TouchableOpacity>
+          </View>
+          {selected?.kind === "coordinates" && <Text style={styles.small}>Selected: {selected.name}</Text>}
           <Text style={styles.sectionTitle}>Saved locations</Text>
           {!userId && <Text style={styles.note}>Sign in from the Symptom Log tab to save places to your account. You can still explore any Georgia city.</Text>}
           {userId && savedReady && !saved.length && <Text style={styles.note}>Save a city below, with an optional label like Home or Work.</Text>}

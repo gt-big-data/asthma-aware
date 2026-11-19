@@ -1,5 +1,6 @@
+import type { EnvironmentalTrends } from "./environmental-trends";
 import type { Coordinates, LocationSource } from "./logging";
-import type { MapForecast, MapFrameImage, MapLayerId } from "./forecast-map";
+import type { MapForecast, MapFrameImage, MapLayerId, MapCell } from "./forecast-map";
 import type { RiskHour } from "./hourly-risk";
 import type { GeorgiaCity, SavedLocation } from "./saved-locations";
 import type { ForecastDetails } from "./dashboard-insights";
@@ -87,6 +88,8 @@ export function createApiClient(options: {
     }
   }
   return {
+    environmentalTrends: (lat: number, lon: number, signal?: AbortSignal) => request<EnvironmentalTrends>(
+      `/v1/dashboard/environmental-trends?lat=${lat}&lon=${lon}`, "GET", undefined, false, signal),
     locationCoverage: (lat: number, lon: number, signal?: AbortSignal) => request<{ in_georgia: boolean; forecast_supported: boolean }>(
       `/v1/locations/coverage?lat=${lat}&lon=${lon}`, "GET", undefined, false, signal),
     searchCities: (query: string, signal?: AbortSignal) => request<{ items: GeorgiaCity[] }>(
@@ -102,6 +105,9 @@ export function createApiClient(options: {
       `/v1/map/${layer === "personal" ? "personal/" : ""}frame?run_id=${encodeURIComponent(runId)}&index=${index}${layer === "risk" || layer === "personal" ? "" : `&layer=${layer}`}`,
       "GET", undefined, layer === "personal", signal,
     ),
+    mapCell: (runId: string, index: number, lat: number, lon: number, layer: MapLayerId = "risk", signal?: AbortSignal) => request<MapCell>(
+      `/v1/map/${layer === "personal" ? "personal/" : ""}cell?run_id=${encodeURIComponent(runId)}&index=${index}&lat=${lat}&lon=${lon}${layer === "personal" ? "" : `&layer=${layer}`}`,
+      "GET", undefined, layer === "personal", signal),
     async dashboardRisk(lat: number, lon: number, usePersonalization = true, signal?: AbortSignal) {
       const signedIn = usePersonalization && !!await options.getAccessToken();
       const route = signedIn ? "personal-risk" : "risk";

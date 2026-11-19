@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCellGrid, createFrameCache, createFrameLoader, nearbyFrameIndices, inForecastBounds, type MapFrameImage } from "../lib/forecast-map.ts";
+import { forecastCellAt, createCellGrid, createFrameCache, createFrameLoader, nearbyFrameIndices, inForecastBounds, type MapFrameImage } from "../lib/forecast-map.ts";
 import { createApiClient, ApiError } from "../lib/api-client.ts";
 
 test("map cache separates publications and evicts old frames", () => {
@@ -210,4 +210,28 @@ test("personal maps use authenticated routes and never silently fall back to gen
   const guest = createApiClient({ baseUrl: "https://api.example", getAccessToken: async () => null,
     fetcher: async () => { assert.fail("Anonymous requests must not be sent"); } });
   await assert.rejects(guest.mapForecast(undefined, "personal"), error => error instanceof ApiError && error.status === 401);
+});
+
+
+test("cell clicks snap to the same footprint origin and keep exclusive south/east edges", () => {
+  const bounds: [number,number,number,number]=[-85.6,30.78,-81.52,34.98];
+  const cell=forecastCellAt(33.752,-84.382,bounds)!;
+  assert.equal(cell.latitude,33.755); assert.equal(cell.longitude,-84.385);
+  assert.deepEqual(cell.bounds,[-84.39,33.75,-84.38,33.76]);
+  assert.equal(forecastCellAt(33.75,-81.52,bounds),null);
+  assert.equal(forecastCellAt(30.78,-84,bounds),null);
+  assert.equal(forecastCellAt(NaN,-84,bounds),null);
+});
+
+test("cell detail requests use the selected run/hour and authenticated personal route",async()=>{
+  const calls:{url:string;auth?:string}[]=[];
+  const api=createApiClient({baseUrl:"https://api.example",getAccessToken:async()=>"token",fetcher:async(url,options)=>{
+    calls.push({url:String(url),auth:(options?.headers as Record<string,string>).Authorization}); return new Response("{}",{status:200});
+  }});
+  await api.mapCell("public",40,33.755,-84.385,"pm25");
+  await api.mapCell("private",41,33.755,-84.385,"personal");
+  assert.ok(calls[0].url.includes("/v1/map/cell?run_id=public&index=40&lat=33.755&lon=-84.385&layer=pm25"));
+  assert.equal(calls[0].auth,undefined);
+  assert.ok(calls[1].url.includes("/v1/map/personal/cell?run_id=private&index=41"));
+  assert.equal(calls[1].auth,"Bearer token");
 });

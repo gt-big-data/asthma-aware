@@ -189,3 +189,20 @@ export function createFrameLoader(fetchFrame: (run: string, index: number, signa
     },
   };
 }
+
+
+export interface MapCell {
+  row: number; column: number; latitude: number; longitude: number;
+  bounds: MapForecast["bounds"]; grid_step_degrees: number;
+  risk_score: number | null; risk_kind: "general" | "personal";
+  layer: MapLayerId; layer_value: number | null; layer_unit: string;
+  valid_at: string; source_run: string; in_georgia: boolean; forecast_supported: boolean;
+}
+export function forecastCellAt(latitude: number, longitude: number, bounds: MapForecast["bounds"]): {latitude: number; longitude: number; bounds: MapForecast["bounds"]} | null {
+  if (!inForecastBounds(latitude, longitude, bounds)) return null;
+  const [west, , , north] = bounds;
+  const row = Math.floor((north - latitude) / .01), col = Math.floor((longitude - west) / .01);
+  const rounded = (n: number) => Number(n.toFixed(6));
+  return { latitude: rounded(north - (row + .5) * .01), longitude: rounded(west + (col + .5) * .01),
+    bounds: [rounded(west + col * .01), rounded(north - (row + 1) * .01), rounded(west + (col + 1) * .01), rounded(north - row * .01)] };
+}

@@ -1,3 +1,4 @@
+import LoadingFeedback from "./LoadingFeedback";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -28,7 +29,7 @@ export default function LowerRiskPeriods({ forecast, loading, now }: { forecast:
         </View>
       </View>)}
       <Text style={styles.footnote}>Periods last at least 2 hours, with low scores or a noticeable drop. Lower can still mean high risk.</Text>
-    </> : <Text style={styles.empty}>{loading ? "Finding lower-risk periods…" : !forecast || !insight.availableHours
+    </> : loading?<LoadingFeedback label="Finding lower-risk periods…" skeleton/>:<Text style={styles.empty}>{!forecast || !insight.availableHours
       ? "Lower-risk periods will appear when hourly scores are available."
       : "No distinct lower-risk period lasting 2 hours is forecast in the next 48 hours."}</Text>}
   </View>;

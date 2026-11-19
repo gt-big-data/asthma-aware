@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { StyleSheet, View } from "react-native";
+import MapCellPopup from "../../components/MapCellPopup";
+import { coordinatePlace } from "../../lib/saved-locations";
+import { storeDashboardPlace } from "../../lib/dashboard-place-storage";
 import HeatmapView, { ATLANTA_BOUNDS, type MapBounds } from "../../components/HeatmapView";
 import { getCachedUserLocation, getUserLocation, type Coords } from "../../constants/userLocation";
 import { api } from "../../lib/api";
 import { ApiError } from "../../lib/api-client";
-import { GENERAL_RISK_LAYER, PERSONAL_RISK_LAYER, type MapLayerId, createFrameCache, createFrameLoader, nearbyFrameIndices, inForecastBounds, type MapForecast, type MapFrameImage } from "../../lib/forecast-map";
+import { GENERAL_RISK_LAYER, PERSONAL_RISK_LAYER, type MapLayerId, type MapCell, forecastCellAt, createFrameCache, createFrameLoader, nearbyFrameIndices, inForecastBounds, type MapForecast, type MapFrameImage } from "../../lib/forecast-map";
 
 import { useAuth } from "../../providers/AuthProvider";
 
@@ -20,6 +23,15 @@ export default function MapScreen() {
 
 function UserMapScreen({ userId }: { userId: string | null }) {
   const router = useRouter();
+  const { pickDashboard } = useLocalSearchParams<{pickDashboard?: string}>();
+  const picking = pickDashboard === "1";
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const [cellLocation, setCellLocation] = useState<ReturnType<typeof forecastCellAt>>(null);
+  const [cellState, setCellState] = useState<{key:string;data:MapCell|null;error:string}>({key:"",data:null,error:""});
+  const [cellRefresh, setCellRefresh] = useState(0);
+  const [selectionBusy, setSelectionBusy] = useState(false);
+  const [selectionError, setSelectionError] = useState("");
   const personalFrameCache = useMemo(() => createFrameCache(), []);
 
   const [layer, setLayer] = useState<MapLayerId>(() => userId ? "personal" : "risk");
@@ -143,6 +155,49 @@ function UserMapScreen({ userId }: { userId: string | null }) {
     return () => { active = false; clearTimeout(timer); };
   }, [forecast, selected, focused, refresh, frameId, hoursAhead, loader, layer, frameCache]);
 
+  const cellKey = `${forecast?.run_id}/${selected?.index}/${cellLocation?.latitude}/${cellLocation?.longitude}`;
+  const showingSelected = displayed?.run_id === forecast?.run_id && displayed?.index === selected?.index;
+  useEffect(() => {
+    if (!focused || picking || !cellLocation || !forecast || !selected || (selected.available && !showingSelected)) return;
+    let active = true;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const data = await api.mapCell(forecast.run_id, selected.index, cellLocation.latitude, cellLocation.longitude, layer, controller.signal);
+        if (active) setCellState({key:cellKey,data,error:""});
+      } catch (error) {
+        if (!active) return;
+        if (error instanceof ApiError && error.status === 409) setRefresh(value => value + 1);
+        else setCellState({key:cellKey,data:null,error:"Cell details unavailable. Tap to retry."});
+      }
+    }, 80);
+    return () => { active = false; clearTimeout(timer); controller.abort(); };
+  }, [focused,picking,cellLocation,forecast,selected,showingSelected,layer,cellKey,cellRefresh]);
+
+  async function chooseCoordinate(latitude: number, longitude: number) {
+    if (selectionBusy) return;
+    setSelectionBusy(true); setSelectionError("");
+    try {
+      const coverage = await api.locationCoverage(latitude,longitude);
+      if (!alive.current) return;
+      if (!coverage.in_georgia) throw new Error("Choose a grid cell within Georgia.");
+      if (!coverage.forecast_supported) throw new Error("Choose a cell within the forecast coverage.");
+      await storeDashboardPlace(userId ?? undefined,coordinatePlace(latitude,longitude,true));
+      if (alive.current) { router.setParams({pickDashboard:undefined}); router.replace("/dashboard"); }
+    } catch (error) {
+      if (alive.current) setSelectionError(error instanceof Error ? error.message : "Could not select this location.");
+    } finally { if (alive.current) setSelectionBusy(false); }
+  }
+  const clickCell = (latitude:number,longitude:number) => {
+    if (selectionBusy || !forecast) return;
+    const cell = forecastCellAt(latitude,longitude,forecast.bounds);
+    setSelectionError(""); setCellState({key:"",data:null,error:""}); setCellLocation(cell);
+    if (!cell) { setSelectionError("Choose a cell inside the shaded forecast area."); return; }
+    if (picking) void chooseCoordinate(cell.latitude,cell.longitude);
+  };
+  const cellData = cellState.key === cellKey && (!selected?.available || showingSelected) ? cellState.data : null;
+  const cellError = cellState.key === cellKey ? cellState.error : "";
+
   const pending = selected?.available && (!displayed || displayed.run_id !== forecast?.run_id || displayed.index !== selected.index);
   const visibleStatus = layer === "personal" && !userId ? "Sign in from the Symptom Log tab to view your personalized asthma risk." : !forecast ? status : !selected?.available ? "No data for this hour."
     : frameFailure?.id === frameId && pending ? frameFailure.message
@@ -167,8 +222,14 @@ function UserMapScreen({ userId }: { userId: string | null }) {
       onHoursAheadChange={changeHour} onRasterShown={rasterShown} userLocation={location} visualization="heat" startBounds={startBounds}
       gridStepDegrees={forecast?.grid_step_degrees}
       layer={descriptor} layers={layers} onLayerChange={changeLayer}
-      status={visibleStatus} note={note} validLabel={validLabel} colors={forecast?.colors}
+      onCellPress={clickCell} selectionBounds={cellLocation?.bounds} selectionMode={picking}
+      onCancelSelection={() => { if (!selectionBusy) { router.setParams({pickDashboard:undefined}); router.replace("/dashboard"); } }}
+      status={selectionError || (selectionBusy ? "Selecting dashboard location…" : visibleStatus)} note={note} validLabel={validLabel} colors={forecast?.colors}
       onRetry={() => layer === "personal" && !userId ? router.push("/symptoms") : setRefresh(value => value + 1)} />
+    {cellLocation && !picking && <MapCellPopup latitude={cellLocation.latitude} longitude={cellLocation.longitude}
+      data={cellData} layer={descriptor} error={selectionError || cellError} busy={selectionBusy}
+      onClose={() => setCellLocation(null)} onRetry={() => { setSelectionError(""); setCellState({key:"",data:null,error:""}); setCellRefresh(value=>value+1); }}
+      onUse={() => void chooseCoordinate(cellLocation.latitude,cellLocation.longitude)} />}
   </View>;
 }
 

@@ -10,6 +10,10 @@ interface HeatmapViewProps {
   layer?: MapLayer;
   layers?: MapLayer[];
   onLayerChange?: (layer: MapLayerId) => void;
+  onCellPress?: (latitude: number, longitude: number) => void;
+  selectionBounds?: MapRaster["bounds"] | null;
+  selectionMode?: boolean;
+  onCancelSelection?: () => void;
   raster: MapRaster | null;
   hoursAhead: number;
   maxHours: number;
@@ -52,6 +56,17 @@ function setGrid(message) {
         "line-opacity":["interpolate",["linear"],["zoom"],8,0,9,0.12,11,0.24,15,0.3]}});
   }
   updateGridVisibility();
+}
+function setSelection(bounds) {
+  if(!ready) return;
+  const data={type:"FeatureCollection",features:bounds?[{type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[[
+    [bounds[0],bounds[3]],[bounds[2],bounds[3]],[bounds[2],bounds[1]],[bounds[0],bounds[1]],[bounds[0],bounds[3]]
+  ]]}}]:[]};
+  if(map.getSource("selected-cell")) { map.getSource("selected-cell").setData(data); map.moveLayer("selected-cell"); }
+  else {
+    map.addSource("selected-cell",{type:"geojson",data});
+    map.addLayer({id:"selected-cell",type:"line",source:"selected-cell",paint:{"line-color":"#163d2b","line-width":2.5}});
+  }
 }
 function post(message) {
   const text=JSON.stringify(message);
@@ -137,6 +152,7 @@ function setLocation(location) {
   if(location && map) marker=new maplibregl.Marker({color:"#2d6a4f"}).setLngLat([location.longitude,location.latitude]).addTo(map);
 }
 function command(message) {
+  if(message.type==="selection") setSelection(message.bounds);
   if(message.type==="raster") setRaster(message.raster);
   if(message.type==="location") setLocation(message.location);
   if(message.type==="mode") setMode(message.mode);
@@ -150,6 +166,7 @@ try {
   map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/positron",
     bounds:START_BOUNDS,minZoom:5,maxZoom:15,dragRotate:false,pitchWithRotate:false,touchPitch:false,attributionControl:{compact:true}});
   map.touchZoomRotate.disableRotation();
+  map.on("click",event=>post({type:"cell-click",latitude:event.lngLat.lat,longitude:event.lngLat.lng}));
   map.on("load",()=>{map.resize();map.fitBounds(START_BOUNDS,{animate:false});ready=true;setRaster(currentRaster);post({type:"ready"})});
   map.on("error",event=>{if(event.error) post({type:"error",message:"Map layer could not load. Tap to retry."})});
 } catch(error) {post({type:"error",message:"Map could not initialize. Tap to retry."})}
@@ -157,7 +174,7 @@ try {
 }
 
 export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChange,onRasterShown,userLocation,
-  layer=GENERAL_RISK_LAYER,layers=[GENERAL_RISK_LAYER],onLayerChange,visualization="heat",gridStepDegrees=0.01,startBounds=ATLANTA_BOUNDS,status,note,validLabel,colors,onRetry}: HeatmapViewProps) {
+  onCellPress,selectionBounds,selectionMode=false,onCancelSelection,layer=GENERAL_RISK_LAYER,layers=[GENERAL_RISK_LAYER],onLayerChange,visualization="heat",gridStepDegrees=0.01,startBounds=ATLANTA_BOUNDS,status,note,validLabel,colors,onRetry}: HeatmapViewProps) {
   const [layerMenu, setLayerMenu] = useState(false);
   const [mapHtml] = useState(() => buildMapHtml(startBounds));
   const webviewRef = useRef<WebView<object>>(null);
@@ -170,8 +187,8 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
   const cellGrid = useMemo(() => rasterBounds ? createCellGrid(rasterBounds,gridStepDegrees) : null,
     [rasterBounds,gridStepDegrees]);
   const [mapError,setMapError] = useState("");
-  const latest = useRef({raster,userLocation,mode,showCellLines,cellGrid,onRasterShown,layerId:layer.id});
-  useEffect(() => { latest.current={raster,userLocation,mode,showCellLines,cellGrid,onRasterShown,layerId:layer.id}; });
+  const latest = useRef({raster,userLocation,mode,showCellLines,cellGrid,onRasterShown,onCellPress,selectionBounds,layerId:layer.id});
+  useEffect(() => { latest.current={raster,userLocation,mode,showCellLines,cellGrid,onRasterShown,onCellPress,selectionBounds,layerId:layer.id}; });
   const send = useCallback((message: object) => {
     iframeRef.current?.contentWindow?.postMessage(message,"*");
     webviewRef.current?.injectJavaScript(`window.mapCommand(${JSON.stringify(message)});true;`);
@@ -187,6 +204,9 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
         send({type:"location",location:current.userLocation});
         send({type:"mode",mode:current.mode});
         send({type:"grid",visible:current.showCellLines,data:current.cellGrid});
+        send({type:"selection",bounds:current.selectionBounds});
+      } else if(message.type==="cell-click" && Number.isFinite(message.latitude) && Number.isFinite(message.longitude)) {
+        latest.current.onCellPress?.(message.latitude,message.longitude);
       } else if(message.type==="frame-shown") {
         if(latest.current.layerId!=="risk") setMapError("");
         latest.current.onRasterShown?.(message.key);
@@ -206,6 +226,7 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
   useEffect(() => { if(ready.current) send({type:"location",location:userLocation}); },[userLocation,send]);
   useEffect(() => { if(ready.current) send({type:"mode",mode}); },[mode,send]);
   useEffect(() => { if(ready.current) send({type:"grid",visible:showCellLines,data:cellGrid}); },[showCellLines,cellGrid,send]);
+  useEffect(() => { if(ready.current) send({type:"selection",bounds:selectionBounds}); },[selectionBounds,send]);
   const selectPosition=useCallback((x:number)=>{
     if(timelineWidth>0 && maxHours>0) onHoursAheadChange(Math.round(Math.max(0,Math.min(x/timelineWidth,1))*maxHours));
   },[timelineWidth,maxHours,onHoursAheadChange]);
@@ -222,6 +243,10 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
       <WebView<object> ref={webviewRef} source={{html:mapHtml}} style={StyleSheet.absoluteFill}
         originWhitelist={["*"]} javaScriptEnabled domStorageEnabled scrollEnabled={false} overScrollMode="never"
         onMessage={(event:WebViewMessageEvent)=>receive(event.nativeEvent.data)} />}
+    {selectionMode && <View style={styles.selectionBanner}>
+      <Text style={styles.modeText}>Tap a Georgia cell for your dashboard</Text>
+      <TouchableOpacity onPress={onCancelSelection} accessibilityRole="button" accessibilityLabel="Cancel dashboard cell selection"><Text style={styles.modeText}>Cancel</Text></TouchableOpacity>
+    </View>}
     <View style={styles.zoomControls} pointerEvents="box-none">
       <TouchableOpacity style={styles.zoomBtn} onPress={()=>send({type:"zoom-in"})} accessibilityRole="button" accessibilityLabel="Zoom in"><Text style={styles.zoomText}>+</Text></TouchableOpacity>
       <TouchableOpacity style={styles.zoomBtn} onPress={()=>send({type:"zoom-out"})} accessibilityRole="button" accessibilityLabel="Zoom out"><Text style={styles.zoomText}>−</Text></TouchableOpacity>
@@ -286,6 +311,7 @@ export default function HeatmapView({raster,hoursAhead,maxHours,onHoursAheadChan
 }
 
 const styles = StyleSheet.create({
+  selectionBanner: {position:"absolute",top:8,left:14,right:14,backgroundColor:"#fff",borderRadius:9,padding:10,flexDirection:"row",justifyContent:"space-between",gap:8},
   layerTrigger: { gap: 3, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: "#e1e8e3" },
   layerMenu: { maxHeight: 230 },
   layerOption: { paddingVertical: 8, paddingHorizontal: 6, borderRadius: 6, gap: 2 },

@@ -1,3 +1,4 @@
+import LoadingFeedback from "./LoadingFeedback";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useRef, useState, type ComponentRef } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -170,8 +171,9 @@ export default function HourlyRiskTimeline({ forecast, loading, onRetry }: {
       </View>
       <RiskDrivers hour={selected} timezone={timezone} personalized={!!forecast?.personalization?.matched_logs} />
     </> : <View style={styles.empty}>
-      <Ionicons name={loading ? "time-outline" : "cloud-offline-outline"} size={28} color="#82958a" />
-      <Text style={styles.emptyTitle}>{loading ? "Loading your hourly forecast" : "Hourly forecast unavailable"}</Text>
+      {loading?<View style={{width:"100%",maxWidth:360}}><LoadingFeedback label="Loading your hourly forecast" skeleton/></View>
+        :<Ionicons name="cloud-offline-outline" size={28} color="#82958a"/>}
+      {!loading&&<Text style={styles.emptyTitle}>Hourly forecast unavailable</Text>}
       <Text style={styles.emptyText}>{loading ? "Finding the latest available hours for your location." : "There isn’t a usable forecast for this location right now."}</Text>
       {!loading && <TouchableOpacity onPress={onRetry} accessibilityRole="button" style={styles.retry}><Text style={styles.retryText}>Try again</Text></TouchableOpacity>}
     </View>}

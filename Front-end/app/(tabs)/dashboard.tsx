@@ -1,3 +1,7 @@
+import LoadingFeedback, { LoadingSkeleton } from "../../components/LoadingFeedback";
+import EnvironmentalTrendsSection from "../../components/EnvironmentalTrendsSection";
+import type { EnvironmentalTrends } from "../../lib/environmental-trends";
+import { placeLabel } from "../../lib/saved-locations";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useFocusEffect } from "expo-router";
@@ -78,41 +82,6 @@ const US_STATE_ABBREVIATIONS: Record<string, string> = {
   "district of columbia": "DC",
 };
 
-const VARIABLE_TRENDS = [
-  {
-    name: "CO2",
-    value: "418",
-    unit: "ppm",
-    color: "#347982",
-    values: [390, 402, 398, 415, 408, 422, 418],
-    change: "+7.2%",
-  },
-  {
-    name: "NDVI",
-    value: "0.46",
-    unit: "index",
-    color: "#2d6a4f",
-    values: [0.37, 0.39, 0.4, 0.43, 0.41, 0.45, 0.46],
-    change: "+24.3%",
-  },
-  {
-    name: "SO2",
-    value: "3.8",
-    unit: "ppb",
-    color: "#9a650f",
-    values: [4.4, 4.1, 4.3, 3.9, 4.2, 3.7, 3.8],
-    change: "−13.6%",
-  },
-  {
-    name: "Pollen",
-    value: "High",
-    unit: "level",
-    color: "#76549a",
-    values: [2, 3, 4, 5, 4, 6, 7],
-    change: "+5.0%",
-  },
-];
-
 function getDayLabels(): string[] {
   return Array.from({ length: 4 }, (_, offset) => {
     const day = new Date();
@@ -166,7 +135,8 @@ function RiskGauge({ score, status }: { score: number | null; status: string }) 
         );
       })}
       <View style={styles.gaugeReading}>
-        <Text style={styles.gaugeScore}>{score ?? "–"}</Text>
+        {score===null&&status==="LOADING"?<View style={{height:42,justifyContent:"center"}}><LoadingFeedback label="Loading current risk forecast" compact/></View>
+          :<Text style={styles.gaugeScore}>{score ?? "–"}</Text>}
         <Text style={styles.gaugeOutOf}>OUT OF 100</Text>
         <Text style={[styles.gaugeRisk, { color: score === null ? "#748178" : getRiskColor(score) }]}>
           {score === null ? status : `${getRiskLabel(score).toUpperCase()} RISK`}
@@ -180,67 +150,6 @@ function RiskGauge({ score, status }: { score: number | null; status: string }) 
   );
 }
 
-function Sparkline({
-  values,
-  color,
-}: {
-  values: number[];
-  color: string;
-}) {
-  const [width, setWidth] = useState(0);
-  const height = 46;
-  const min = Math.min(...values);
-  const range = Math.max(...values) - min || 1;
-  const points = values.map((value, index) => ({
-    x: (index / (values.length - 1)) * Math.max(width - 8, 0) + 4,
-    y: height - 5 - ((value - min) / range) * (height - 10),
-  }));
-
-  return (
-    <View
-      style={styles.sparkline}
-      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-      accessible={false}
-    >
-      {points.slice(1).map((point, index) => {
-        const previous = points[index];
-        const dx = point.x - previous.x;
-        const dy = point.y - previous.y;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx);
-
-        return (
-          <View
-            key={index}
-            style={[
-              styles.sparklineSegment,
-              {
-                left: (point.x + previous.x - length) / 2,
-                top: (point.y + previous.y - 2) / 2,
-                width: length,
-                backgroundColor: color,
-                transform: [{ rotate: `${angle}rad` }],
-              },
-            ]}
-          />
-        );
-      })}
-      {points.length > 0 && (
-        <View
-          style={[
-            styles.sparklineDot,
-            {
-              left: points[points.length - 1].x - 3,
-              top: points[points.length - 1].y - 3,
-              backgroundColor: color,
-            },
-          ]}
-        />
-      )}
-    </View>
-  );
-}
-
 export default function DashboardScreen() {
   const now = useDashboardClock();
   const { session, loading: authLoading } = useAuth();
@@ -250,6 +159,7 @@ export default function DashboardScreen() {
   const [forecastNotice, setForecastNotice] = useState("");
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [cityAndState, setCityAndState] = useState("Locating...");
+  const [trends,setTrends] = useState<{key:string;data:EnvironmentalTrends|null;loading:boolean}>({key:"",data:null,loading:true});
   const [loadedForecast, setForecast] = useState<DashboardRisk | null>(null);
   const [loadedContext, setLoadedContext] = useState("");
   const [forecastStatus, setForecastStatus] = useState("LOADING");
@@ -260,7 +170,7 @@ export default function DashboardScreen() {
   const forecast = contextReady ? loadedForecast : null;
   const displayStatus = contextReady ? forecastStatus : "LOADING";
   const locationLabel = !placeReady || authLoading ? "Loading location…" : place
-    ? (place.label === place.name ? `${place.name}, GA` : `${place.label} · ${place.name}`)
+    ? placeLabel(place)
     : contextReady ? cityAndState : "Current location";
   const dayLabels = forecast?.days.map(({ date }, index) => index === 0 ? "Today"
     : new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }))
@@ -279,6 +189,7 @@ export default function DashboardScreen() {
     let locationTimeout: ReturnType<typeof setTimeout>;
     async function loadForecast() {
       setForecast(null);
+      setTrends({key:contextKey,data:null,loading:true});
       setLoadedContext(contextKey);
       setForecastStatus("LOADING");
       setForecastNotice("");
@@ -291,7 +202,10 @@ export default function DashboardScreen() {
       if (!active) return;
 
       const { latitude, longitude } = coords ?? ATLANTA;
-      setCityAndState(place ? (place.label === place.name ? `${place.name}, GA` : `${place.label} · ${place.name}`)
+      void api.environmentalTrends(latitude,longitude,controller.signal).then(data=>{
+        if(active) setTrends({key:contextKey,data,loading:false});
+      }).catch(()=>{if(active) setTrends({key:contextKey,data:null,loading:false});});
+      setCityAndState(place ? placeLabel(place)
         : coords ? "Current location" : "Atlanta, GA");
       if (coords && !place && Platform.OS !== "web") {
         void Location.reverseGeocodeAsync(coords).then(([address]) => {
@@ -305,15 +219,15 @@ export default function DashboardScreen() {
         if (!active) return;
         if (!coverage.in_georgia || !coverage.forecast_supported) {
           setForecastStatus("UNAVAILABLE");
-          setForecastNotice(!coverage.in_georgia ? "Your current location is outside Georgia. Choose a Georgia city to view its dashboard."
-            : "This Georgia location is outside the current forecast area. Choose another city to view available forecasts.");
+          setForecastNotice(!coverage.in_georgia ? "Your current location is outside Georgia. Choose a Georgia location to view its dashboard."
+            : "This Georgia location is outside the current forecast area. Choose another location to view available forecasts.");
           return;
         }
         const result = await api.dashboardRisk(latitude, longitude, !!userId, controller.signal);
         if (active) { setForecast(result); setForecastStatus("UNAVAILABLE"); }
-        if (active && !coords) setForecastNotice("Device location is unavailable. Showing Atlanta, GA. Choose a city to change the location.");
+        if (active && !coords) setForecastNotice("Device location is unavailable. Showing Atlanta, GA. Choose a location to change the location.");
       } catch {
-        if (active) { setForecastStatus("UNAVAILABLE"); setForecastNotice("Could not load this location’s forecast. Try again or choose another city."); }
+        if (active) { setForecastStatus("UNAVAILABLE"); setForecastNotice("Could not load this location’s forecast. Try again or choose another location."); }
       }
     }
     void loadForecast();
@@ -384,8 +298,9 @@ export default function DashboardScreen() {
                 onPress={() => setExpandedDay(selected ? null : index)}
                 activeOpacity={0.75}
                 accessibilityRole="button"
-                accessibilityLabel={score === null ? `${day}, forecast unavailable` : `${day}, risk score ${score}`}
-                accessibilityState={{ expanded: selected }}
+                disabled={displayStatus === "LOADING"}
+                accessibilityLabel={displayStatus === "LOADING" ? `Loading ${day} forecast` : score === null ? `${day}, forecast unavailable` : `${day}, risk score ${score}`}
+                accessibilityState={{ expanded: selected, busy: displayStatus === "LOADING" }}
               >
                 <Text style={styles.forecastDayLabel}>{day}</Text>
                 <View
@@ -394,7 +309,8 @@ export default function DashboardScreen() {
                     { backgroundColor: score === null ? "#e1e8e3" : getRiskColor(score) },
                   ]}
                 />
-                <Text style={styles.forecastScore}>{score ?? "–"}</Text>
+                {displayStatus==="LOADING"?<View accessibilityRole="progressbar" accessibilityLabel={`Loading ${day} forecast`} accessibilityState={{busy:true}}><LoadingSkeleton width={32} height={16}/></View>
+                  :<Text style={styles.forecastScore}>{score ?? "–"}</Text>}
               </TouchableOpacity>
             );
           })}
@@ -413,50 +329,8 @@ export default function DashboardScreen() {
         )}
       </View>
 
-      <View style={styles.sectionHeading}>
-        <View>
-          <Text style={styles.sectionTitle}>Environmental trends</Text>
-          <Text style={styles.sectionSubtitle}>Sample data · not location-specific</Text>
-        </View>
-        <Ionicons name="analytics-outline" size={20} color="#66766b" />
-      </View>
-      <View style={styles.trendGrid}>
-        {VARIABLE_TRENDS.map((trend) => {
-          const isIncreasing =
-            trend.values[trend.values.length - 1] > trend.values[0];
-          const directionColor = isIncreasing ? "#2d6a4f" : "#c2413a";
-
-          return (
-            <View key={trend.name} style={styles.trendCard}>
-              <View style={styles.trendTop}>
-                <View>
-                  <Text style={styles.trendName}>{trend.name}</Text>
-                  <View style={styles.trendValueRow}>
-                    <Text style={styles.trendValue}>{trend.value}</Text>
-                    <Text style={styles.trendUnit}>{trend.unit}</Text>
-                  </View>
-                </View>
-                <View
-                  style={[
-                    styles.trendIcon,
-                    { backgroundColor: `${directionColor}1A` },
-                  ]}
-                >
-                  <Ionicons
-                    name={isIncreasing ? "arrow-up-outline" : "arrow-down-outline"}
-                    size={16}
-                    color={directionColor}
-                  />
-                </View>
-              </View>
-              <Sparkline values={trend.values} color={trend.color} />
-              <Text style={[styles.trendChange, { color: trend.color }]}>
-                {trend.change} this week
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+      <EnvironmentalTrendsSection data={placeReady&&!authLoading&&trends.key===contextKey?trends.data:null}
+        loading={!placeReady||authLoading||trends.key!==contextKey||trends.loading} onRetry={()=>setReload(value=>value+1)} />
       <ForecastDetailsPanel forecast={forecast} now={now} />
     </ScrollView>
   );
@@ -686,74 +560,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     textAlign: "center",
     marginTop: 8,
-  },
-  trendGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  trendCard: {
-    flexGrow: 1,
-    flexBasis: "43%",
-    minWidth: 130,
-    backgroundColor: "#ffffff",
-    borderColor: "#dce5de",
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 13,
-  },
-  trendTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  trendName: {
-    color: "#66766b",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  trendValueRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 4,
-    marginTop: 4,
-  },
-  trendValue: {
-    color: "#1f2d25",
-    fontSize: 21,
-    fontWeight: "700",
-  },
-  trendUnit: {
-    color: "#66766b",
-    fontSize: 10,
-  },
-  trendIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sparkline: {
-    height: 46,
-    marginTop: 7,
-    overflow: "hidden",
-  },
-  sparklineSegment: {
-    position: "absolute",
-    height: 2.5,
-    borderRadius: 2,
-  },
-  sparklineDot: {
-    position: "absolute",
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  trendChange: {
-    fontSize: 10,
-    fontWeight: "700",
-    marginTop: 5,
   },
   footerNote: {
     color: "#66766b",
