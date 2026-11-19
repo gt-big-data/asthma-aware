@@ -52,6 +52,22 @@ class DailyRisk(BaseModel):
     available_hours: int
 
 
+class RiskDriver(BaseModel):
+    pollutant: Literal["O3", "NO2", "SO2", "PM25"]
+    exposure: FiniteFloat
+    reference: FiniteFloat
+    unit: str
+    impact: FiniteFloat
+    score_without: int
+
+
+class HourlyRisk(BaseModel):
+    valid_at: AwareDatetime
+    score: int | None
+    general_score: int | None
+    drivers: list[RiskDriver] = Field(default_factory=list)
+
+
 class DashboardForecast(BaseModel):
     source_run: str
     issued_at: AwareDatetime
@@ -63,6 +79,7 @@ class DashboardForecast(BaseModel):
     grid_step_degrees: float | None = None
     personalization: dict | None = None
     days: list[DailyRisk]
+    hourly: list[HourlyRisk] = Field(default_factory=list)
 
 
 class OutsideForecastGrid(Exception):
@@ -155,4 +172,7 @@ def dashboard_forecast(run: PublishedForecast, lat: float, lon: float, now: date
         issued_at=run.issued_at,
         stale=now - run.issued_at > timedelta(hours=24),
         days=outlook,
+        hourly=[HourlyRisk(valid_at=time, score=placeholder_risk_score(general_population_risk(frame[cell])),
+                           general_score=placeholder_risk_score(general_population_risk(frame[cell])))
+                for time, frame in remaining],
     )

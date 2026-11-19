@@ -36,9 +36,14 @@ def test_dashboard_uses_remaining_geos_hours_and_preserves_missing_cells(tmp_pat
         assert sum(day["available_hours"] for day in result["days"]) == 84
         assert [day["score"] for day in result["days"]] == [20, 40, 40, 40]
         assert result["days"][0]["general_score"] == 20
+        assert len(result["hourly"]) == 88
+        assert result["hourly"][0]["score"] == 20
+        assert result["hourly"][0]["drivers"] == []  # Legacy PM-only publications have no four-pollutant explanation.
         missing = client.get(path, params={"lat": 33.75, "lon": -84.25}).json()
         assert len(missing["days"]) == 4
         assert all(day["score"] is None and day["available_hours"] == 0 for day in missing["days"])
+        assert len(missing["hourly"]) == 88
+        assert all(hour["score"] is None for hour in missing["hourly"])
         assert client.get(path, params={"lat": 40, "lon": -74}).status_code == 404
 
         now = issued + timedelta(hours=120)

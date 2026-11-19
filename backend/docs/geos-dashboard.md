@@ -14,6 +14,14 @@ the run and atomically replaces `data/dashboard/current.json`. Set
 `DASHBOARD_FORECAST_PATH` in the API environment if using a different path.
 A failed download or validation leaves the previous artifact available.
 
+The risk downloader discovers the newest air-quality initialization independently
+of the unrelated meteorology/column collections. It downloads four pollutants in
+24-hour batches. The latest alias is accepted only when its inventory and every
+batch exactly match the pinned initialization's 120 expected hourly midpoints;
+changing runs, units or grids are rejected. This avoids unreliable large DAP
+responses and dated metadata that can lag the live alias. Source URLs and the
+batch validation method are recorded in the downloaded metadata sidecar.
+
 `GET /v1/dashboard/risk?lat=33.75&lon=-84.39` serves public population scores without
 accessing Supabase. It returns the issue time, a stale flag for runs older than 24
 hours, and four Eastern calendar dates (today and the next three). Each day's
@@ -22,6 +30,41 @@ number of contributing hours. The current hour is eligible until its interval
 ends, and future timestamps are capped at 96 hours ahead. Missing hours are
 omitted from aggregation, days without usable hours have null scores, and an
 expired run returns 503. Locations outside the downloaded grid return 404.
+
+Both dashboard routes also return `hourly`: consecutive available forecast
+slots containing `valid_at`, `score`, and `general_score`. A missing score stays
+null in its original slot rather than being removed or replaced with zero.
+The authenticated route applies the same personal model to each hourly score;
+the public route uses population scores. Daily values remain maxima of these
+hourly predictions. NASA valid times are hourly midpoints; the frontend labels
+the corresponding hour's start in the response's IANA `timezone`.
+
+The dashboard emphasizes an interactive hourly outlook: the next 24 slots or
+one of the four calendar days, a default line graph with a Line/Bar toggle on a
+fixed 0–100 scale, selected-hour details, and
+horizontal scrolling on smaller screens. The gauge shows the current hourly
+score, with today's peak separately labeled. The daily overview is retained.
+Requests refresh on tab focus and every five minutes. These are additive
+response fields: no database migration, new GCS object, or cloud job is needed.
+
+Each risk-enabled hourly slot also returns `drivers` for O3, NO2, SO2 and PM25:
+the model exposure and reference exposure (with units), `score_without`, and
+signed `impact` in score points. For each pollutant independently, the API
+sets that exposure to the fixed reference level and reruns the entire scoring
+pipeline, including personal confidence and clipping. `impact` is the original
+unrounded score minus that comparison, rounded to one decimal. `score_without`
+is the rounded comparison score; it means reference exposure, not zero pollution.
+The results are sorted by descending impact. They are marginal model comparisons,
+not additive shares or causal estimates. Missing hours and legacy PM-only runs
+return an empty driver list.
+
+The selected hour's frontend explanation lists pollutant influences, model
+exposure values, and reference values. Values are lagged multi-day metrics, not
+instantaneous hourly concentrations. Signed-in users with matched reports also
+see the general score plus the applied personal adjustment equal to their score.
+The disclosure explains non-additivity, score limits, exposure aggregation and
+provisional calibration. Driver calculations only use already-loaded artifacts;
+they work through the same local/GCS path with no storage or migration changes.
 
 With a fixed reference configured, the publisher produces four-pollutant risk
 artifacts. The dashboard serves general scores publicly and symptom-adjusted

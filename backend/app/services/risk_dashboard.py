@@ -6,9 +6,10 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 
-from app.services.geos_dashboard import DashboardForecast, DailyRisk, ForecastUnavailable, OutsideForecastGrid
+from app.services.geos_dashboard import DashboardForecast, DailyRisk, HourlyRisk, ForecastUnavailable, OutsideForecastGrid
 from app.services.personalization_model import PersonalModel, general_risk, personal_scores
 from app.services.risk_artifacts import load_artifact
+from app.services.risk_explanations import explain_hours
 
 
 def resolve_artifact(settings, run):
@@ -41,9 +42,11 @@ def risk_dashboard(artifact, lat, lon, now, *, model=None, revision=None, pendin
         raise ForecastUnavailable()
     E = E[selected]
     general = general_risk(E, artifact.ref).score[:, 0, 0]
-    predictions = personal_scores(E, artifact.ref, model or PersonalModel())
+    scoring_model = model or PersonalModel()
+    predictions = personal_scores(E, artifact.ref, scoring_model)
     personal = predictions["score"][:, 0, 0]
     confidence = predictions["confidence"][:, 0, 0]
+    explanations = explain_hours(E, artifact.ref, scoring_model, personal)
     days = []
     local_dates = np.array([t.tz_convert(ZoneInfo(timezone_name)).date() for t in artifact.times[selected]])
     today = now.astimezone(ZoneInfo(timezone_name)).date()
@@ -62,6 +65,11 @@ def risk_dashboard(artifact, lat, lon, now, *, model=None, revision=None, pendin
         stale=now - issued > timedelta(hours=24),
         placeholder=artifact.metadata["provisional"], grid_crs="EPSG:4326",
         grid_size_m=None, grid_step_degrees=0.01, timezone=timezone_name, days=days,
+        hourly=[HourlyRisk(valid_at=time.to_pydatetime(),
+                           score=round(float(score)) if np.isfinite(score) else None,
+                           general_score=round(float(baseline)) if np.isfinite(baseline) else None,
+                           drivers=drivers)
+                for time, score, baseline, drivers in zip(artifact.times[selected], personal, general, explanations)],
         personalization={
             "revision": revision, "matched_logs": n_logs, "pending_logs": pending,
             "still_learning": n_logs < 25 or not len(finite_confidence) or float(finite_confidence.mean()) < 0.5,
