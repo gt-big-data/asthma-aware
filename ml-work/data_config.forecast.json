@@ -14,15 +14,8 @@
   },
   "sources": {
     "no2": {
-      "labels": "NO2_GA_2023_filled_umol_m2.tif",
-      "huggingface": {
-        "repo_id": "ShreyD06/AsthmaAware",
-        "filename": "NO2_GA_2023_filled_umol_m2.tif",
-        "revision": "main",
-        "mask_filename": "NO2_GA_2023_mask_observed.tif"
-      },
-      "label_units": "umol/m2",
-      "observation_mask": "NO2_GA_2023_mask_observed.tif",
+      "labels": "no2_station_hour_labels_2023.parquet",
+      "label_units": "ppb",
       "predictors": [
         "no2",
         "air_temperature",
@@ -34,13 +27,24 @@
         18,
         17
       ],
-      "timing_policy": "weighted_pass_midpoints_within_1h",
-      "label_type": "raster",
-      "target_units": "mol/m2",
-      "target_name": "tropospheric_no2_column",
+      "timing_policy": "hour_start_label_to_geos_center",
+      "label_type": "station_table",
+      "target_units": "ppb",
+      "target_name": "surface_no2_ppb",
       "baseline": {
-        "method": "column",
-        "variable": "tropcol_no2"
+        "method": "scaled_variable",
+        "variable": "no2",
+        "input_units": [
+          "mol mol-1",
+          "mol/mol"
+        ],
+        "scale": 1000000000.0
+      },
+      "columns": {
+        "value": "no2_ppb",
+        "valid": "no2_valid",
+        "latitude": "no2_latitude",
+        "longitude": "no2_longitude"
       }
     },
     "o3": {
@@ -136,6 +140,13 @@
       }
     }
   },
-  "geos_manifest": "../backend/data/geos_cf/forecasts_2023/manifest.json",
+  "geos_manifest": {
+    "path": "../backend/data/geos_cf/forecasts_2023_24h/manifest.json",
+    "huggingface": {
+      "repo_id": "ShreyD06/AsthmaAware",
+      "prefix": "geos_cf/forecasts_2023_24h",
+      "revision": "bc9ecf2b938b3022e27f85b979984bbf2fd1aff0"
+    }
+  },
   "required_product": "forecast"
 }

@@ -502,9 +502,34 @@ Add `--delete-after-upload` to remove the local run only after remote checksum
 verification; reruns skip verified remote runs. Upload failures retain local
 files and stop further fetching. Use `--no-upload` for local-only downloads.
 See the [ingestion README](../backend/ingestion/geos_cf/README.md#historical-v1-forecasts-fetch_forecast_historypy)
-for storage options and download commands. If local runs were removed, download
-the Hub folder on the training machine and point `geos_manifest` at its manifest
-before preparing data; the current loader reads local NetCDF files.
+for storage options and download commands. Preparation automatically resolves
+missing local forecast manifests or runs from the configured Hub dataset. A
+manifest entry can remain a local path string, or declare a fallback:
+
+```json
+"geos_manifest": {
+  "path": "../backend/data/geos_cf/forecasts_2023_24h/manifest.json",
+  "huggingface": {
+    "repo_id": "ShreyD06/AsthmaAware",
+    "prefix": "geos_cf/forecasts_2023_24h",
+    "revision": "bc9ecf2b938b3022e27f85b979984bbf2fd1aff0"
+  }
+}
+```
+
+Entries in `geos_manifests` support the same format, independently per collection.
+A complete local collection is used without Hub access. On fallback, preparation
+downloads the remote manifest and its NetCDF/metadata pairs into the standard
+Hugging Face cache (`HF_HUB_CACHE` can change its location). Existing partial local
+run/metadata pairs are reused when their checksums match the remote manifest.
+Branch names such as `main` are resolved once to a commit before downloading;
+the resolved manifest path and revision are saved in `prepared.json` under
+`config.geos_resolved_manifests`. No local inputs are overwritten. A local
+manifest's `huggingface` metadata can also supply the fallback settings when an
+entry is a plain path. Downloads require `huggingface_hub` and dataset access;
+private datasets use the standard `HF_TOKEN`/Hub login. Cached files can be reused
+offline with an explicit commit revision. Missing downloads stop preparation
+with the repository and access/network error, before any training is attempted.
 
 Example from backend/ (replace REFERENCE.nc with the appropriate analysis path):
 
@@ -533,29 +558,32 @@ tar in order, buffers one NetCDF member at a time, and stops once all requested
 hours are found. It does not save the global tar, but bandwidth can still reach
 several GB per run. Inventory does not download archive contents.
 
-From ml-work/ after downloads:
+From ml-work/ (missing forecast files download automatically):
 
 ```sh
 python -m asthma_aware.prepare_data --config data_config.forecast.json --output prepared_forecast --fit-normalization
-python -m asthma_aware.train_model --prepared prepared_forecast --checkpoints checkpoints_forecast --sources temperature dewpoint o3 --epochs 1
+python -m asthma_aware.train_model --prepared prepared_forecast --checkpoints checkpoints_forecast --sources temperature dewpoint o3 no2 --epochs 1
 ```
 
-`data_config.forecast.json` uses 2023 (all current labels are 2023).
-`data_config.forecast_all_dates.json` additionally loads the 2025–2026 manifest.
-For a 24-hour dataset, point `geos_manifest` at its local manifest (for example
-`../backend/data/geos_cf/forecasts_2023_24h/manifest.json` before local cleanup),
-or at the corresponding downloaded Hub folder on the training machine.
+`data_config.forecast.json` uses the uploaded 2023 24-hour collection, pinned to
+the revision above (all current labels are 2023).
+`data_config.forecast_all_dates.json` uses the same 2023 fallback and additionally
+requires the 2025–2026 local manifest; configure a fallback on that entry if those
+forecasts are uploaded later.
 Use a separate output/Hub folder for each horizon; existing 72-hour artifacts
 are not converted to 24-hour files. The loader accepts the shorter horizon and
 retains the existing lead/72 feature scaling. Evaluation buckets beyond 24 hours
 will have no observations; this dataset supervises first-day forecasts only.
-The NO₂ configuration still uses **satellite column labels** and `tropcol_no2` as
-its baseline. Surface forecast fetching alone does not migrate that target:
-before preparing/training NO₂, provide surface-station labels and configure a
-station-table adapter with surface `no2` scaled to ppb. The existing column NO₂
-configuration will report missing `tropcol_no2` with the new default downloads.
-Preparation reports readiness independently: NO₂ remains blocked until that
-migration is complete, while the other three sources can prepare and train.
+Both forecast configurations use `no2_station_hour_labels_2023.parquet` for
+surface NO₂ supervision. Required columns are `station_id`, `target_time_utc`,
+`no2_ppb`, `no2_valid`, `no2_latitude`, and `no2_longitude`. A label at t represents
+the hourly interval [t, t+1 hour) and matches the GEOS mean centered at t+30 minutes.
+The baseline is surface `no2` in mol/mol multiplied by 1e9 to obtain ppb; the
+target is `surface_no2_ppb`. Only valid, in-bounds station observations contribute
+to the loss. Satellite TIFFs, observation masks, and `tropcol_no2` are no longer
+required by these forecast configurations. Rebuild prepared indexes and
+training-only normalization, and train fresh surface-NO₂ checkpoints. The
+separate analysis configuration, `data_config.json`, retains its column target.
 Incomplete manifests block preparation unless `allow_partial_forecasts` is explicitly
 true; even then an empty manifest fails. Analysis configs remain usable separately.
 

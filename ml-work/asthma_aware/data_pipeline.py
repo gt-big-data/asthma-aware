@@ -172,24 +172,129 @@ def assign_splits(records):
     return mapping
 
 
+def _validate_forecast_manifest(manifest, path, allow_partial):
+    files = manifest.get("files")
+    if not files:
+        raise ValueError(f"Forecast manifest contains no downloaded runs: {path}")
+    if not isinstance(files, list) or any(
+        not isinstance(name, str) or Path(name).name != name or "\\" in name or name in (".", "..")
+        for name in files
+    ):
+        raise ValueError(f"Forecast manifest files must be relative basenames: {path}")
+    incomplete = manifest.get("failures") or len(files) < manifest.get("planned_runs", len(files))
+    if incomplete and not allow_partial:
+        raise ValueError("Forecast archive is incomplete; retry or explicitly set allow_partial_forecasts")
+
+
+def _matches_forecast_receipt(path, receipt):
+    """Reuse partial local downloads only when they match the pinned Hub manifest."""
+    if not receipt or not path.is_file() or path.stat().st_size != receipt.get("size"):
+        return False
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest() == receipt.get("sha256")
+
+
+def resolve_forecast_manifest(path, remote=None, *, allow_partial=False):
+    """Resolve a local-first forecast collection, downloading missing runs to the Hub cache.
+
+    Complete local collections need no Hub access. On fallback, the remote manifest
+    is authoritative and every remote read uses one commit. Existing local run/
+    metadata pairs are retained only if their checksums match that manifest.
+    """
+    path = Path(path)
+    local = json.loads(path.read_text()) if path.is_file() else None
+    if local and local.get("files"):
+        _validate_forecast_manifest(local, path, allow_partial)
+        files = [path.parent / name for name in local["files"]]
+        if all(p.is_file() for p in files):
+            return local, [str(p) for p in files], {"path": str(path)}
+
+    remote = {**(local or {}).get("huggingface", {}), **(remote or {})}
+    if not remote.get("repo_id") or not remote.get("prefix"):
+        if local is not None:
+            _validate_forecast_manifest(local, path, allow_partial)
+        raise FileNotFoundError(
+            f"Local GEOS forecast manifest or runs missing at {path}. Configure "
+            "huggingface repo_id/prefix on this geos_manifest entry, or download the files locally."
+        )
+    prefix = remote["prefix"]
+    if "\\" in prefix or any(part in ("", ".", "..") for part in prefix.split("/")):
+        raise ValueError("Forecast Hugging Face prefix must be a relative repository folder")
+    repo_id, revision = remote["repo_id"], remote.get("revision", "main")
+
+    def fallback_error(exc):
+        return RuntimeError(
+            f"GEOS forecast Hugging Face fallback failed for {repo_id}/{prefix} "
+            f"at {revision}: {exc}. Install huggingface_hub, check network/access "
+            "(HF_TOKEN for private datasets), or provide the local forecast files."
+        )
+
+    try:
+        from huggingface_hub import HfApi, hf_hub_download
+
+        # A branch can advance between downloads; resolve it exactly once. Explicit
+        # commit IDs also allow already-cached collections to resolve offline.
+        if not re.fullmatch(r"[0-9a-f]{40}", revision):
+            revision = HfApi().repo_info(repo_id, repo_type="dataset", revision=revision).sha
+    except Exception as exc:
+        raise fallback_error(exc) from exc
+
+    def download(name):
+        try:
+            return Path(hf_hub_download(
+                repo_id=repo_id, repo_type="dataset", filename=f"{prefix}/{name}",
+                revision=revision,
+            )).absolute()
+        except Exception as exc:
+            raise fallback_error(exc) from exc
+
+    print(f"Resolving GEOS forecasts from {repo_id}/{prefix} at {revision}", flush=True)
+    cached_manifest = download("manifest.json")
+    manifest = json.loads(cached_manifest.read_text())
+    _validate_forecast_manifest(manifest, cached_manifest, allow_partial)
+    files = []
+    for name in manifest["files"]:
+        local_file = path.parent / name
+        metadata_name = local_file.with_suffix(".metadata.json").name
+        receipts = manifest.get("uploads", {}).get(name, {}).get("files", {})
+        if all(_matches_forecast_receipt(path.parent / artifact, receipts.get(artifact))
+               for artifact in (name, metadata_name)):
+            files.append(str(local_file))
+        else:
+            files.append(str(download(name)))
+            download(metadata_name)
+        if len(files) == 1 or len(files) % 10 == 0 or len(files) == len(manifest["files"]):
+            print(f"GEOS forecasts: resolved {len(files)}/{len(manifest['files'])} runs", flush=True)
+    return manifest, files, {
+        "path": str(cached_manifest), "repo_id": repo_id, "prefix": prefix, "revision": revision,
+    }
+
+
 def load_config(path):
     path = Path(path).resolve()
     cfg = json.loads(path.read_text())
     manifests = cfg.get("geos_manifests", [cfg["geos_manifest"]] if cfg.get("geos_manifest") else [])
     if manifests:
         cfg["geos_files"], cfg["geos_valid_times"] = [], []
-        for name in manifests:
-            manifest_path = (path.parent / name).resolve()
-            manifest = json.loads(manifest_path.read_text())
-            if not manifest.get("files"):
-                raise ValueError(f"Forecast manifest contains no downloaded runs: {manifest_path}")
-            if manifest.get("failures") and not cfg.get("allow_partial_forecasts", False):
-                raise ValueError("Forecast archive is incomplete; retry or explicitly set allow_partial_forecasts")
-            cfg["geos_files"].extend(str((manifest_path.parent / f).resolve()) for f in manifest["files"])
+        cfg["geos_resolved_manifests"] = []
+        for entry in manifests:
+            spec = {"path": entry} if isinstance(entry, str) else entry
+            manifest_path = Path(os.path.abspath(path.parent / spec["path"]))
+            manifest, files, provenance = resolve_forecast_manifest(
+                manifest_path, spec.get("huggingface"),
+                allow_partial=cfg.get("allow_partial_forecasts", False),
+            )
+            cfg["geos_resolved_manifests"].append(provenance)
+            cfg["geos_files"].extend(files)
             cfg["geos_valid_times"].extend(manifest["valid_times"])
         cfg["required_product"] = "forecast"
     for key in ["geos_files"]:
-        cfg[key] = [str((path.parent / p).resolve()) for p in cfg[key]]
+        # Hub snapshot files are symlinks: retain their snapshot paths so metadata
+        # sidecars remain adjacent, rather than resolving into the blobs directory.
+        cfg[key] = [os.path.abspath(path.parent / p) for p in cfg[key]]
     for source in cfg["sources"].values():
         for key in ["labels", "observation_mask", "acquisition_sidecar"]:
             if source.get(key):

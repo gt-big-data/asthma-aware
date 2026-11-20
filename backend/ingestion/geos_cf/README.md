@@ -377,6 +377,8 @@ analyses are never substituted. Reruns resume compatible completed outputs.
 `inventory.json` records availability checks; `manifest.json` records actual
 downloads and failures. A bounded `--max-runs` request is marked incomplete.
 
-The ML NO₂ configuration still needs surface-station labels and a surface baseline
-before it can train on these default downloads; the existing satellite-column
-labels cannot supervise a surface-concentration model.
+The ML forecast configurations use `no2_station_hour_labels_2023.parquet` for
+surface-NO₂ station supervision and convert the surface `no2` baseline from
+mol/mol to ppb. See the [forecast training instructions](../../../ml-work/README.md#forecast-training-072-hours)
+for preparation and training. Satellite-column labels cannot supervise a
+surface-concentration model.
