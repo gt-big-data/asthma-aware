@@ -1,5 +1,6 @@
 """Fine-grid surface inputs and bounded-memory, versioned risk preparation."""
 import json
+import warnings
 from contextlib import ExitStack
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -12,16 +13,64 @@ import xarray as xr
 
 from app.services.personalization_model import FEATURE_VERSION, MODEL_VERSION, ReferenceStats, exposure, general_risk
 from app.services.risk_artifacts import (
-    CHANNELS, LATITUDES, LONGITUDES, FINE_PREFIX, grid_mapping, read_surface,
-    reference_id, load_reference, supported_preprocessing,
+    CHANNELS, LATITUDES, LONGITUDES, FINE_PREFIX, NO2_COLUMN_PREFIX, NO2_MODES, grid_mapping, is_fine,
+    read_surface, reference_id, load_reference, supported_preprocessing,
 )
 
 
-def write_surface(source: Path, layers: Path, output: Path):
-    """O3 is learned surface ppb; the other surface pollutants use native cell values."""
+NO2_COLUMN = "tropospheric_no2_column"
+# UTC hours bracketing TROPOMI's ~13:30 local overpass over Georgia: the hours the NO2 column
+# model's labels describe, and the hours ingestion.no2.evaluate validated the scaling at.
+OVERPASS_HOURS = (18, 19)
+
+
+def overpass_no2_scale(times, learned_column, geos_column):
+    """Per-hour column scale (learned / GEOS-CF), taken from the nearest day's overpass hours.
+
+    The column model learned once-a-day satellite columns, so only its overpass-hour output is used;
+    each hour gets the scale of the overpass nearest in time. Hours with no overpass in the file
+    keep GEOS-CF unchanged (scale 1). Columns in 1e15 molec cm-2, shape (time, lat, lon).
+    """
+    from ingestion.no2.surface import column_scale
+
+    times = pd.DatetimeIndex(times)
+    days = {}
+    for index, stamp in enumerate(times):
+        if stamp.hour in OVERPASS_HOURS:
+            days.setdefault(stamp.normalize(), []).append(index)
+    scale = np.ones(learned_column.shape, dtype="float32")
+    if not days:
+        return scale
+    with warnings.catch_warnings():  # all-NaN cells (masked model output) fall back to 1 below
+        warnings.simplefilter("ignore", RuntimeWarning)
+        overpass = {day: np.nanmean(column_scale(learned_column[idx], geos_column[idx]), axis=0)
+                    for day, idx in days.items()}
+    centers = pd.DatetimeIndex([day + pd.Timedelta(hours=19) for day in overpass])
+    keys = list(overpass)
+    for index, stamp in enumerate(times):
+        nearest = keys[int(np.argmin(np.abs((centers - stamp).asi8)))]
+        scale[index] = np.where(np.isfinite(overpass[nearest]), overpass[nearest], 1.0)
+    return scale
+
+
+def write_surface(source: Path, layers: Path, output: Path, *, no2_mode: str = "native"):
+    """O3 is learned surface ppb; the other surface pollutants use native cell values.
+
+    no2_mode="column-scaled" rescales native NO2 by the learned column over GEOS-CF's column
+    (ingestion.no2.surface; scored against monitors by ingestion.no2.evaluate). It is a separate
+    preprocessing identity, so it needs a reference fitted the same way.
+    """
+    if no2_mode not in NO2_MODES:
+        raise ValueError(f"no2_mode must be one of {NO2_MODES}")
     raw = read_surface(source)
     with xr.open_dataset(source) as opened:
         product = opened.attrs.get("product", "forecast")
+        geos_column = None
+        if no2_mode == "column-scaled":
+            if "tropcol_no2" not in opened or opened.tropcol_no2.attrs.get("units") != "1.0e15 molec cm-2":
+                raise ValueError("Column-scaled NO2 needs GEOS-CF tropcol_no2 in 1.0e15 molec cm-2")
+            geos_column = (opened.tropcol_no2.transpose("time", "lat", "lon").reset_coords(drop=True)
+                           .sortby("lat").sortby("lon").load())
     output.parent.mkdir(parents=True, exist_ok=True)
     pending = output.with_name(f".{output.name}.{uuid4()}.tmp")
     try:
@@ -36,6 +85,20 @@ def write_surface(source: Path, layers: Path, output: Path):
                 raise ValueError("Downscaled layers do not match the risk timeline and 0.01-degree grid")
             digest = models.surface_o3_ppb.attrs["checkpoint_sha256"]
             pipeline = FINE_PREFIX + digest
+            no2_scale = None
+            if no2_mode == "column-scaled":
+                if NO2_COLUMN not in models or models[NO2_COLUMN].attrs.get("units") != "mol/m2":
+                    raise ValueError("Column-scaled NO2 needs the NO2 column model's layer in mol/m2")
+                from ingestion.no2.surface import MOL_M2_TO_1E15_MOLEC_CM2
+                pipeline = NO2_COLUMN_PREFIX + digest + ":" + models[NO2_COLUMN].attrs["checkpoint_sha256"]
+                rows, columns = grid_mapping(raw.lat.values, raw.lon.values)
+                if not np.array_equal(geos_column.time, raw.time):
+                    raise ValueError("GEOS-CF column timeline does not match the surface pollutants")
+                no2_scale = overpass_no2_scale(
+                    raw.time.values,
+                    models[NO2_COLUMN].values * MOL_M2_TO_1E15_MOLEC_CM2,
+                    geos_column.values[:, rows][:, :, columns],
+                )
             if not supported_preprocessing(pipeline):
                 raise ValueError("Invalid O3 checkpoint identity")
             result.preprocessing = pipeline
@@ -44,7 +107,8 @@ def write_surface(source: Path, layers: Path, output: Path):
             result.forecast_skill_validated = 0
             result.source_sha256 = reference_id(source)
             result.layer_sha256 = reference_id(layers)
-            result.risk_inputs = json.dumps({"o3": "surface_o3_ppb", "no2": "native-surface-nearest",
+            result.risk_inputs = json.dumps({"o3": "surface_o3_ppb",
+                "no2": "native-surface-nearest" if no2_scale is None else "native-surface-x-overpass-column-scale",
                 "so2": "native-surface-nearest", "pm25": "native-surface-nearest"})
             result.createDimension("time", len(raw.time))
             result.createDimension("lat", len(LATITUDES))
@@ -62,6 +126,8 @@ def write_surface(source: Path, layers: Path, output: Path):
                 for hour in range(len(raw.time)):
                     values = (models.surface_o3_ppb.isel(time=hour).values if channel == "o3"
                               else raw[channel].values[hour][np.ix_(rows, columns)])
+                    if channel == "no2" and no2_scale is not None:
+                        values = values * no2_scale[hour]
                     var[hour] = np.where(np.isfinite(values) & (values >= 0), values, np.nan)
         pending.replace(output)
     finally:
@@ -78,7 +144,7 @@ class FineSources:
             if not self.datasets:
                 raise ValueError("At least one fine surface input is required")
             self.pipeline = self.datasets[0].attrs["preprocessing"]
-            if not self.pipeline.startswith(FINE_PREFIX) or not supported_preprocessing(self.pipeline):
+            if not is_fine(self.pipeline) or not supported_preprocessing(self.pipeline):
                 raise ValueError("Expected model-driven fine surface inputs")
             lookup = {}
             for i, data in enumerate(self.datasets):
