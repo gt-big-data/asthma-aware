@@ -52,9 +52,9 @@ def write_map_fields(source: Path, layers: Path | None, output: Path):
                 else:
                     coordinate[:] = values
             fields = {name: (raw[name], False) for name in ("o3", "no2", "so2", "pm25")}
-            for name, model_name in (("o3", "surface_o3_ppb"), ("temperature", "temperature_c")):
+            for name, model_name in (("o3", "surface_o3_ppb"), ("no2", "surface_no2_ppb"), ("temperature", "temperature_c")):
                 if models is not None and model_name in models:
-                    expected = "ppb" if name == "o3" else "degC"
+                    expected = "degC" if name == "temperature" else "ppb"
                     if models[model_name].attrs.get("units") != expected:
                         raise ValueError(f"Wrong model units for {name}")
                     fields[name] = (models[model_name], True)

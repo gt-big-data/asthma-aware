@@ -78,6 +78,7 @@ def main():
     parser.add_argument("--models", nargs="+", choices=("temperature", "dewpoint", "no2", "o3"),
                         help="Select checkpoints; defaults to available supported models")
     parser.add_argument("--model-threads", type=int, default=2, help="CPU threads for optional model inference")
+    parser.add_argument("--analysis-lead-hours", type=float, help="Explicit experimental lead assumption for forecast-trained models applied to history")
     args = parser.parse_args()
     if args.models and args.model_dir is None:
         parser.error("--models requires --model-dir")
@@ -117,7 +118,7 @@ def main():
         if args.model_dir is not None:
             from scripts.prepare_fine_risk import prepare_layers
             layers = Path(temporary) / "downscaled.nc"
-            shutil.copyfile(prepare_layers(source, args.model_dir, args.models), layers)
+            shutil.copyfile(prepare_layers(source, args.model_dir, args.models, analysis_lead_hours=args.analysis_lead_hours), layers)
             if fine_active:
                 from app.services.fine_risk import write_surface
                 risk_source = write_surface(source, layers, Path(temporary) / "surface.nc")
@@ -144,7 +145,7 @@ def main():
             if fine_active:
                 from scripts.prepare_fine_risk import prepare
                 from app.services.fine_risk import build_fine_artifact
-                history = [prepare(path, args.model_dir) for path in history]
+                history = [prepare(path, args.model_dir, sources=args.models, analysis_lead_hours=args.analysis_lead_hours) for path in history]
                 build_artifact = build_fine_artifact
             risk = Path(temporary) / "risk.npz"
             build_artifact(

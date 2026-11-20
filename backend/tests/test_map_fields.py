@@ -56,6 +56,21 @@ def test_physical_units_and_native_vs_model_fields(fields):
     np.testing.assert_allclose(native.frame("temperature", native.times[0]), -3.15, atol=1e-4)
 
 
+def test_surface_no2_map_preserves_fine_cell_variation(fields, tmp_path):
+    _, source, models, _ = fields
+    with xr.open_dataset(models) as opened:
+        learned = opened.load()
+    values = np.broadcast_to(np.arange(408, dtype="float32") / 100 + 2, (3, 420, 408))
+    learned["surface_no2_ppb"] = (("time", "lat", "lon"), values, {"units": "ppb"})
+    learned.to_netcdf(models)
+    output = tmp_path / "fine-no2-map.nc"
+    result = MapFields(output, write_map_fields(source, models, output))
+    frame = result.frame("no2", result.times[0])
+    np.testing.assert_allclose(frame, values[0])
+    assert frame[100, 101] != frame[100, 102]
+    assert "Learned" in result.layers["no2"]["processing"]
+
+
 def test_layer_timestamps_cache_identity_and_independent_availability(fields):
     data, _, _, _ = fields
     # Risk indices include preceding history; physical fields start at issue time.

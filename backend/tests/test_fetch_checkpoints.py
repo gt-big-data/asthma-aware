@@ -39,3 +39,15 @@ def test_changed_checkpoint_cannot_replace_local_file(tmp_path, monkeypatch):
         download(bucket, "models/release-1", directory)
     assert previous.read_bytes() == b"previous version"
     assert not list(directory.glob(".*.tmp"))
+
+
+def test_surface_no2_manifest_uses_logical_source_name(tmp_path, monkeypatch):
+    content = b"surface-no2-checkpoint"
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps({"checkpoints": [{"file": "no2_best_surface.pt", "source": "no2",
+        "bytes": len(content), "sha256": hashlib.sha256(content).hexdigest()}]}))
+    monkeypatch.setenv("MODEL_MANIFEST_PATH", str(path))
+    bucket = Mock()
+    bucket.blob.return_value.download_to_filename.side_effect = lambda path, **kw: path.write_bytes(content)
+    download(bucket, "models/surface-v1", tmp_path / "models", ["no2"])
+    bucket.blob.assert_called_once_with("models/surface-v1/no2_best_surface.pt")

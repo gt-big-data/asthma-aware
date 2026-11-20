@@ -7,9 +7,10 @@
       "sha256": "44d3361e2066f09ad4e0fbd12fb4bbcc6d518b54a2762e3e4f4d8d3bb550d8d7"
     },
     {
-      "file": "no2_best.pt",
-      "bytes": 40423877,
-      "sha256": "dbd570b53d955c4038eaa509aa7a2876a14482b40b87f2617f7c4082edd1060e"
+      "file": "no2_best_surface.pt",
+      "source": "no2",
+      "bytes": 40451973,
+      "sha256": "92c80408de44f14c527e32587120cf3544c689c5116b4f7c90ee4da2f4946032"
     },
     {
       "file": "o3_best.pt",
