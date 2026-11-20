@@ -27,7 +27,6 @@
       },
       "label_units": "umol/m2",
       "observation_mask": "NO2_GA_2023_mask_observed.tif",
-      "baseline_variable": "tropcol_no2",
       "predictors": [
         "no2",
         "air_temperature",
@@ -39,20 +38,18 @@
         18,
         17
       ],
-      "timing_policy": "weighted_pass_midpoints_within_1h"
+      "timing_policy": "weighted_pass_midpoints_within_1h",
+      "label_type": "raster",
+      "target_units": "mol/m2",
+      "target_name": "tropospheric_no2_column",
+      "baseline": {
+        "method": "column",
+        "variable": "tropcol_no2"
+      }
     },
     "o3": {
-      "labels": "O3_S5P_Georgia_2023_filled.tif",
-      "huggingface": {
-        "repo_id": "ShreyD06/AsthmaAware",
-        "filename": "O3_S5P_Georgia_2023_filled.tif",
-        "revision": "main",
-        "mask_filename": "O3_S5P_Georgia_2023_mask.tif"
-      },
-      "label_units": "mol/m2",
-      "observation_mask": "O3_S5P_Georgia_2023_mask.tif",
-      "baseline_variable": "totalcol_o3",
-      "baseline_quantity": "total_o3_column",
+      "labels": "o3_station_hour_labels_2023.parquet",
+      "label_units": "ppb",
       "predictors": [
         "o3",
         "air_temperature",
@@ -64,21 +61,83 @@
         18,
         17
       ],
-      "timing_policy": "nearest_collection_within_1h"
+      "label_type": "station_table",
+      "target_units": "ppb",
+      "target_name": "surface_o3_ppb",
+      "timing_policy": "hour_start_label_to_geos_center",
+      "baseline": {
+        "method": "scaled_variable",
+        "variable": "o3",
+        "input_units": [
+          "mol mol-1",
+          "mol/mol"
+        ],
+        "scale": 1000000000.0
+      },
+      "columns": {
+        "value": "o3_ppb",
+        "valid": "o3_valid",
+        "latitude": "o3_latitude",
+        "longitude": "o3_longitude"
+      }
     },
     "temperature": {
       "labels": "station_hour_labels_2023.parquet",
       "coarse_shape": [
         18,
         17
-      ]
+      ],
+      "label_type": "station_table",
+      "target_units": "degC",
+      "target_name": "temperature_c",
+      "timing_policy": "interpolated_hourly_means_to_station_hour",
+      "baseline": {
+        "method": "scaled_variable",
+        "variable": "air_temperature",
+        "input_units": [
+          "k",
+          "K"
+        ],
+        "offset": -273.15
+      },
+      "predictors": [
+        "air_temperature",
+        "specific_humidity",
+        "surface_pressure",
+        "pbl_height"
+      ],
+      "columns": {
+        "value": "temperature_c",
+        "valid": "temperature_valid",
+        "latitude": "temperature_latitude",
+        "longitude": "temperature_longitude"
+      }
     },
     "dewpoint": {
       "labels": "station_hour_labels_2023.parquet",
       "coarse_shape": [
         18,
         17
-      ]
+      ],
+      "label_type": "station_table",
+      "target_units": "degC",
+      "target_name": "dewpoint_c",
+      "timing_policy": "interpolated_hourly_means_to_station_hour",
+      "baseline": {
+        "method": "dewpoint"
+      },
+      "predictors": [
+        "air_temperature",
+        "specific_humidity",
+        "surface_pressure",
+        "pbl_height"
+      ],
+      "columns": {
+        "value": "dewpoint_c",
+        "valid": "dewpoint_valid",
+        "latitude": "dewpoint_latitude",
+        "longitude": "dewpoint_longitude"
+      }
     }
   }
 }

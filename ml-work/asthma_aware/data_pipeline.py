@@ -160,7 +160,7 @@ def station_pair(target, lookup):
 
 
 def assign_splits(records):
-    dates = sorted({r["target_time"][:10] for r in records})
+    dates = sorted({r.get("observation_date", r["target_time"][:10]) for r in records})
     n = len(dates)
     a, b = int(n * 0.7), int(n * 0.85)
     mapping = {
@@ -168,13 +168,26 @@ def assign_splits(records):
         for i, d in enumerate(dates)
     }
     for r in records:
-        r["split"] = mapping[r["target_time"][:10]]
+        r["split"] = mapping[r.get("observation_date", r["target_time"][:10])]
     return mapping
 
 
 def load_config(path):
     path = Path(path).resolve()
     cfg = json.loads(path.read_text())
+    manifests = cfg.get("geos_manifests", [cfg["geos_manifest"]] if cfg.get("geos_manifest") else [])
+    if manifests:
+        cfg["geos_files"], cfg["geos_valid_times"] = [], []
+        for name in manifests:
+            manifest_path = (path.parent / name).resolve()
+            manifest = json.loads(manifest_path.read_text())
+            if not manifest.get("files"):
+                raise ValueError(f"Forecast manifest contains no downloaded runs: {manifest_path}")
+            if manifest.get("failures") and not cfg.get("allow_partial_forecasts", False):
+                raise ValueError("Forecast archive is incomplete; retry or explicitly set allow_partial_forecasts")
+            cfg["geos_files"].extend(str((manifest_path.parent / f).resolve()) for f in manifest["files"])
+            cfg["geos_valid_times"].extend(manifest["valid_times"])
+        cfg["required_product"] = "forecast"
     for key in ["geos_files"]:
         cfg[key] = [str((path.parent / p).resolve()) for p in cfg[key]]
     for source in cfg["sources"].values():
@@ -184,15 +197,15 @@ def load_config(path):
     return cfg
 
 
-def inspect_geos(paths):
+def _inspect_geos(paths):
     lookup, inventories = {}, []
     for path in paths:
         with xr.open_dataset(path, engine="h5netcdf") as ds:
             if (
-                ds.attrs.get("product") != "analysis"
+                ds.attrs.get("product") not in ("analysis", "forecast")
                 or ds.attrs.get("time_convention") != TIME_CONVENTION
             ):
-                raise ValueError(f"{path}: expected hourly-mean analysis provenance")
+                raise ValueError(f"{path}: expected hourly-mean analysis or forecast provenance")
             for axis in ["time", "lat", "lon"]:
                 if axis not in ds.coords or ds[axis].ndim != 1:
                     raise ValueError(f"{path}: expected one-dimensional {axis}")
@@ -233,7 +246,7 @@ def inspect_geos(paths):
                 meta = json.loads(meta_path.read_text())
                 for key, actual in [
                     ("hours", len(ts)),
-                    ("product", "analysis"),
+                    ("product", ds.attrs["product"]),
                     ("time_convention", TIME_CONVENTION),
                 ]:
                     if meta.get(key) != actual:
@@ -259,6 +272,63 @@ def inspect_geos(paths):
                 }
             )
     return lookup, inventories
+
+
+class ForecastLookup(dict):
+    """Mapping of run IDs to per-run valid-time indexes; never combines runs."""
+
+
+def inspect_geos(paths):
+    analyses, runs, inventories = {}, {}, []
+    products = set()
+    reference_grid = None
+    for path in paths:
+        lookup, inventory = _inspect_geos([path])
+        with xr.open_dataset(path, engine="h5netcdf") as ds:
+            product = ds.attrs["product"]
+            products.add(product)
+            grid = (ds.lat.values.copy(), ds.lon.values.copy())
+            if reference_grid is not None and not all(np.array_equal(a,b) for a,b in zip(grid,reference_grid)):
+                raise ValueError("GEOS files must use identical latitude/longitude coordinates")
+            reference_grid = grid
+            inventory[0]["product"] = product
+            if product == "forecast":
+                init = utc(ds.attrs["initialization_time"])
+                if "forecast_reference_time" in ds.coords and utc(np.asarray(ds.forecast_reference_time.values).reshape(-1)[0]) != init:
+                    raise ValueError("Forecast reference coordinate disagrees with initialization metadata")
+                sidecar = Path(path).with_suffix(".metadata.json")
+                if sidecar.exists():
+                    metadata = json.loads(sidecar.read_text())
+                    if utc(metadata["initialization_time"]) != init:
+                        raise ValueError("Forecast sidecar initialization disagrees with NetCDF")
+                run = ds.attrs.get("forecast_run", init.isoformat())
+                version = ds.attrs.get("source_version", "unknown")
+                run_key = f"{version}:{run}"
+                if run_key in runs:
+                    raise ValueError(f"Duplicate forecast run: {run_key}")
+                if "lead_time" not in ds.coords:
+                    raise ValueError("Forecast requires lead_time coordinate")
+                expected = ds.time.values - init.tz_localize(None).to_datetime64()
+                if not np.array_equal(ds.lead_time.values.astype("timedelta64[ns]"), expected.astype("timedelta64[ns]")):
+                    raise ValueError("Forecast lead_time disagrees with initialization/valid time")
+                for t, ref in lookup.items():
+                    lead = (utc(t) - init).total_seconds()/3600
+                    if not 0 < lead < 72:
+                        raise ValueError("Forecast inputs must contain centers within the 0–72 hour horizon")
+                    ref.update(product=product, forecast_run=run_key,
+                               initialization_time=init.isoformat(), lead_time_hours=lead,
+                               source_version=version,
+                               available_at=ds.attrs.get("available_at") or None)
+                runs[run_key] = lookup
+                inventory[0].update(initialization_time=init.isoformat(), forecast_run=run_key)
+            else:
+                if set(analyses) & set(lookup):
+                    raise ValueError("Duplicate GEOS analysis timestamp")
+                analyses.update(lookup)
+        inventories.extend(inventory)
+    if len(products) > 1:
+        raise ValueError("Do not mix analysis and forecast products in one preparation")
+    return (ForecastLookup(runs) if runs else analyses), inventories
 
 
 class Readers:
@@ -445,6 +515,8 @@ class SourceDataset(Dataset):
         self.channels = self.cfg["predictors"]
         self.station_ids = self.report.get("station_ids", [])
         self.split = split
+        self.product = bundle.get("product", "analysis")
+        self.time_channels = 5 if self.product == "forecast" else 4
         if normalization is not None and normalization["signature"] != signature(
             bundle, source
         ):
@@ -470,15 +542,23 @@ class SourceDataset(Dataset):
             ) / np.array(n["input_std"], dtype=np.float32)[:, None, None]
             baseline = (baseline - n["target_mean"]) / n["target_std"]
             targets = np.where(valid, (targets - n["target_mean"]) / n["target_std"], 0)
+        features = time_features(record["target_time"])
+        provenance = {}
+        if self.product == "forecast":
+            features = np.append(features, np.float32(record["lead_time_hours"] / 72)).astype(np.float32)
+            provenance = {"lead_time_hours": np.float32(record["lead_time_hours"]),
+                          "initialization_time": record["initialization_time"],
+                          "forecast_run": record["forecast_run"]}
         return {
+            **provenance,
             "forecast": torch.from_numpy(forecast.astype(np.float32)),
             "baseline": torch.from_numpy(baseline.astype(np.float32)),
-            "time_features": torch.from_numpy(time_features(record["target_time"])),
+            "time_features": torch.from_numpy(features),
             "targets": torch.from_numpy(targets.astype(np.float32)),
             "valid": torch.from_numpy(valid),
             "source": self.source,
             "target_time": record["target_time"],
-            "product": "analysis",
+            "product": self.product,
             "timing_method": record["timing_method"],
             **extra,
         }
@@ -495,6 +575,7 @@ def signature(bundle, source):
         if cfg.get(k)
     }
     data = {
+        "product": bundle.get("product", "analysis"),
         "source_config": cfg,
         "grid": cfg.get("grid", bundle["config"].get("grid", {})),
         "source": source,
@@ -685,7 +766,18 @@ def build_catalog(cfg):
     cfg["sources"] = {name: source_config(name, sc) for name, sc in cfg["sources"].items()}
     cfg, download_errors = resolve_satellite_labels(cfg)
     lookup, geo_inventory = inspect_geos(cfg["geos_files"])
+    product = "forecast" if isinstance(lookup, ForecastLookup) else "analysis"
+    if cfg.get("required_product", product) != product:
+        raise ValueError("GEOS product does not match required_product")
+    if cfg.get("geos_valid_times"):
+        allowed = {utc(t).isoformat() for t in cfg["geos_valid_times"]}
+        if product == "forecast":
+            lookup = ForecastLookup({run: {t: ref for t, ref in times.items() if t in allowed}
+                                     for run, times in lookup.items()})
+        else:
+            lookup = {t: ref for t, ref in lookup.items() if t in allowed}
     bundle = {
+        "product": product,
         "config": cfg,
         "geos_inventory": geo_inventory,
         "catalogs": {},
@@ -725,7 +817,29 @@ def build_catalog(cfg):
         }
         if source in download_errors:
             report["blockers"].append(download_errors[source])
-        catalog, records = adapter.catalog(grid, lookup, report, matcher)
+        if product == "forecast":
+            catalog_by_key, records = {}, []
+            for run, times in lookup.items():
+                run_catalog, run_records = adapter.catalog(grid, times, report, matcher)
+                dates_by_band = {item.get("band"): item["date"] for item in run_catalog}
+                for item in run_catalog:
+                    catalog_by_key[json.dumps(item, sort_keys=True)] = item
+                for record in run_records:
+                    refs = record["geos"]
+                    if len({ref["forecast_run"] for ref in refs}) != 1:
+                        raise ValueError("A sample cannot mix forecast runs")
+                    ref = refs[0]
+                    record.update(forecast_run=run, initialization_time=ref["initialization_time"],
+                                  source_version=ref["source_version"], available_at=ref["available_at"],
+                                  lead_time_hours=sum(x["lead_time_hours"] for x in refs)/len(refs),
+                                  product="forecast",
+                                  observation_date=dates_by_band[record["band"]] if "band" in record else record["target_time"][:10])
+                    records.append(record)
+            catalog = list(catalog_by_key.values())
+            records.sort(key=lambda rec: (rec["target_time"], rec["initialization_time"]))
+        else:
+            catalog, records = adapter.catalog(grid, lookup, report, matcher)
+        report["product"] = product
         if baseline.method == "dewpoint":
             report["derivation"] = "Magnus liquid-water Td: e=q*p/(0.622+0.378*q); l=ln(e/610.94); Td=243.04*l/(17.625-l), degC"
         report["label_entries"] = len(catalog)
