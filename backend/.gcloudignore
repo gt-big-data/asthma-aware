@@ -1,0 +1,16 @@
+*
+!Dockerfile
+!requirements.txt
+!requirements/
+!requirements/**
+!app/
+!app/**
+!db/
+!db/**
+!ingestion/
+!ingestion/**
+!scripts/
+!scripts/**
+**/__pycache__/
+**/.env*
+!.dockerignore

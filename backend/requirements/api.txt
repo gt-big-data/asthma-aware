@@ -4,3 +4,9 @@ pydantic>=2,<3
 python-dotenv>=1,<2
 tzdata
 PyJWT[crypto]>=2.12.2,<3
+pyproj>=3.7,<4
+google-cloud-storage>=3,<4
+
+xarray
+netCDF4
+pandas

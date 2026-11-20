@@ -92,6 +92,7 @@ V1 = Product(
         _v1_spec("pm25", "pm25_rh35_gcc", V1_AQC),
         _v1_spec("no2", "no2", V1_AQC),
         _v1_spec("o3", "o3", V1_AQC),
+        _v1_spec("so2", "so2", V1_AQC),
         _v1_spec("co", "co", V1_AQC),
         _v1_spec("air_temperature", "t", V1_MET),
         _v1_spec("specific_humidity", "q", V1_MET),

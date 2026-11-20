@@ -1,9 +1,17 @@
 # AsthmaAware backend
 
+The NASA-driven hourly population map shares the dashboard's risk artifacts.
+See [map operation and API](docs/risk-map.md) and
+[Cloud Run/GCS deployment](docs/deploy-forecast-gcs.md).
+
+The dashboard supports [saved Georgia cities](docs/saved-locations.md), backed by
+private account bookmarks in migration 0004 and bundled Census location catalogs.
+
 One FastAPI application, independent data collectors, an environmental database
 layer, and a private application schema. Authenticated V1 profile and symptom-log
-endpoints are implemented. Live forecast providers, model fitting, and cloud
-deployment remain separate work.
+endpoints are implemented, alongside NASA-driven dashboard/map risk forecasts
+and symptom-based personalization. Reviewed model calibration, remaining ML
+downscaling checkpoints, and live cloud deployment remain separate work.
 
 ## Layout
 
@@ -48,6 +56,8 @@ unless demo mode is enabled. Demo responses carry
 `X-AsthmaAware-Data-Source: demo`. No user authentication or live forecast
 integration is claimed. [Dashboard demo contract](docs/dashboard.md).
 
+The current app uses [GEOS-CF dashboard risk](docs/geos-dashboard.md) for its gauge and four-day outlook.
+
 `GET /health` returns `{"status":"ok"}` independently of demo mode, the database,
 and forecast providers. It checks process liveness, not dependency readiness.
 
@@ -57,8 +67,8 @@ V1 now supports profile GET/PATCH, dated symptom PUT/GET, today's log, and pagin
 history. Configure `SUPABASE_URL`, review migration 0002, and provision the runtime
 database login before using these routes. See the [application contract and setup](docs/application-api.md).
 V1 never accepts the demo identity. It automatically finalizes today's entry at
-the stored local-midnight boundary; exposure matching remains pending until a
-future worker supplies it.
+the stored local-midnight boundary. [Personalization](docs/personalization.md)
+processes finalized reports against historical analysis and builds owner-scoped model revisions.
 
 For connecting the shared development project, follow the
 [Supabase connection checklist](docs/supabase-connection.md). Its preflight

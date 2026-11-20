@@ -266,7 +266,7 @@ def test_short_cached_run_is_rebuilt_for_longer_request(forecast, tmp_path, monk
 
 def test_variable_list_has_tropospheric_no2_and_no_winds():
     names = {spec.name: spec for spec in ff.VARIABLES}
-    assert "eastward_wind" not in names and "northward_wind" not in names and "so2" not in names
+    assert "eastward_wind" not in names and "northward_wind" not in names and "so2" in names
     assert names["tropcol_no2"].collection == ff.XGC_COLLECTION == "xgc_tavg_1hr_glo_L1440x721_slv"
     assert names["tropcol_no2"].units == "1.0e15 molec cm-2"
     assert ff.XGC_COLLECTION in ff.COLLECTIONS

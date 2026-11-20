@@ -439,6 +439,38 @@ def geos_fields(ref, names, readers, grid, coarse_shape):
     return result
 
 
+def prepare_geos_inputs(source, channels, cfg, grid, readers, references):
+    """Shared training/inference preprocessing, including metadata-driven baselines."""
+    from .source_adapters import source_config, BaselineBuilder
+    cfg = source_config(source, cfg)
+    baseline_builder = BaselineBuilder(cfg)
+    needed = list(dict.fromkeys(channels + baseline_builder.variables))
+    fields = [
+        geos_fields(
+            ref,
+            needed,
+            readers,
+            grid,
+            cfg.get("coarse_shape", [18, 17]),
+        )
+        for ref in references
+    ]
+    f = {k: sum(x[k] for x in fields) / len(fields) for k in needed}
+    forecast = np.stack([f[k] for k in channels])
+    units = readers.open("nc", references[0]["path"])
+    baseline = baseline_builder.build(f, units)
+    bounds = array_bounds(grid.height, grid.width, grid.affine)
+    baseline = regrid(
+        baseline,
+        from_bounds(*bounds, baseline.shape[1], baseline.shape[0]),
+        grid.crs,
+        grid,
+    )[None]
+    if not np.isfinite(baseline).all():
+        raise ValueError("Non-finite baseline")
+    return forecast, baseline
+
+
 class SourceDataset(Dataset):
     """One source, one split; prepared records have already passed input validation."""
 
@@ -496,31 +528,7 @@ class SourceDataset(Dataset):
         return len(self.records)
 
     def _raw(self, record):
-        needed = list(dict.fromkeys(self.channels + self.baseline_builder.variables))
-        fields = [
-            geos_fields(
-                ref,
-                needed,
-                self.readers,
-                self.grid,
-                self.cfg.get("coarse_shape", [18, 17]),
-            )
-            for ref in record["geos"]
-        ]
-        f = {k: sum(x[k] for x in fields) / len(fields) for k in needed}
-        forecast = np.stack([f[k] for k in self.channels])
-        units = self.readers.open("nc", record["geos"][0]["path"])
-        baseline = self.baseline_builder.build(f, units)
-        bounds = array_bounds(self.grid.height, self.grid.width, self.grid.affine)
-        baseline = regrid(
-            baseline,
-            from_bounds(*bounds, baseline.shape[1], baseline.shape[0]),
-            self.grid.crs,
-            self.grid,
-        )[None]
-        if not np.isfinite(baseline).all():
-            raise ValueError("Non-finite baseline")
-        return forecast, baseline
+        return prepare_geos_inputs(self.source, self.channels, self.cfg, self.grid, self.readers, record["geos"])
 
     def __getitem__(self, i):
         record = self.records[i]

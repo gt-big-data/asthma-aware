@@ -86,6 +86,17 @@ def test_runtime_inspection_never_reads_operator_version_table_or_user_data():
     assert not any(word in sql for word in ("INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP"))
 
 
+@pytest.mark.parametrize("revision", ["0003_personalization", preflight.HEAD])
+def test_operator_accepts_known_previous_revision_and_current_saved_location_head(revision):
+    class Operator(Connection):
+        def scalars(self, statement):
+            if "SELECT version_num" in str(statement):
+                return [revision]
+            return preflight.TABLES
+    report = preflight.check_database(Operator(), "operator")
+    assert ("already applied" in report["next_step"]) == (revision == preflight.HEAD)
+
+
 @pytest.mark.parametrize("configuration, message", [
     ({"tls": False}, "not using TLS"),
     ({"privileged": True}, "restricted runtime login"),
