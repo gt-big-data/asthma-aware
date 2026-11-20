@@ -35,10 +35,14 @@ import pandas as pd
 import xarray as xr
 
 from ingestion.no2 import surface
-from ingestion.pm25 import monitors
 
 logger = logging.getLogger(__name__)
 
+# AirNow's public archive (no key): hourly files for every site, plus a site list.
+ARCHIVE = "https://files.airnowtech.org/airnow"
+SITES_URL = f"{ARCHIVE}/today/monitoring_site_locations.dat"
+SITE_COLUMNS = ["id", "param", "sid", "name", "status", "agency_id", "agency", "epa_region", "lat", "lon",
+                "elev", "gmt", "country"] + [f"extra{i}" for i in range(11)]
 PARAMETER = "NO2"
 OVERPASS_HOURS = (18, 19)
 HOURLY_COLUMNS = ["date", "time", "site", "name", "gmt_offset", "param", "units", "value", "agency"]
@@ -48,12 +52,12 @@ ESTIMATES = ("geos", "tropomi_scaled")
 
 
 def hourly_url(day: pd.Timestamp, hour: int) -> str:
-    return f"{monitors.ARCHIVE}/{day:%Y}/{day:%Y%m%d}/HourlyData_{day:%Y%m%d}{hour:02d}.dat"
+    return f"{ARCHIVE}/{day:%Y}/{day:%Y%m%d}/HourlyData_{day:%Y%m%d}{hour:02d}.dat"
 
 
 def load_sites(path: Path, bbox: Dict[str, float]) -> pd.DataFrame:
     """NO2 sites inside bbox: columns id, name, lat, lon."""
-    s = pd.read_csv(path, sep="|", header=None, names=monitors.SITE_COLUMNS, encoding="latin-1", dtype=str,
+    s = pd.read_csv(path, sep="|", header=None, names=SITE_COLUMNS, encoding="latin-1", dtype=str,
                     on_bad_lines="skip")
     s["lat"] = pd.to_numeric(s["lat"], errors="coerce")
     s["lon"] = pd.to_numeric(s["lon"], errors="coerce")
@@ -205,7 +209,7 @@ def run(geos_paths: Sequence[Path], output: Path, *, ee_project: Optional[str] =
         sites_file = cache / "monitoring_site_locations.dat"
         if not sites_file.exists():
             cache.mkdir(parents=True, exist_ok=True)
-            sites_file.write_bytes(http.get(monitors.SITES_URL).raise_for_status().content)
+            sites_file.write_bytes(http.get(SITES_URL).raise_for_status().content)
         for path in geos_paths:
             with xr.open_dataset(path) as ds:
                 bbox = {"min_lat": float(ds.lat.min()), "max_lat": float(ds.lat.max()),
