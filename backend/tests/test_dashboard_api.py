@@ -10,8 +10,13 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def demo_mode(monkeypatch):
-    monkeypatch.setattr(app.state, "settings", Settings(dashboard_demo_enabled=True))
+def demo_mode():
+    # Not monkeypatch: Starlette's State resolves attributes through __getattr__, so monkeypatch
+    # can't see the original and its undo deletes app.state.settings for every later test.
+    original = app.state.settings
+    app.state.settings = Settings(dashboard_demo_enabled=True)
+    yield
+    app.state.settings = original
 
 
 def test_unconfigured_app_does_not_return_fabricated_risk():
