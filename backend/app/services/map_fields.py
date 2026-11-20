@@ -112,6 +112,10 @@ class MapFields:
                 fine = data[name].dims == ("time", "lat", "lon")
                 if not fine and data[name].dims != ("time", "source_lat", "source_lon"):
                     raise ValueError("Invalid map field dimensions")
+                # Keep one scale across hours; the learned surface model exceeds
+                # the old native-NASA 10 ppb display cap around Atlanta.
+                if name == "no2" and fine:
+                    high = 20
                 self.layers[name] = dict(id=name, label=label, unit=unit, minimum=low, maximum=high,
                     colors=["#3155a4", "#5ab6c9", "#f1df88", "#eaa05e", "#b84c50"] if name == "temperature" else POLLUTION_COLORS,
                     description="Hourly temperature" if name == "temperature" else "Hourly concentration · not AQI",

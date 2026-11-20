@@ -69,6 +69,7 @@ def test_surface_no2_map_preserves_fine_cell_variation(fields, tmp_path):
     np.testing.assert_allclose(frame, values[0])
     assert frame[100, 101] != frame[100, 102]
     assert "Learned" in result.layers["no2"]["processing"]
+    assert result.layers["no2"]["maximum"] == 20
 
 
 def test_layer_timestamps_cache_identity_and_independent_availability(fields):

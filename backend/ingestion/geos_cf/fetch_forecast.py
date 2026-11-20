@@ -231,13 +231,30 @@ def infer_init_time(times: Sequence[np.datetime64]) -> pd.Timestamp:
 
 def open_remote(url: str) -> xr.Dataset:
     with warnings.catch_warnings():
-        # GrADS reports "days since 1-1-1 00:00:0.0"; xarray decodes it correctly but warns.
+        # GrADS uses a year-one epoch, outside nanosecond precision's range.
+        # Decode at microsecond precision before validating the hourly midpoints.
         warnings.simplefilter("ignore", category=xr.SerializationWarning)
-        return xr.open_dataset(url)
+        try:
+            return xr.open_dataset(url, decode_times=xr.coders.CFDatetimeCoder(time_unit="us"))
+        except OverflowError as error:
+            # Treat out-of-range remote coordinates as a failed read; retry them
+            # rather than accepting or replacing their timestamps.
+            raise OSError(f"{url} returned an undecodable time coordinate") from error
 
 
 # The _read_* functions run inside the worker process (see remote_call), so they take and
 # return only picklable values, never an open remote dataset.
+
+
+def canonical_forecast_times(values) -> np.ndarray:
+    """Remove at most 10 microseconds of NetCDF decoder rounding at hourly midpoints."""
+    actual = np.asarray(values, dtype="datetime64[ns]")
+    rounded = pd.DatetimeIndex(actual).round("s").values.astype("datetime64[ns]")
+    if (np.isnat(actual).any()
+            or np.any(np.abs(actual - rounded) > np.timedelta64(10, "us"))
+            or np.any(rounded.astype(np.int64) % 3_600_000_000_000 != 1_800_000_000_000)):
+        raise ValidationError("NASA timestamps are not hourly averaging-window midpoints")
+    return rounded
 
 
 def _read_inventory(url: str) -> Tuple[Dict[str, str], np.ndarray, float]:
@@ -248,13 +265,14 @@ def _read_inventory(url: str) -> Tuple[Dict[str, str], np.ndarray, float]:
         # opens the dataset, just without attributes. Raise so remote_call retries.
         if not all(long_names.values()):
             raise OSError(f"{url} returned no variable attributes (server metadata request failed)")
-        return long_names, remote["time"].values, float(remote["lon"].max())
+        return long_names, canonical_forecast_times(remote["time"].values), float(remote["lon"].max())
 
 
 def _read_variable(url: str, source_name: str, selection: Dict[str, slice], lead: slice) -> xr.DataArray:
     with open_remote(url) as remote:
         # OPeNDAP only transfers the constrained hyperslab, not the global field.
         data = remote[source_name].sel(**selection).isel(time=lead)
+        data = data.assign_coords(time=canonical_forecast_times(data.time.values))
         if "lev" in data.dims:
             data = data.isel(lev=0, drop=True)
         data = data.load()
@@ -312,7 +330,8 @@ def remote_call(fn: Callable, *args, what: str, retries: int = OPEN_RETRIES):
     for attempt in range(1, retries + 1):
         try:
             return run_with_timeout(fn, *args, timeout=REQUEST_TIMEOUT_SECONDS)
-        except OSError as exc:  # DAP/network failures surface as OSError; TimeoutError is one too
+        except (OSError, OverflowError) as exc:
+            # Lazy coordinate decoding may also fail after open_remote returns.
             if attempt == retries:
                 raise
             logger.warning("%s failed (attempt %d/%d): %s; retrying", what, attempt, retries, exc)
