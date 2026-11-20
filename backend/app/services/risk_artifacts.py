@@ -22,10 +22,22 @@ LATITUDES = 34.975 - 0.01 * np.arange(420)
 LONGITUDES = -85.595 + 0.01 * np.arange(408)
 PREPROCESSING = "native-surface-nearest-001deg-v1"
 FINE_PREFIX = "surface-o3-unet-nearest-001deg-v1:"
+# Learned O3 plus NO2 rescaled by the learned TROPOMI-like column (ingestion.no2.surface); followed
+# by the O3 and NO2 checkpoint digests. A separate identity, so references never mix the two.
+NO2_COLUMN_PREFIX = "surface-o3-unet-no2-column-scaled-001deg-v1:"
+NO2_MODES = ("native", "column-scaled")
 
 
 def supported_preprocessing(value):
-    return isinstance(value, str) and (value == PREPROCESSING or bool(re.fullmatch(re.escape(FINE_PREFIX) + "[0-9a-f]{64}", value)))
+    return isinstance(value, str) and (
+        value == PREPROCESSING
+        or bool(re.fullmatch(re.escape(FINE_PREFIX) + "[0-9a-f]{64}", value))
+        or bool(re.fullmatch(re.escape(NO2_COLUMN_PREFIX) + "[0-9a-f]{64}:[0-9a-f]{64}", value)))
+
+
+def is_fine(value):
+    """Model-driven inputs on individual 0.01-degree cells (either fine pipeline)."""
+    return isinstance(value, str) and value.startswith((FINE_PREFIX, NO2_COLUMN_PREFIX))
 
 
 def read_surface(path: Path) -> xr.Dataset:
@@ -188,7 +200,7 @@ class RiskArtifact:
         if (self.rows.min() < 0 or self.rows.max() >= self.E.shape[2]
                 or self.columns.min() < 0 or self.columns.max() >= self.E.shape[3]):
             raise ValueError("Risk artifact grid mapping is invalid")
-        if self.metadata["preprocessing"].startswith(FINE_PREFIX) and (
+        if is_fine(self.metadata["preprocessing"]) and (
                 self.E.shape[2:] != (420, 408)
                 or not np.array_equal(self.rows, np.arange(420))
                 or not np.array_equal(self.columns, np.arange(408))):

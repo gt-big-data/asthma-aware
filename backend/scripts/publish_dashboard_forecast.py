@@ -78,11 +78,17 @@ def main():
     parser.add_argument("--models", nargs="+", choices=("temperature", "dewpoint", "no2", "o3"),
                         help="Select checkpoints; defaults to available supported models")
     parser.add_argument("--model-threads", type=int, default=2, help="CPU threads for optional model inference")
+    parser.add_argument("--no2-surface", choices=("native", "column-scaled"),
+                        default=os.getenv("RISK_NO2_SURFACE", "").strip() or "native",
+                        help="column-scaled: rescale NO2 by the learned column (needs o3 and no2 checkpoints "
+                             "and a reference fitted the same way); defaults to RISK_NO2_SURFACE or native")
     args = parser.parse_args()
     if args.models and args.model_dir is None:
         parser.error("--models requires --model-dir")
     if args.model_threads < 1:
         parser.error("--model-threads must be positive")
+    if args.no2_surface == "column-scaled" and args.model_dir is None:
+        parser.error("--no2-surface column-scaled requires --model-dir")
     if args.model_prefix:
         if args.model_dir is None or not Settings.from_env().forecast_gcs_bucket:
             parser.error("--model-prefix requires --model-dir and FORECAST_GCS_BUCKET")
@@ -107,6 +113,8 @@ def main():
     if args.model_dir is not None:
         from scripts.downscale_forecast import selected_sources
         fine_active = "o3" in selected_sources(args.model_dir, args.models)
+        if args.no2_surface == "column-scaled" and not (fine_active and "no2" in selected_sources(args.model_dir, args.models)):
+            raise ValueError("Column-scaled NO2 needs both the o3 and no2 checkpoints")
     bucket = Settings.from_env().forecast_gcs_bucket
     forecast = prepare_run(source)
     if not bucket:
@@ -120,7 +128,7 @@ def main():
             shutil.copyfile(prepare_layers(source, args.model_dir, args.models), layers)
             if fine_active:
                 from app.services.fine_risk import write_surface
-                risk_source = write_surface(source, layers, Path(temporary) / "surface.nc")
+                risk_source = write_surface(source, layers, Path(temporary) / "surface.nc", no2_mode=args.no2_surface)
         risk = None
         history_artifact = None
         reference = args.reference
@@ -140,11 +148,12 @@ def main():
                 else:
                     from scripts.fetch_risk_analysis import download
                 first = pd.Timestamp(forecast.times[0]).tz_convert("UTC").tz_localize(None)
-                history = [download(first - pd.Timedelta(hours=78 + 6 * 24), first)]
+                window = (first - pd.Timedelta(hours=78 + 6 * 24), first)
+                history = [download(*window, no2_column=True) if args.no2_surface == "column-scaled" else download(*window)]
             if fine_active:
                 from scripts.prepare_fine_risk import prepare
                 from app.services.fine_risk import build_fine_artifact
-                history = [prepare(path, args.model_dir) for path in history]
+                history = [prepare(path, args.model_dir, no2_mode=args.no2_surface) for path in history]
                 build_artifact = build_fine_artifact
             risk = Path(temporary) / "risk.npz"
             build_artifact(
