@@ -86,7 +86,12 @@ def publish_gcs(
         )
 
     if history is not None:
-        bucket.blob(f"history/{pointer.publication_id}/risk.npz").upload_from_filename(
+        import numpy as np
+        with np.load(history, allow_pickle=False) as saved:
+            pipeline = json.loads(str(saved["metadata"]))["preprocessing"]
+        history_blob = bucket.blob(f"history/{pointer.publication_id}/risk.npz")
+        history_blob.metadata = {"preprocessing": pipeline}
+        history_blob.upload_from_filename(
             history, content_type="application/octet-stream", if_generation_match=0, timeout=60,
         )
 
@@ -174,6 +179,11 @@ def sync_history(bucket_name: str, pipeline=None) -> Path:
     try:
         blobs = [blob for blob in get_bucket(bucket_name).list_blobs(prefix="history/") if blob.name.endswith("/risk.npz")]
         if pipeline:
+            # Tagged publications identify compatible archives before downloading
+            # hundreds of MB. Legacy archives retain the content-scan fallback.
+            tagged = [blob for blob in blobs if (getattr(blob, "metadata", None) or {}).get("preprocessing") == pipeline]
+            if tagged:
+                blobs = tagged
             blobs.sort(key=lambda blob: blob.time_created, reverse=True)
         retained = set()
         for blob in blobs:

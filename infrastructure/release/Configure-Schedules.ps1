@@ -1,5 +1,5 @@
 param(
-    [string]$Release = "no2-20261124-v1",
+    [string]$Release = "no2-20261124-v2",
     [string]$Project = "asthma-aware",
     [string]$Account = "asthmaaware26@gmail.com",
     [switch]$JobsOnly,

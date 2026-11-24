@@ -44,6 +44,9 @@ def test_failed_derived_upload_keeps_current_pointer(monkeypatch, tmp_path, asse
     if asset == "map_fields":
         run = run.model_copy(update={"map_artifact": "map.nc", "map_artifact_sha256": "a" * 64})
     layers = tmp_path / "downscaled.nc"
+    if asset == "history":
+        with layers.open("wb") as output:
+            np.savez_compressed(output, metadata=json.dumps({"preprocessing": "test-pipeline"}))
 
     with pytest.raises(Forbidden):
         gcs.publish_gcs("test", tmp_path / "forecast.nc", run, **{asset: layers})
@@ -96,6 +99,25 @@ def test_fine_history_sync_bounds_archives_and_filters_preprocessing(monkeypatch
     monkeypatch.setattr(gcs, "gettempdir", lambda: str(tmp_path))
     archive = gcs.sync_history("test", pipeline)
     assert {path.name for path in archive.glob("*.npz")} == {"history-2.npz", "history-3.npz"}
+
+
+def test_tagged_history_avoids_downloading_incompatible_legacy_archives(monkeypatch, tmp_path):
+    pipeline = "surface-o3-no2-unet-001deg-v1:" + "a" * 64
+    source = tmp_path / "matching.npz"
+    np.savez_compressed(source, metadata=json.dumps({"preprocessing": pipeline}))
+    match = SimpleNamespace(name=f"history/{uuid4()}/risk.npz", metadata={"preprocessing": pipeline},
+                            time_created=datetime(2026, 11, 24, tzinfo=timezone.utc))
+    legacy = SimpleNamespace(name=f"history/{uuid4()}/risk.npz", metadata=None,
+                             time_created=datetime(2026, 11, 23, tzinfo=timezone.utc))
+    bucket = Mock()
+    bucket.list_blobs.return_value = [legacy, match]
+    cached = Mock(return_value=source)
+    monkeypatch.setattr(gcs, "get_bucket", lambda name: bucket)
+    monkeypatch.setattr(gcs, "cached_risk_file", cached)
+    monkeypatch.setattr(gcs, "gettempdir", lambda: str(tmp_path))
+    archive = gcs.sync_history("test", pipeline)
+    cached.assert_called_once_with("test", match.name)
+    assert len(list(archive.glob("*.npz"))) == 1
 
 
 def test_download_cache_evicts_least_recently_used_files(tmp_path):

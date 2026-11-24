@@ -37,7 +37,7 @@ stop the publisher and leave the previous complete pointer unchanged.
 From the repository root, in PowerShell:
 
 ```powershell
-./infrastructure/release/Build.ps1 -Release YOUR_NEW_TAG -CacheRelease b280f2d-availability1
+./infrastructure/release/Build.ps1 -Release YOUR_NEW_TAG -CacheRelease no2-20261124-v2
 ```
 
 The script stages only application, ingestion, ML source and requirement files.
@@ -46,17 +46,20 @@ It builds API and CPU ML images in the existing `asthma-forecast-job` registry.
 
 ## Publisher configuration
 
-- Image `integration-ml:b280f2d-availability1` in the project registry.
-- Arguments `--model-dir data/models --models o3 --model-threads 4 --only-newer`.
+- Image `integration-ml:no2-20261124-v2` in the project registry.
+- Arguments `--model-dir data/models --models o3 no2 --model-threads 4 --only-newer --analysis-lead-hours 0.5`.
 - 4 vCPU, 8 GiB, one task, one-hour timeout, zero retries.
 - `FORECAST_GCS_BUCKET=asthmaaware-forecasts`.
-- `MODEL_GCS_PREFIX=models/checkpoints/o3-9444d777`.
-- `RISK_REFERENCE_OBJECT=reference/d9d1b52125223daed9b28e4454aee2d6a8e7f705d12b634d24449acfad72053e.npz`.
+- `MODEL_GCS_PREFIX=models/checkpoints/o3-no2-9444d777-92c80408`.
+- `RISK_REFERENCE_OBJECT=reference/392bcd9ad4365b3cf4ed6745f3c005f3bb904cc1e68ed2fda7517644ff4e2d16.npz`.
 
 Checkpoint identities are pinned in `models/checkpoints/manifest.json`.
-The reference is provisional and matches the selected O3 checkpoint. PM2.5,
-surface NO2 and SO2 retain native NASA values on the fine grid. Column NO2 is
-excluded from the surface risk computation.
+The reference is provisional and matches both selected checkpoints and the
+explicit experimental historical-analysis lead assumption of 0.5 hours. Actual
+forecast inference uses each hour's true forecast lead. This preserves the local
+development integration's policy and does not establish forecast skill. PM2.5
+and SO2 retain native NASA values on the fine grid. Column NO2 is excluded from
+the surface risk computation. See `backend/docs/no2-surface-downscaling.md`.
 
 ```powershell
 gcloud run jobs execute asthmaaware-forecast --region=us-east1 --account=asthmaaware26@gmail.com --project=asthma-aware --wait
@@ -114,7 +117,8 @@ Later scheduled checks can retry after failure. The publisher fetches NASA data,
 runs O3 inference, builds risk/map fields, and uploads complete results.
 
 The probe's `REQUIRED_VARIABLES` matches the current O3 checkpoint plus the four
-surface pollutants. Update it when enabling a model with different predictors.
+surface pollutants and also covers the surface-NO2 checkpoint's predictors.
+Update it when enabling a model with different predictors.
 
 Run `Configure-Monitoring.py` with Python to configure failure metrics and a
 missing-freshness alert. It uses the explicitly named operator login, without
@@ -142,6 +146,13 @@ Add `--auth` to sign in with the dedicated `SMOKE_TEST_EMAIL` and
 history, saved locations and personalized forecast reads, and sign that session
 out. This option needs python-dotenv and the frontend's public Supabase key in
 its ignored `.env.local`. Credentials and user data are not printed.
+Add `--require-no2` to check the learned ppb layer, the 0–20 ppb display scale,
+an Atlanta cell and PNG, and agreement with the risk map's point score.
+
+`Verify-Artifacts.py --pipeline PIPELINE --reference-sha HASH` checks both the
+current forecast and historical risk metadata through GCS range reads. It
+verifies preprocessing and normalization identities without downloading full
+rasters or printing user data.
 
 Supabase's Site URL is configured to the hosted web URL. Runtime data remains in
 Supabase; NASA sources, checkpoint/reference assets and derived rasters remain
@@ -154,6 +165,17 @@ healthy revision. Restore the publisher's earlier image digest separately.
 For a forecast rollback, select a retained complete publication by updating
 `published/current.json` with its observed GCS generation as a precondition.
 Keep any objects referenced by retained pointers.
+
+For a model change that reprocesses an already-published NASA run, pause the
+availability schedule and run `scripts.activate_forecast_models` in a temporary
+ML job with the desired versioned checkpoint/reference settings. It takes the
+shared lease and reuses the current publication's immutable raw NASA source.
+It deliberately bypasses only the newer-initialization check; normal timestamp,
+remaining-coverage, checksum, reference and atomic-publication checks remain.
+Verify the serving API supports both old/new artifacts before activation, then
+verify the new publication and resume the schedule. Configure-Schedules accepts
+explicit Models, ModelPrefix, ReferenceObject and AnalysisLeadHours for repeatable
+rollouts and rollback; its defaults select the O3/surface-NO2 release above.
 
 The earlier `asthma-api-dev` and sample jobs belong to the previous development
 setup and use a different bucket and pointer format.

@@ -48,6 +48,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--require-fresh", action="store_true")
     parser.add_argument("--auth", action="store_true", help="Use the dedicated test account in backend/.env")
+    parser.add_argument("--require-no2", action="store_true", help="Require learned surface NO2 and a usable Atlanta cell/frame")
     args = parser.parse_args()
     for path in ("/", "/dashboard", "/map", "/symptoms"):
         assert b"<html" in get(WEB, path).lower(), path
@@ -74,6 +75,19 @@ def main():
     assert image["image"].startswith("data:image/png;base64,")
     trends = json.loads(get(API, "/v1/dashboard/environmental-trends", lat=33.749, lon=-84.388))
     assert trends
+    if args.require_no2:
+        assert any(hour["general_score"] is not None for hour in dashboard["hourly"]), "No usable Atlanta risk hours"
+        no2 = json.loads(get(API, "/v1/map/forecast", layer="no2"))
+        assert no2["source_run"] == metadata["source_run"]
+        assert no2["layer"]["unit"] == "ppb" and no2["layer"]["experimental"]
+        assert "learned" in no2["layer"]["processing"].lower()
+        assert no2["layer"]["maximum"] == 20
+        no2_params = {"run_id": no2["run_id"], "index": frame["index"], "layer": "no2"}
+        detail = json.loads(get(API, "/v1/map/cell", **no2_params, lat=33.749, lon=-84.388))
+        assert detail["layer_unit"] == "ppb" and detail["layer_value"] is not None and detail["layer_value"] >= 0
+        assert detail["risk_score"] == cell["risk_score"]
+        raster = json.loads(get(API, "/v1/map/frame", **no2_params))
+        assert raster["image"].startswith("data:image/png;base64,")
     if args.auth:
         check_authenticated_reads()
     print(json.dumps({"web_routes": "pass", "private_auth": "pass",
@@ -81,7 +95,8 @@ def main():
         "daily_scores": [day["score"] for day in dashboard["days"]],
         "frames": len(metadata["frames"]), "dashboard_map_agree": True,
         "map_png": "pass", "environmental_trends": "pass",
-        "authenticated_reads": "pass" if args.auth else "not requested"}, indent=2))
+        "authenticated_reads": "pass" if args.auth else "not requested",
+        "learned_surface_no2": "pass" if args.require_no2 else "not requested"}, indent=2))
 
 
 if __name__ == "__main__":
