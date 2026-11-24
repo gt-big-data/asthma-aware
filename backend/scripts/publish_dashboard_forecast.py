@@ -101,7 +101,17 @@ def main():
             if not acquired:
                 print("publisher status=busy")
                 return
-            candidate = ready_run(current_publication(bucket), datetime.now(timezone.utc))
+            current = current_publication(bucket)
+            if args.run_date is not None:
+                # The checker already verified this initialization. Do not discover
+                # it again through a moving/load-balanced latest alias. Actual
+                # downloads still verify every required variable and timestamp.
+                candidate = pd.Timestamp(args.run_date) + pd.Timedelta(hours=9)
+                if current is not None and candidate.tz_localize("UTC") <= pd.Timestamp(current.issued_at):
+                    print("publisher status=skipped already-published-pinned-run")
+                    return
+            else:
+                candidate = ready_run(current, datetime.now(timezone.utc))
             if candidate is None:
                 print("publisher status=skipped unchanged-or-not-ready")
                 return

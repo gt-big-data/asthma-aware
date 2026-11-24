@@ -20,6 +20,12 @@ only the publisher job with a pinned-date override. It has no database access.
 Supabase is at migration
 `0005_exposure_pipelines`.
 
+History uploads carry their preprocessing identity as GCS object metadata. The
+API selects matching tagged archives before downloading them, then verifies the
+archive's own metadata. If no matching tagged archives exist, retained legacy
+publications use the previous content-scan fallback. This prevents new-model
+personal requests from repeatedly downloading incompatible old-model history.
+
 The first release uses the integration source at `b280f2d`, followed by the
 NASA timestamp precision fix. Source NetCDF decoding on the Linux image introduced
 3–6 microsecond rounding errors. Ingestion now accepts up to 10 microseconds of
@@ -37,7 +43,7 @@ stop the publisher and leave the previous complete pointer unchanged.
 From the repository root, in PowerShell:
 
 ```powershell
-./infrastructure/release/Build.ps1 -Release YOUR_NEW_TAG -CacheRelease no2-20261124-v2
+./infrastructure/release/Build.ps1 -Release YOUR_NEW_TAG -CacheRelease no2-20261124-v3
 ```
 
 The script stages only application, ingestion, ML source and requirement files.
@@ -46,7 +52,7 @@ It builds API and CPU ML images in the existing `asthma-forecast-job` registry.
 
 ## Publisher configuration
 
-- Image `integration-ml:no2-20261124-v2` in the project registry.
+- Image `integration-ml:no2-20261124-v3` in the project registry.
 - Arguments `--model-dir data/models --models o3 no2 --model-threads 4 --only-newer --analysis-lead-hours 0.5`.
 - 4 vCPU, 8 GiB, one task, one-hour timeout, zero retries.
 - `FORECAST_GCS_BUCKET=asthmaaware-forecasts`.
@@ -231,3 +237,47 @@ tests; the first newly available NASA initialization will exercise the full
 scheduled dispatch path. An unchanged-run success means only that the check
 completed, not that a new forecast was published. Use the publication issue time
 and freshness monitoring to assess data age.
+
+## Surface-NO2 release, 2026-11-24 UTC
+
+GitHub main `269c546` (PR #43) was merged with the cloud-release controls on
+`backend/no2-cloud-release`. The final serving/producer images are
+`integration-api:no2-20261124-v2` and `integration-ml:no2-20261124-v2`, built from
+source commit `dc18a72`. API revision `asthmaaware-api-00010-6hl` serves the new
+artifact format while retaining O3-only compatibility. Frontend source matches
+the already deployed web build, so the static site does not need rebuilding.
+
+The pinned model files are O3 `9444d777...` and surface NO2 `92c80408...` under
+`models/checkpoints/o3-no2-9444d777-92c80408/`. The reference object is
+`reference/392bcd9ad4365b3cf4ed6745f3c005f3bb904cc1e68ed2fda7517644ff4e2d16.npz`.
+Its preprocessing is
+`surface-o3-no2-unet-001deg-v1:d0153397f12828d3fb5e035e76c6c8cf61d7a0a2778da0a3a37458ecebd269d8`.
+The same explicit experimental historical lead of 0.5 hours is used for
+reference and history; actual forecast hours retain their real leads.
+
+Controlled activation `asthmaaware-no2-activation-sjgff` succeeded in 10m53s.
+It reused immutable source publication `84a879cd-e238-4398-b057-1d05c23dac83`,
+NASA initialization `20261123_09z`, and produced combined-model publication
+`22d4ea0a-d65c-4323-a759-295cc4124c6e`. Range-based checks verified the matching
+forecast/history pipeline and reference IDs. Analysis trends advanced through
+2026-11-24 09:00 UTC. No initialization timestamp was relabeled as publication time.
+
+Verification performed during this rollout:
+
+- 73 targeted offline tests passed for inference, model selection, artifacts,
+  maps, GCS publication, time handling and scheduler guards.
+- After finding repeated legacy-history downloads in hosted personal requests,
+  28 focused GCS/scheduler tests passed with the metadata-selection fix. These
+  overlap the earlier test selection and are not an additional full suite.
+- Both real checkpoints successfully inferred two hours from the retained NASA
+  source, with correct ppb units and 420x408 grids.
+- Hosted checks passed routes, anonymous history rejection, four dashboard days,
+  matching risk/map cells, learned NO2 cell/PNG and 0-20 ppb scale, trends, and
+  dedicated-account private/personal reads.
+- No disposable-database reset/integration suite was run; no schema migration
+  was required. Existing users and symptom records remain in Supabase.
+
+The original API revision `asthmaaware-api-00008-np2` and O3 publication
+`84a879cd-e238-4398-b057-1d05c23dac83` were retained as rollback targets. Restore
+an eligible O3-only publication before routing traffic to the older API, which
+cannot read combined-model artifacts. Do not restore an expired forecast.

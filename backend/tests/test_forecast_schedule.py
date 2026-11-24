@@ -149,7 +149,7 @@ def test_publisher_honors_execution_local_run_date(monkeypatch, requested, execu
     monkeypatch.setattr(gcs_forecast, "get_bucket", lambda name: bucket)
     monkeypatch.setattr(publisher.Settings, "from_env", lambda: SimpleNamespace(forecast_gcs_bucket="test"))
     monkeypatch.setattr(probe, "current_publication", lambda bucket: OLD)
-    monkeypatch.setattr(probe, "ready_run", lambda *args: INIT)
+    monkeypatch.setattr(probe, "ready_run", lambda *args: pytest.fail("Pinned run must not rediscover the moving alias"))
     publish = Mock()
     monkeypatch.setattr(publisher, "_publish", publish)
     monkeypatch.setenv("FORECAST_RUN_DATE", requested)

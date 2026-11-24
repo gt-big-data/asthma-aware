@@ -14,7 +14,7 @@ AsthmaAware helps people with asthma plan outdoor activities by combining air-qu
 
 - **Frontend:** React Native and TypeScript with Expo Router, supporting web and mobile. Maps use MapLibre GL JS through a web iframe or native WebView.
 - **Backend:** Python/FastAPI APIs with Supabase Auth and PostgreSQL for private profiles, symptom logs, and personalization state.
-- **Data and models:** NASA GEOS-CF forecasts and historical analysis feed a four-pollutant risk model. Experimental ozone downscaling uses a residual U-Net; Bayesian regression learns individual symptom-based adjustments.
+- **Data and models:** NASA GEOS-CF forecasts and historical analysis feed a four-pollutant risk model. Experimental ozone and surface-NO2 downscaling use residual U-Nets; Bayesian regression learns individual symptom-based adjustments.
 - **Cloud:** Google Cloud Run hosts the web app, API, and processing jobs. Cloud Scheduler coordinates forecast checks, and private Cloud Storage holds versioned forecast artifacts.
 
 This is a development deployment with experimental models. Scores indicate relative modeled conditions, not the probability of an asthma attack. Forecast coverage currently includes part of Georgia.
