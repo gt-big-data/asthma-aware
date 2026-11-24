@@ -43,6 +43,33 @@ def test_surface_inputs_copy_native_cells_but_preserve_learned_ozone(tmp_path):
         fine.write_surface(source, layers, tmp_path / "bad.nc")
 
 
+def test_surface_no2_changes_exposures_and_versions_calibration(tmp_path):
+    times = pd.date_range("2026-11-18T09:30", periods=2, freq="h")
+    raw = xr.Dataset({name: (("time", "lat", "lon"), np.ones((2, 20, 20)) * (5 if name == "pm25" else 5e-9),
+        {"units": "ug m-3" if name == "pm25" else "mol mol-1"}) for name in fine.CHANNELS},
+        coords={"time": times, "lat": np.arange(30.25, 35.01, .25), "lon": np.arange(-85.5, -80.74, .25)})
+    source = tmp_path / "raw.nc"
+    raw.to_netcdf(source)
+    values = np.broadcast_to(np.arange(408, dtype="float32") / 100 + 2, (2, 420, 408))
+    models = xr.Dataset({
+        "surface_o3_ppb": (("time", "lat", "lon"), np.full_like(values, 30), {"units": "ppb", "checkpoint_sha256": "a"*64}),
+        "surface_no2_ppb": (("time", "lat", "lon"), values, {"units": "ppb", "checkpoint_sha256": "b"*64, "analysis_lead_hours": .5})},
+        coords={"time": times, "lat": LATITUDES, "lon": LONGITUDES}, attrs={"source_sha256": fine.reference_id(source)})
+    layers, output = tmp_path / "models.nc", tmp_path / "fine.nc"
+    models.to_netcdf(layers)
+    fine.write_surface(source, layers, output)
+    with xr.open_dataset(output) as stored:
+        np.testing.assert_allclose(stored.no2, values)
+        np.testing.assert_allclose(stored.pm25, 5)
+        pipeline = stored.attrs["preprocessing"]
+        assert pipeline != PIPELINE and fine.fine_preprocessing(pipeline)
+    models.surface_no2_ppb.attrs["analysis_lead_hours"] = 1.5
+    models.to_netcdf(layers)
+    fine.write_surface(source, layers, output)
+    with xr.open_dataset(output) as stored:
+        assert stored.attrs["preprocessing"] != pipeline
+
+
 @pytest.fixture
 def small_sources(tmp_path, monkeypatch):
     monkeypatch.setattr(fine, "LATITUDES", LATITUDES[:3])
@@ -107,25 +134,27 @@ def test_reference_rejects_forecasts_and_mismatched_checkpoint(small_sources, tm
         fine.build_fine_artifact([changed], reference, tmp_path / "bad.npz", issued_at="2026-11-01", source_run="test", product="forecast")
 
 
-def test_fine_artifact_point_dashboard_and_map_share_individual_cells(tmp_path):
+@pytest.mark.parametrize("pipeline", [PIPELINE, fine.FINE_NO2_PREFIX + "b" * 64])
+def test_fine_artifact_point_dashboard_and_map_share_individual_cells(tmp_path, pipeline):
     from app.services.personalization_model import ReferenceStats, FEATURE_VERSION, MODEL_VERSION
     from app.services.risk_dashboard import risk_dashboard
     from app.services.risk_map import frame_rgba
     E = np.ones((2, 4, 420, 408), dtype="float32") * 10
-    E[:, 0, :, 101] = 30
-    E[:, 0, :, 102] = 60
+    channel = 1 if pipeline.startswith(fine.FINE_NO2_PREFIX) else 0
+    E[:, channel, :, 101] = 30
+    E[:, channel, :, 102] = 60
     ref = ReferenceStats(np.ones(4), np.ones(4), np.zeros(4), np.linspace(0, 1, 10000))
     scores = general_risk(E, ref).score.astype("float32")
     path = tmp_path / "fine.npz"
     fine.save_npz(path, E=E, general_scores=scores, times=pd.date_range("2026-11-18T09:30", periods=2, freq="h").values.astype("datetime64[ns]").astype(np.int64),
         source_rows=np.arange(420), source_columns=np.arange(408), mean=ref.mean, std=ref.std,
-        clean=ref.clean, eta_sorted=ref.eta_sorted, metadata=json.dumps(dict(preprocessing=PIPELINE,
+        clean=ref.clean, eta_sorted=ref.eta_sorted, metadata=json.dumps(dict(preprocessing=pipeline,
             product="forecast", source_run="test", issued_at="2026-11-18T09:00Z", reference_id="test",
             model_version=MODEL_VERSION, feature_version=FEATURE_VERSION, provisional=True, storage="mmap-npz-v1")))
     artifact = RiskArtifact(path)
     assert isinstance(artifact.E, np.memmap)
     left, right = artifact.point(float(LATITUDES[100]), float(LONGITUDES[101])), artifact.point(float(LATITUDES[100]), float(LONGITUDES[102]))
-    assert left[0, 0, 0, 0] != right[0, 0, 0, 0]
+    assert left[0, channel, 0, 0] != right[0, channel, 0, 0]
     dashboard = risk_dashboard(artifact, float(LATITUDES[100]), float(LONGITUDES[101]), datetime(2026, 11, 18, 9, tzinfo=timezone.utc))
     assert dashboard.hourly[0].general_score == round(float(scores[0, 100, 101]))
     rgba = frame_rgba(artifact, 0)

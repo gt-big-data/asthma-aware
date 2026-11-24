@@ -8,6 +8,7 @@ import numpy as np
 from sqlalchemy import select
 
 from app.services.personalization_model import FEATURE_VERSION, MODEL_VERSION, PersonalModel, personal_scores
+from app.services.risk_artifacts import fine_preprocessing
 from app.services.risk_map import COLORS, MapLayer, colorize_frame, encode_png, map_forecast
 from db.models.application import PersonalizationRevision
 from db.repositories.personalization import rebuild_personalization
@@ -24,7 +25,7 @@ def prepare_model(session, user, artifact, settings, now):
         from app.services.gcs_forecast import sync_history
         pipeline = artifact.metadata["preprocessing"]
         archive = sync_history(settings.forecast_gcs_bucket,
-            pipeline=pipeline if pipeline.startswith("surface-o3-unet-") else None)
+            pipeline=pipeline if fine_preprocessing(pipeline) else None)
     return rebuild_personalization(session, user, artifact, archive, now)
 
 

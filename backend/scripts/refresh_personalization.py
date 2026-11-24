@@ -9,6 +9,7 @@ from sqlalchemy import func, select, text
 from app.config import Settings
 from app.services.geos_dashboard import load_run
 from app.services.risk_dashboard import resolve_artifact
+from app.services.risk_artifacts import fine_preprocessing
 from db.repositories.personalization import rebuild_personalization
 from db.session import get_session_factory
 
@@ -29,7 +30,7 @@ def main():
         raise ValueError("Publish a risk artifact with a fixed reference first")
     if settings.forecast_gcs_bucket:
         archive = sync_history(settings.forecast_gcs_bucket,
-            pipeline=artifact.metadata["preprocessing"] if artifact.metadata["preprocessing"].startswith("surface-o3-unet-") else None)
+            pipeline=artifact.metadata["preprocessing"] if fine_preprocessing(artifact.metadata["preprocessing"]) else None)
     for user_id in args.user_id:
         with get_session_factory()() as session, session.begin():
             session.execute(text("SET LOCAL ROLE asthmaaware_api"))

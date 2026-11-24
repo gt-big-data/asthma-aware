@@ -17,19 +17,46 @@ from asthma_aware.source_adapters import source_config as expand_config, Baselin
 TARGETS = {
     "temperature": ("temperature_c", "degC"),
     "dewpoint": ("dewpoint_c", "degC"),
-    "no2": ("tropospheric_no2_column", "mol/m2"),
+    "no2": ("surface_no2_ppb", "ppb"),
     "o3": ("surface_o3_ppb", "ppb"),
 }
 
 
+def checkpoint_path(model_dir: Path, name: str) -> Path:
+    """Prefer the surface NO2 checkpoint without renaming the column checkpoint."""
+    surface = model_dir / "no2_best_surface.pt"
+    return surface if name == "no2" and surface.is_file() else model_dir / f"{name}_best.pt"
+
+
+def checkpoint_target(name, checkpoint):
+    target = (checkpoint["target"], checkpoint["target_units"])
+    allowed = {TARGETS[name]}
+    if name == "no2":
+        allowed.add(("tropospheric_no2_column", "mol/m2"))
+    if checkpoint["source"] != name or target not in allowed:
+        raise ValueError(f"Unexpected checkpoint source, target or units for {name}")
+    return target
+
+
+def surface_sources(model_dir: Path, sources=None):
+    """The historical risk path must use the same selected surface models."""
+    selected = selected_sources(model_dir, sources)
+    names = ["o3"] if "o3" in selected else []
+    if "no2" in selected:
+        checkpoint = torch.load(checkpoint_path(model_dir, "no2"), map_location="cpu", weights_only=True)
+        if checkpoint_target("no2", checkpoint)[0] == "surface_no2_ppb":
+            names.append("no2")
+    return names
+
+
 def selected_sources(model_dir: Path, sources=None):
     names = list(sources) if sources is not None else [
-        name for name in TARGETS if (model_dir / f"{name}_best.pt").is_file()
+        name for name in TARGETS if checkpoint_path(model_dir, name).is_file()
     ]
     if not names or len(set(names)) != len(names) or any(name not in TARGETS for name in names):
         raise ValueError("Select at least one supported, unique model source")
     for name in names:
-        if not (model_dir / f"{name}_best.pt").is_file():
+        if not checkpoint_path(model_dir, name).is_file():
             raise FileNotFoundError(f"Missing checkpoint: {name}_best.pt")
     return names
 
@@ -37,14 +64,15 @@ def selected_sources(model_dir: Path, sources=None):
 def required_variables(model_dir: Path, sources=None):
     required = set()
     for name in selected_sources(model_dir, sources):
-        checkpoint = torch.load(model_dir / f"{name}_best.pt", map_location="cpu", weights_only=True)
+        checkpoint = torch.load(checkpoint_path(model_dir, name), map_location="cpu", weights_only=True)
+        checkpoint_target(name, checkpoint)
         cfg = expand_config(name, checkpoint["source_config"])
         required.update(cfg["predictors"])
         required.update(BaselineBuilder(cfg).variables)
     return required
 
 
-def write_layers(source: Path, model_dir: Path, output: Path, *, sources=None, hours=None) -> None:
+def write_layers(source: Path, model_dir: Path, output: Path, *, sources=None, hours=None, analysis_lead_hours=None) -> None:
     """Write atomically; a failed model must not leave a consumable partial layer."""
     names = selected_sources(model_dir, sources)
     if hours is not None and hours < 1:
@@ -52,13 +80,13 @@ def write_layers(source: Path, model_dir: Path, output: Path, *, sources=None, h
     output.parent.mkdir(parents=True, exist_ok=True)
     pending = output.with_name(f".{output.name}.{uuid4()}.tmp")
     try:
-        _write_layers(source, model_dir, pending, names, hours)
+        _write_layers(source, model_dir, pending, names, hours, analysis_lead_hours)
         pending.replace(output)
     finally:
         pending.unlink(missing_ok=True)
 
 
-def _write_layers(source, model_dir, output, names, hours):
+def _write_layers(source, model_dir, output, names, hours, analysis_lead_hours):
     with xr.open_dataset(source) as data, netCDF4.Dataset(output, "w") as result:
         # Inference only opens the downloaded NetCDF. Training labels are unnecessary.
         class ForecastReader:
@@ -87,15 +115,21 @@ def _write_layers(source, model_dir, output, names, hours):
 
         grid = None
         for name in names:
-            target, units = TARGETS[name]
-            checkpoint_path = model_dir / f"{name}_best.pt"
-            with checkpoint_path.open("rb") as handle:
+            path = checkpoint_path(model_dir, name)
+            with path.open("rb") as handle:
                 digest = hashlib.file_digest(handle, "sha256").hexdigest()
                 handle.seek(0)
                 checkpoint = torch.load(handle, map_location="cpu", weights_only=True)
-            if (checkpoint["source"], checkpoint["target"], checkpoint["target_units"]) != (name, target, units):
-                raise ValueError(f"Unexpected checkpoint source, target or units for {name}")
+            target, units = checkpoint_target(name, checkpoint)
             config = SourceModelConfig(**checkpoint["model_config"])
+            if config.time_channels not in (4, 5):
+                raise ValueError("Only four cyclic time features plus optional forecast lead are supported")
+            if config.time_channels == 5 and checkpoint["product"] != "forecast":
+                raise ValueError("Lead-conditioned checkpoints must declare forecast training")
+            if analysis_lead_hours is not None and (not np.isfinite(analysis_lead_hours) or not 0 < analysis_lead_hours < 72):
+                raise ValueError("Analysis lead assumption must be between 0 and 72 hours")
+            if analysis and config.time_channels == 5 and analysis_lead_hours is None:
+                raise ValueError("Forecast-trained checkpoint requires an explicit analysis_lead_hours assumption for historical analysis")
             if tuple(config.target_names) != (target,):
                 raise ValueError(f"Unexpected output channels for {name}")
             source_config = expand_config(name, checkpoint["source_config"])
@@ -142,6 +176,19 @@ def _write_layers(source, model_dir, output, names, hours):
             variable.timing_policy = source_config["timing_policy"]
             variable.forecast_skill_validated = int(checkpoint.get("forecast_skill_validated", False))
             variable.time_representation = "center of hourly interval"
+            if config.time_channels == 5:
+                variable.lead_feature_scale_hours = 72
+                variable.analysis_lead_hours = "not-configured" if analysis_lead_hours is None else float(analysis_lead_hours)
+                variable.historical_application = "experimental forecast-model application to analysis; not validated"
+                if not analysis:
+                    if "initialization_time" not in data.attrs:
+                        raise ValueError("Lead-conditioned inference requires forecast initialization_time")
+                    initialization = issued_at.tz_convert("UTC").tz_localize(None) if issued_at.tzinfo else issued_at
+                    leads = (times - initialization) / pd.Timedelta(hours=1)
+                    if not np.isfinite(leads).all() or np.any(leads <= 0):
+                        raise ValueError("Forecast valid times must follow initialization_time")
+                    variable.max_forecast_lead_hours = float(max(leads))
+                    variable.lead_extrapolation_beyond_72h = int(max(leads) >= 72)
             missing_cells = 0
             missing_hours = 0
             for index, valid_at in enumerate(times):
@@ -155,15 +202,19 @@ def _write_layers(source, model_dir, output, names, hours):
                 )
                 inputs = (inputs - means[:, None, None]) / stds[:, None, None]
                 baseline = (baseline - norm["target_mean"]) / norm["target_std"]
-                # Ozone station labels name the hour's start; NASA names its center.
+                # Station labels name the hour's start; NASA names its center.
                 feature_time = valid_at
                 if source_config["timing_policy"] == "hour_start_label_to_geos_center":
                     feature_time -= pd.Timedelta(minutes=30)
+                features = time_features(feature_time)
+                if config.time_channels == 5:
+                    lead = analysis_lead_hours if analysis else float(leads[index])
+                    features = np.append(features, np.float32(lead / 72)).astype(np.float32)
                 with torch.inference_mode():
                     prediction = model(
                         torch.from_numpy(inputs[None]),
                         baseline=torch.from_numpy(baseline[None]),
-                        time_features=torch.from_numpy(time_features(feature_time)[None]),
+                        time_features=torch.from_numpy(features[None]),
                     )[0, 0].numpy()
                 prediction = prediction * norm["target_std"] + norm["target_mean"]
                 if not np.isfinite(prediction).all():
@@ -203,9 +254,10 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--models", nargs="+", choices=tuple(TARGETS))
     parser.add_argument("--hours", type=int, help="Limit inference for a smoke test; publisher always writes all hours")
+    parser.add_argument("--analysis-lead-hours", type=float, help="Explicit experimental lead feature when applying forecast-trained models to analysis")
     parser.add_argument("--threads", type=int, default=2)
     args = parser.parse_args()
     if args.threads < 1:
         parser.error("--threads must be positive")
     torch.set_num_threads(args.threads)
-    write_layers(args.input, args.model_dir, args.output, sources=args.models, hours=args.hours)
+    write_layers(args.input, args.model_dir, args.output, sources=args.models, hours=args.hours, analysis_lead_hours=args.analysis_lead_hours)

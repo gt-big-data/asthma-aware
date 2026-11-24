@@ -1,5 +1,6 @@
 """Fine-grid surface inputs and bounded-memory, versioned risk preparation."""
 import json
+import hashlib
 from contextlib import ExitStack
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -13,12 +14,12 @@ import xarray as xr
 from app.services.personalization_model import FEATURE_VERSION, MODEL_VERSION, ReferenceStats, exposure, general_risk
 from app.services.risk_artifacts import (
     CHANNELS, LATITUDES, LONGITUDES, FINE_PREFIX, grid_mapping, read_surface,
-    reference_id, load_reference, supported_preprocessing,
+    reference_id, load_reference, supported_preprocessing, fine_preprocessing, FINE_NO2_PREFIX,
 )
 
 
 def write_surface(source: Path, layers: Path, output: Path):
-    """O3 is learned surface ppb; the other surface pollutants use native cell values."""
+    """Use learned surface ppb when selected; never use NO2 column for risk."""
     raw = read_surface(source)
     with xr.open_dataset(source) as opened:
         product = opened.attrs.get("product", "forecast")
@@ -38,13 +39,24 @@ def write_surface(source: Path, layers: Path, output: Path):
             pipeline = FINE_PREFIX + digest
             if not supported_preprocessing(pipeline):
                 raise ValueError("Invalid O3 checkpoint identity")
+            learned_no2 = "surface_no2_ppb" in models
+            if learned_no2:
+                no2 = models.surface_no2_ppb
+                if no2.attrs.get("units") != "ppb" or no2.dims != ("time", "lat", "lon"):
+                    raise ValueError("Risk requires surface NO2 on the model grid in ppb")
+                no2_digest = no2.attrs.get("checkpoint_sha256", "")
+                if not supported_preprocessing(FINE_PREFIX + no2_digest):
+                    raise ValueError("Invalid NO2 checkpoint identity")
+                identity = {"o3": digest, "no2": no2_digest,
+                            "analysis_lead_hours": str(no2.attrs.get("analysis_lead_hours", "not-required"))}
+                pipeline = FINE_NO2_PREFIX + hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
             result.preprocessing = pipeline
             result.product = product
             result.experimental = 1
             result.forecast_skill_validated = 0
             result.source_sha256 = reference_id(source)
             result.layer_sha256 = reference_id(layers)
-            result.risk_inputs = json.dumps({"o3": "surface_o3_ppb", "no2": "native-surface-nearest",
+            result.risk_inputs = json.dumps({"o3": "surface_o3_ppb", "no2": "surface_no2_ppb" if learned_no2 else "native-surface-nearest",
                 "so2": "native-surface-nearest", "pm25": "native-surface-nearest"})
             result.createDimension("time", len(raw.time))
             result.createDimension("lat", len(LATITUDES))
@@ -60,7 +72,8 @@ def write_surface(source: Path, layers: Path, output: Path):
                     zlib=True, complevel=2, chunksizes=(1, min(8, len(LATITUDES)), len(LONGITUDES)), fill_value=np.float32(np.nan))
                 var.units = "ug m-3" if channel == "pm25" else "ppb"
                 for hour in range(len(raw.time)):
-                    values = (models.surface_o3_ppb.isel(time=hour).values if channel == "o3"
+                    model_name = {"o3": "surface_o3_ppb", "no2": "surface_no2_ppb"}.get(channel)
+                    values = (models[model_name].isel(time=hour).values if model_name is not None and model_name in models
                               else raw[channel].values[hour][np.ix_(rows, columns)])
                     var[hour] = np.where(np.isfinite(values) & (values >= 0), values, np.nan)
         pending.replace(output)
@@ -78,7 +91,7 @@ class FineSources:
             if not self.datasets:
                 raise ValueError("At least one fine surface input is required")
             self.pipeline = self.datasets[0].attrs["preprocessing"]
-            if not self.pipeline.startswith(FINE_PREFIX) or not supported_preprocessing(self.pipeline):
+            if not fine_preprocessing(self.pipeline):
                 raise ValueError("Expected model-driven fine surface inputs")
             lookup = {}
             for i, data in enumerate(self.datasets):

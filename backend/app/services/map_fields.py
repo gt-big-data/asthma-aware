@@ -52,9 +52,9 @@ def write_map_fields(source: Path, layers: Path | None, output: Path):
                 else:
                     coordinate[:] = values
             fields = {name: (raw[name], False) for name in ("o3", "no2", "so2", "pm25")}
-            for name, model_name in (("o3", "surface_o3_ppb"), ("temperature", "temperature_c")):
+            for name, model_name in (("o3", "surface_o3_ppb"), ("no2", "surface_no2_ppb"), ("temperature", "temperature_c")):
                 if models is not None and model_name in models:
-                    expected = "ppb" if name == "o3" else "degC"
+                    expected = "degC" if name == "temperature" else "ppb"
                     if models[model_name].attrs.get("units") != expected:
                         raise ValueError(f"Wrong model units for {name}")
                     fields[name] = (models[model_name], True)
@@ -112,6 +112,10 @@ class MapFields:
                 fine = data[name].dims == ("time", "lat", "lon")
                 if not fine and data[name].dims != ("time", "source_lat", "source_lon"):
                     raise ValueError("Invalid map field dimensions")
+                # Keep one scale across hours; the learned surface model exceeds
+                # the old native-NASA 10 ppb display cap around Atlanta.
+                if name == "no2" and fine:
+                    high = 20
                 self.layers[name] = dict(id=name, label=label, unit=unit, minimum=low, maximum=high,
                     colors=["#3155a4", "#5ab6c9", "#f1df88", "#eaa05e", "#b84c50"] if name == "temperature" else POLLUTION_COLORS,
                     description="Hourly temperature" if name == "temperature" else "Hourly concentration · not AQI",
