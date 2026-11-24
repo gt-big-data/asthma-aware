@@ -16,6 +16,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pipeline", required=True)
     parser.add_argument("--reference-sha", required=True)
+    parser.add_argument("--require-history-tag", action="store_true")
     parser.add_argument("--bucket", default="asthmaaware-forecasts")
     parser.add_argument("--account", default="asthmaaware26@gmail.com")
     parser.add_argument("--project", default="asthma-aware")
@@ -27,7 +28,11 @@ def main():
     publication = str(UUID(pointer["publication_id"]))
     forecast = json.loads(bucket.blob(f"published/{publication}/forecast.json").download_as_bytes(timeout=10))
     for prefix, product in (("published", "forecast"), ("history", "analysis")):
-        with bucket.blob(f"{prefix}/{publication}/risk.npz").open("rb", chunk_size=256 * 1024) as remote:
+        blob = bucket.blob(f"{prefix}/{publication}/risk.npz")
+        if prefix == "history" and args.require_history_tag:
+            blob.reload(timeout=10)
+            assert (blob.metadata or {}).get("preprocessing") == args.pipeline
+        with blob.open("rb", chunk_size=256 * 1024) as remote:
             with ZipFile(remote) as archive:
                 metadata = json.loads(str(np.load(io.BytesIO(archive.read("metadata.npy")), allow_pickle=False)))
         assert metadata["preprocessing"] == args.pipeline, prefix

@@ -289,3 +289,20 @@ The original API revision `asthmaaware-api-00008-np2` and O3 publication
 `84a879cd-e238-4398-b057-1d05c23dac83` were retained as rollback targets. Restore
 an eligible O3-only publication before routing traffic to the older API, which
 cannot read combined-model artifacts. Do not restore an expired forecast.
+
+Post-rollout operational checks:
+
+- Availability schedule was resumed with `15 17-23 * * *` UTC. Freshness
+  execution `asthmaaware-freshness-xt9q6` succeeded. The temporary activation job
+  was removed after its successful completion.
+- The restored checker dispatched `20261124_09z`. Execution `qs97j` exposed
+  inconsistent latest-alias metadata during redundant discovery; publisher v3
+  now honors the verified date and rechecks only publication newness under lock.
+- Explicit retry `asthmaaware-forecast-cv5qs` validated November 24 batches but
+  failed on an upstream NASA OPeNDAP 502 while downloading the chemistry data.
+  The complete combined-model publication above remained current. This is a
+  data-ingestion availability limitation, not successful publication of Nov 24.
+- At final rollout verification the site served the combined O3/surface-NO2
+  model on the retained November 23 NASA initialization, correctly marked stale.
+  Later scheduled checks can publish a newer initialization without redeploying
+  the API or models. No missing fields were filled and no dates were relabeled.
