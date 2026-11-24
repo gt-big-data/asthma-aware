@@ -241,9 +241,10 @@ and freshness monitoring to assess data age.
 ## Surface-NO2 release, 2026-11-24 UTC
 
 GitHub main `269c546` (PR #43) was merged with the cloud-release controls on
-`backend/no2-cloud-release`. The final serving/producer images are
-`integration-api:no2-20261124-v2` and `integration-ml:no2-20261124-v2`, built from
-source commit `dc18a72`. API revision `asthmaaware-api-00010-6hl` serves the new
+`backend/no2-cloud-release`. The serving API image is
+`integration-api:no2-20261124-v2` (source `dc18a72`); the publisher image is
+`integration-ml:no2-20261124-v3` (source `77c0328`). API revision
+`asthmaaware-api-00010-6hl` serves the new
 artifact format while retaining O3-only compatibility. Frontend source matches
 the already deployed web build, so the static site does not need rebuilding.
 
@@ -274,6 +275,13 @@ Verification performed during this rollout:
 - Hosted checks passed routes, anonymous history rejection, four dashboard days,
   matching risk/map cells, learned NO2 cell/PNG and 0-20 ppb scale, trends, and
   dedicated-account private/personal reads.
+- After the history selection fix, the first dedicated-account personal
+  dashboard read took 6.561s; warm dashboard/map metadata reads took 0.503s and
+  0.631s. These are observed smoke timings, not a latency guarantee.
+- 38 focused tests passed after fixing the production publisher to honor the
+  checker's execution-local date without rediscovering a moving latest alias.
+  The newer-publication check still runs under the lease, and actual downloads
+  still validate the selected run's complete timestamps and required variables.
 - No disposable-database reset/integration suite was run; no schema migration
   was required. Existing users and symptom records remain in Supabase.
 
