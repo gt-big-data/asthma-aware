@@ -540,6 +540,8 @@ def build_metadata(
     valid_times = [pd.Timestamp(t).isoformat() + "Z" for t in ds["time"].values]
     return {
         "source": SOURCE,
+        "product": "forecast",
+        "hours": len(valid_times),
         "source_version": SOURCE_VERSION,
         "source_urls": [collection_url(c, run_id) for c in COLLECTIONS],
         "forecast_run": run_id,
@@ -551,7 +553,7 @@ def build_metadata(
         "valid_time_start": valid_times[0],
         "valid_time_end": valid_times[-1],
         "valid_times": valid_times,
-        "time_convention": "hourly means stamped at the center of the hour (init+0.5h, init+1.5h, ...)",
+        "time_convention": "hourly means stamped at the center of the hour",
         "native_spatial_resolution": NATIVE_SPATIAL_RESOLUTION,
         "region": area.name,
         "region_bbox": area.bbox,

@@ -68,8 +68,10 @@ and application-default credentials apply. No new API service is required.
 With O3 selected and a matching fixed reference, the publisher now calculates
 individual 0.01° exposures and scores. It prepares the same inputs for historical
 analysis, then builds forecast and historical risk artifacts in spatial strips.
-PM2.5, surface NO2, and SO2 use the value of the native cell containing each fine
-cell center. O3 uses the learned surface-ppb output. Temperature, dew point, and
+PM2.5 and SO2 use the value of the native cell containing each fine cell center.
+Surface NO2 also does so unless the new `no2_best_surface.pt` is selected; see
+[surface NO2](no2-surface-downscaling.md) for lead/history requirements and the
+new reference required for activation. O3 uses the learned surface-ppb output. Temperature, dew point, and
 tropospheric NO2 column are published as supporting layers when their checkpoints
 are selected; the four-pollutant risk formula does not consume those quantities.
 Column NO2 must never be substituted directly for surface NO2.
@@ -78,9 +80,9 @@ Initial setup, from `backend/` (substitute current dates):
 
 ```powershell
 python -m scripts.fetch_model_analysis --start 2026-11-09T03:00Z --end 2026-11-18T09:00Z
-python -m scripts.prepare_fine_risk --input data/geos_cf/geos_cf_analysis_georgia_20261109-20261118_risk_models.nc --model-dir ../models/checkpoints --reference-output data/risk/reference-fine-o3-v1.npz --provisional
+python -m scripts.prepare_fine_risk --input data/geos_cf/geos_cf_analysis_georgia_20261109-20261118_risk_models.nc --model-dir ../models/checkpoints --models o3 --reference-output data/risk/reference-fine-o3-v1.npz --provisional
 python -m alembic upgrade head
-python -m scripts.publish_dashboard_forecast --model-dir ../models/checkpoints --reference data/risk/reference-fine-o3-v1.npz --history data/geos_cf/geos_cf_analysis_georgia_20261109-20261118_risk_models.nc
+python -m scripts.publish_dashboard_forecast --model-dir ../models/checkpoints --models o3 --reference data/risk/reference-fine-o3-v1.npz --history data/geos_cf/geos_cf_analysis_georgia_20261109-20261118_risk_models.nc
 ```
 
 Keep this reference fixed between scheduled runs. Set `DOWNSCALE_MODEL_DIR` and

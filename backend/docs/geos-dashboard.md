@@ -96,16 +96,20 @@ preparation as training. It uses the checkpoint's feature order and scaler,
 the checkpoint's UTC timing policy, and the aligned coarse baseline. Missing
 predictors are fetched in batches from the same pinned NASA initialization.
 Supported layers are temperature and dew point in °C,
-tropospheric NO₂ column in mol/m², and surface O₃ in ppb. Omit `--models` to
+surface NO₂ and O₃ in ppb, plus legacy tropospheric NO₂ column in mol/m².
+The new surface NO₂ file is preferred when present. See
+[surface NO₂ integration](no2-surface-downscaling.md) before activating it:
+historical use requires an explicit lead assumption and a matching reference.
+Omit `--models` to
 select all supported checkpoints present. The grid is the checkpoints' native
 420 × 408 at 0.01° in EPSG:4326. Each variable records its checkpoint SHA-256,
 training data signature, epoch, and input order.
 
 Hourly fields are preserved for later scoring and map queries. A physically
-invalid negative NO₂ column or O₃ concentration remains missing. Missing model inputs or non-finite
+invalid negative NO₂ column or surface NO₂/O₃ concentration remains missing. Missing model inputs or non-finite
 inference output fail the optional publication before advancing the dashboard
-forecast. The layers are marked experimental because the checkpoints were
-trained on analysis and forecast skill has yet to be validated. The dashboard
+forecast. The layers are marked experimental; the surface NO₂ model was trained
+on forecasts, the other models on analysis, and forecast skill has yet to be validated. The dashboard
 uses native surface pollutant inputs when no O₃ checkpoint is selected.
 Selecting O₃ with a matching calibrated reference activates individual 0.01°
 exposures and scores for the dashboard and map. See [O3 downscaling](o3-downscaling.md)

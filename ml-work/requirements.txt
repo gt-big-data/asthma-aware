@@ -15,5 +15,5 @@ xarray>=2024.1
 h5netcdf>=1.3
 h5py>=3.8
 
-# Download missing satellite labels from Hugging Face
+# Download missing labels and GEOS forecast collections from Hugging Face
 huggingface_hub>=0.23

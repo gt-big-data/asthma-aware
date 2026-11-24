@@ -440,3 +440,159 @@ pass counts. No-pass dates use the exact 12:30 UTC GEOS center, recorded as
 `assumed_noon_interval` with `timing_fallback_reason=no_satellite_pass`.
 Observation masks remain enforced: entirely filled bands cannot supervise training.
 Rebuild preparation and normalization after this timing change.
+
+### Surface O3 station model (current configuration)
+
+`o3` now uses `o3_station_hour_labels_2023.parquet`, replacing satellite total-column
+supervision. Required fields are station_id, target_time_utc, o3_ppb, o3_valid,
+o3_latitude, and o3_longitude. A label at t averages [t, t+1 hour); it matches only
+the GEOS hourly-mean record at t+30 minutes. Missing exact intervals are skipped.
+The GEOS `o3` mol/mol baseline is multiplied by 1e9 to obtain ppb. The model predicts
+a full map, with loss evaluated only at valid, in-bounds station positions. Target
+and baseline share training-only normalization. Validation RMSE is in ppb.
+No O3 satellite TIFF, mask, Hub download, or total-column baseline is used.
+Rebuild preparation and normalization before training; old column-O3 checkpoints
+are incompatible. Historical satellite O3 instructions above no longer apply.
+
+### Configurable source components
+
+`source_adapters.py` separates `RasterLabels` / `StationTableLabels`, `TimeMatcher`,
+and `BaselineBuilder`. `build_catalog` and `SourceDataset` dispatch on configuration,
+not pollutant names. Existing compact source configs are expanded by a compatibility
+resolver; `data_config.json` now declares these choices explicitly.
+
+For a new source, configure `label_type` (`raster` or `station_table`), `target_name`,
+`target_units`, `label_units`, `predictors`, `timing_policy`, and `baseline`. Station
+sources also specify `columns` mapping value/valid/latitude/longitude; station ID
+and time keys remain `station_id` and `target_time_utc`. Raster sources retain the
+original-observation mask requirement. Matching strategies retain the existing
+NO2 pass-midpoint/noon fallback, O3 interval, and meteorological interpolation rules.
+
+Baseline methods are `column` (unit-aware column conversion), `scaled_variable`
+(variable, input_units, scale, offset), and `dewpoint`. Station labels must already
+use target units; raster labels support identical units or supported column-unit
+conversions. New physical derivations require extending the baseline builder.
+Any configured source name can be passed to `train_model --sources`; model target
+names come from the readiness report. Hub fallback works for any configured source.
+
+Rebuild prepared indexes and normalization after migrating configuration: their
+signatures include the explicit adapter configuration. The tensor contracts, masks,
+chronological splitting, and training loss remain unchanged.
+
+### Forecast training, 0–72 hours
+
+Use `backend/ingestion/geos_cf/fetch_forecast_history.py` to inventory or download
+historical runs. Pass an existing analysis NetCDF as `--reference`: only its grid
+and selected timestamps are used, never its field values. The downloader defaults
+to **GEOS-CF v1**, independently of the reference's model version; use
+`--model-version v2` to request v2 explicitly. It includes earlier initializations
+and stores one file per run. `--hours` selects 1–72 hourly intervals (default 72);
+use `--hours 24 --output data/geos_cf/forecasts_2023_24h` for first-day forecasts.
+The shorter horizon also reduces the number of earlier initializations planned.
+v1 uses 12Z; v2 uses 09Z.
+Missing collections,
+units, or hours block that run and are recorded in the manifest. Inventory is the
+default; add `--download` to fetch. `--max-runs` is for smoke checks and marks coverage
+as incomplete. Rerunning resumes compatible completed files.
+
+Downloads upload each regional run and its metadata to the Hugging Face dataset
+`ShreyD06/AsthmaAware` by default, under `geos_cf/OUTPUT_DIRECTORY_NAME/`.
+Authenticate with `hf auth login` or `HF_TOKEN` (write access is required).
+Add `--delete-after-upload` to remove the local run only after remote checksum
+verification; reruns skip verified remote runs. Upload failures retain local
+files and stop further fetching. Use `--no-upload` for local-only downloads.
+See the [ingestion README](../backend/ingestion/geos_cf/README.md#historical-v1-forecasts-fetch_forecast_historypy)
+for storage options and download commands. Preparation automatically resolves
+missing local forecast manifests or runs from the configured Hub dataset. A
+manifest entry can remain a local path string, or declare a fallback:
+
+```json
+"geos_manifest": {
+  "path": "../backend/data/geos_cf/forecasts_2023_24h/manifest.json",
+  "huggingface": {
+    "repo_id": "ShreyD06/AsthmaAware",
+    "prefix": "geos_cf/forecasts_2023_24h",
+    "revision": "bc9ecf2b938b3022e27f85b979984bbf2fd1aff0"
+  }
+}
+```
+
+Entries in `geos_manifests` support the same format, independently per collection.
+A complete local collection is used without Hub access. On fallback, preparation
+downloads the remote manifest and its NetCDF/metadata pairs into the standard
+Hugging Face cache (`HF_HUB_CACHE` can change its location). Existing partial local
+run/metadata pairs are reused when their checksums match the remote manifest.
+Branch names such as `main` are resolved once to a commit before downloading;
+the resolved manifest path and revision are saved in `prepared.json` under
+`config.geos_resolved_manifests`. No local inputs are overwritten. A local
+manifest's `huggingface` metadata can also supply the fallback settings when an
+entry is a plain path. Downloads require `huggingface_hub` and dataset access;
+private datasets use the standard `HF_TOKEN`/Hub login. Cached files can be reused
+offline with an explicit commit revision. Missing downloads stop preparation
+with the repository and access/network error, before any training is attempted.
+
+Example from backend/ (replace REFERENCE.nc with the appropriate analysis path):
+
+```sh
+python -m ingestion.geos_cf.fetch_forecast_history --model-version v1 --reference REFERENCE.nc --output data/geos_cf/forecasts_2023
+python -m ingestion.geos_cf.fetch_forecast_history --model-version v1 --reference REFERENCE.nc --output data/geos_cf/forecasts_2023 --download
+```
+
+For v2 with the 2025–2026 reference, pass `--model-version v2` and use output
+`data/geos_cf/forecasts_2025_2026`.
+The default variables are surface `no2`, `o3`, `air_temperature`, `specific_humidity`,
+`surface_pressure`, and `pbl_height`. NO₂ and O₃ remain in dry-air mol/mol; multiply
+by 1e9 when comparing with ppb station labels. `tropcol_no2` is **not requested by
+default**, so missing XGC files no longer block surface downloads. `--variables`
+can request other supported fields (including the optional column) or a smaller set.
+v1 PM10 requests are rejected because that version does not provide PM10.
+Public archive retention is
+collection-dependent: a historical AQC directory does not imply MET/XGC availability.
+The downloader also checks NASA's separate v1 tar archive for MET and surface
+chemistry (CHM can supply NO₂/O₃ when AQC is unavailable). If the portal listing
+fails, it still tries these tar files. No analysis fallback is allowed.
+
+Where supported, HTTP range requests transfer regional subsets. NASA's archive
+media server can ignore range requests; in that case the downloader streams the
+tar in order, buffers one NetCDF member at a time, and stops once all requested
+hours are found. It does not save the global tar, but bandwidth can still reach
+several GB per run. Inventory does not download archive contents.
+
+From ml-work/ (missing forecast files download automatically):
+
+```sh
+python -m asthma_aware.prepare_data --config data_config.forecast.json --output prepared_forecast --fit-normalization
+python -m asthma_aware.train_model --prepared prepared_forecast --checkpoints checkpoints_forecast --sources temperature dewpoint o3 no2 --epochs 1
+```
+
+`data_config.forecast.json` uses the uploaded 2023 24-hour collection, pinned to
+the revision above (all current labels are 2023).
+`data_config.forecast_all_dates.json` uses the same 2023 fallback and additionally
+requires the 2025–2026 local manifest; configure a fallback on that entry if those
+forecasts are uploaded later.
+Use a separate output/Hub folder for each horizon; existing 72-hour artifacts
+are not converted to 24-hour files. The loader accepts the shorter horizon and
+retains the existing lead/72 feature scaling. Evaluation buckets beyond 24 hours
+will have no observations; this dataset supervises first-day forecasts only.
+Both forecast configurations use `no2_station_hour_labels_2023.parquet` for
+surface NO₂ supervision. Required columns are `station_id`, `target_time_utc`,
+`no2_ppb`, `no2_valid`, `no2_latitude`, and `no2_longitude`. A label at t represents
+the hourly interval [t, t+1 hour) and matches the GEOS mean centered at t+30 minutes.
+The baseline is surface `no2` in mol/mol multiplied by 1e9 to obtain ppb; the
+target is `surface_no2_ppb`. Only valid, in-bounds station observations contribute
+to the loss. Satellite TIFFs, observation masks, and `tropcol_no2` are no longer
+required by these forecast configurations. Rebuild prepared indexes and
+training-only normalization, and train fresh surface-NO₂ checkpoints. The
+separate analysis configuration, `data_config.json`, retains its column target.
+Incomplete manifests block preparation unless `allow_partial_forecasts` is explicitly
+true; even then an empty manifest fails. Analysis configs remain usable separately.
+
+Forecast records retain run, initialization, version, valid time, and lead hours.
+Reference timestamps restrict the chosen valid-time coverage; overlapping runs
+remain separate samples. Station interpolation cannot cross runs. Lead/72 is a
+fifth time feature, and checkpoint architecture records this. All samples for an
+observation date share one split, including raster dates matched near midnight.
+Validation prints observation-weighted RMSE for 0–24, 24–48, and 48–72 hour leads;
+empty buckets are reported as None. Initialization is not publication time:
+availability remains unknown unless supplied, so this is not an availability-aware
+operational backtest. Forecast and analysis checkpoints are not interchangeable.

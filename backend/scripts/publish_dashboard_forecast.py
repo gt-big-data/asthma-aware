@@ -72,6 +72,7 @@ def main():
     parser.add_argument("--output", type=Path, default=Path("data/dashboard/current.json"))
     parser.add_argument("--reference", type=Path, default=os.getenv("RISK_REFERENCE_PATH") or None, help="Fixed historical reference NPZ")
     parser.add_argument("--history", type=Path, nargs="+", help="NASA analysis files covering preceding hours")
+    parser.add_argument("--trends-input", type=Path, help="Reuse downloaded historical analysis for the seven-day trends refresh")
     parser.add_argument("--model-dir", type=Path, default=os.getenv("DOWNSCALE_MODEL_DIR") or None,
                         help="Generate model layers; defaults to DOWNSCALE_MODEL_DIR")
     parser.add_argument("--model-prefix", default=os.getenv("MODEL_GCS_PREFIX"), help="Versioned GCS checkpoint prefix; verifies the pinned manifest")
@@ -81,6 +82,7 @@ def main():
     parser.add_argument("--only-newer", action="store_true", help="Skip unchanged/unready runs before downloading models or forecast fields")
     parser.add_argument("--run-date", type=date.fromisoformat, default=os.getenv("FORECAST_RUN_DATE") or None,
                         help="Pin downloads to this date's 09 UTC initialization; never fall back")
+    parser.add_argument("--analysis-lead-hours", type=float, help="Explicit experimental lead assumption for forecast-trained models applied to history")
     args = parser.parse_args()
     if args.models and args.model_dir is None:
         parser.error("--models requires --model-dir")
@@ -145,9 +147,10 @@ def _publish(args):
         if args.model_dir is not None:
             from scripts.prepare_fine_risk import prepare_layers
             layers = Path(temporary) / "downscaled.nc"
-            shutil.copyfile(prepare_layers(source, args.model_dir, args.models), layers)
+            shutil.copyfile(prepare_layers(source, args.model_dir, args.models, analysis_lead_hours=args.analysis_lead_hours), layers)
             if fine_active:
                 from app.services.fine_risk import write_surface
+                logging.getLogger(__name__).info("Preparing learned fine-grid surface inputs")
                 risk_source = write_surface(source, layers, Path(temporary) / "surface.nc")
         risk = None
         history_artifact = None
@@ -172,14 +175,16 @@ def _publish(args):
             if fine_active:
                 from scripts.prepare_fine_risk import prepare
                 from app.services.fine_risk import build_fine_artifact
-                history = [prepare(path, args.model_dir) for path in history]
+                history = [prepare(path, args.model_dir, sources=args.models, analysis_lead_hours=args.analysis_lead_hours) for path in history]
                 build_artifact = build_fine_artifact
             risk = Path(temporary) / "risk.npz"
+            logging.getLogger(__name__).info("Building forecast risk with matching history and reference")
             build_artifact(
                 [*history, risk_source], reference, risk,
                 issued_at=forecast.issued_at.isoformat(), source_run=forecast.source_run, product="forecast",
             )
             history_artifact = Path(temporary) / "history.npz"
+            logging.getLogger(__name__).info("Building historical exposure artifact for personalization")
             build_artifact(
                 history, reference, history_artifact,
                 issued_at=forecast.issued_at.isoformat(), source_run="historical-analysis", product="analysis",
@@ -190,6 +195,7 @@ def _publish(args):
         map_fields = None
         if risk is not None:
             from app.services.map_fields import write_map_fields
+            logging.getLogger(__name__).info("Preparing dashboard/map physical fields")
             map_fields = Path(temporary) / "map-fields.nc"
             map_digest = write_map_fields(source, layers, map_fields)
             forecast = forecast.model_copy(update={"map_artifact": f"map-fields-{uuid4()}.nc", "map_artifact_sha256": map_digest})
@@ -218,7 +224,7 @@ def _publish(args):
     # to the forecast initialization or the ML/risk artifact's history window.
     try:
         from scripts.publish_environmental_trends import publish_latest
-        analysis = publish_latest()
+        analysis = publish_latest(source=args.trends_input)
         print(f"Environmental trends analysis through {analysis.observed_through.isoformat()}")
     except Exception:
         logging.getLogger(__name__).exception("Environmental trends refresh failed; kept the last published analysis")

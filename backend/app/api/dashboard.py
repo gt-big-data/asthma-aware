@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from app.models.dashboard_models import DashboardResponse
 from app.services import dashboard_service, geos_dashboard
+from app.services.risk_artifacts import fine_preprocessing
 
 router = APIRouter(tags=["Dashboard"])
 
@@ -101,7 +102,7 @@ def get_personal_risk(
             if settings.forecast_gcs_bucket:
                 from app.services.gcs_forecast import sync_history
                 archive_dir = sync_history(settings.forecast_gcs_bucket,
-                    pipeline=artifact.metadata["preprocessing"] if artifact.metadata["preprocessing"].startswith("surface-o3-unet-") else None)
+                    pipeline=artifact.metadata["preprocessing"] if fine_preprocessing(artifact.metadata["preprocessing"]) else None)
             # Reject unavailable locations and expired forecasts before writing derived state.
             risk_dashboard(artifact, lat, lon, now)
             model, revision, pending = rebuild_personalization(session, user, artifact, archive_dir, now)

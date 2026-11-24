@@ -51,6 +51,12 @@ Copy-Item .env.example .env
 python -m uvicorn app.main:app --reload
 ```
 
+On Windows, `./start-local.ps1` starts the API from this checkout, sets the local
+ML import path, and finds either this checkout's `.venv` or the shared main
+checkout's `.venv`. Keep an ignored `backend/.env` in the checkout being served.
+This matters when testing an integration worktree: starting from another checkout
+can serve older code and a different forecast publication. Stop with Ctrl+C.
+
 `GET /dashboard?lat=33.749&lon=-84.388` is the existing route. It returns 503
 unless demo mode is enabled. Demo responses carry
 `X-AsthmaAware-Data-Source: demo`. No user authentication or live forecast

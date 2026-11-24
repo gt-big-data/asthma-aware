@@ -78,8 +78,9 @@ def test_concurrent_newer_publication_wins_and_can_be_read(monkeypatch, tmp_path
     artifact.download_as_bytes.assert_called_once()
 
 
-def test_fine_history_sync_bounds_archives_and_filters_preprocessing(monkeypatch, tmp_path):
-    pipeline = "surface-o3-unet-nearest-001deg-v1:" + "a" * 64
+@pytest.mark.parametrize("prefix", ["surface-o3-unet-nearest-001deg-v1:", "surface-o3-no2-unet-001deg-v1:"])
+def test_fine_history_sync_bounds_archives_and_filters_preprocessing(monkeypatch, tmp_path, prefix):
+    pipeline = prefix + "a" * 64
     sources = {}
     blobs = []
     for day, version in [(1, pipeline), (2, pipeline), (3, pipeline), (4, "native")]:
