@@ -66,3 +66,17 @@ def test_downloader_falls_back_without_writing_bad_candidate(remote, monkeypatch
     assert "20261117_09z" in output.name
     assert len(list(tmp_path.glob("*.nc"))) == 1
     assert attempts == [(init, True), (init, False), (init - pd.Timedelta(days=1), False)]
+
+
+def test_pinned_downloader_never_falls_back_to_an_older_initialization(remote, monkeypatch, tmp_path):
+    init, _, _, _ = remote
+    attempts = []
+    def candidate(current, specs, area, *, latest):
+        attempts.append((current, latest))
+        raise nasa.ValidationError("Pinned run is incomplete")
+    monkeypatch.setattr(fetch, "_fetch_chunks", candidate)
+    monkeypatch.setattr(nasa, "_newest_run", lambda: pytest.fail("Pinned date must not be rediscovered"))
+    with pytest.raises(nasa.ForecastUnavailableError):
+        fetch.download(tmp_path, init=init)
+    assert attempts == [(init, True), (init, False)]
+    assert not list(tmp_path.glob("*.nc"))

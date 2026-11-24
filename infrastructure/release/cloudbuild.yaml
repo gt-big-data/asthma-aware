@@ -1,0 +1,13 @@
+steps:
+- name: gcr.io/cloud-builders/docker
+  args: ['pull', 'us-east1-docker.pkg.dev/$PROJECT_ID/asthma-forecast-job/integration-api:${_CACHE_RELEASE}']
+- name: gcr.io/cloud-builders/docker
+  args: ['pull', 'us-east1-docker.pkg.dev/$PROJECT_ID/asthma-forecast-job/integration-ml:${_CACHE_RELEASE}']
+- name: gcr.io/cloud-builders/docker
+  args: ['build', '--cache-from', 'us-east1-docker.pkg.dev/$PROJECT_ID/asthma-forecast-job/integration-api:${_CACHE_RELEASE}', '-f', 'backend/Dockerfile', '-t', 'us-east1-docker.pkg.dev/$PROJECT_ID/asthma-forecast-job/integration-api:${_RELEASE}', 'backend']
+- name: gcr.io/cloud-builders/docker
+  args: ['build', '--cache-from', 'us-east1-docker.pkg.dev/$PROJECT_ID/asthma-forecast-job/integration-ml:${_CACHE_RELEASE}', '-f', 'backend/Dockerfile.ml', '-t', 'us-east1-docker.pkg.dev/$PROJECT_ID/asthma-forecast-job/integration-ml:${_RELEASE}', '.']
+images:
+- us-east1-docker.pkg.dev/$PROJECT_ID/asthma-forecast-job/integration-api:${_RELEASE}
+- us-east1-docker.pkg.dev/$PROJECT_ID/asthma-forecast-job/integration-ml:${_RELEASE}
+timeout: 2400s

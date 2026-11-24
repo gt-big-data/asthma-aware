@@ -46,13 +46,14 @@ def _fetch_chunks(init, specs, area, *, latest):
     return data, url
 
 
-def download(output=Path("data/geos_cf")):
+def download(output=Path("data/geos_cf"), *, init=None):
     area = nasa.region_area("georgia")
     # Discover the newest AQ initialization without requiring unrelated MET/XGC collections.
-    newest = nasa._newest_run()
+    pinned = init is not None
+    newest = pd.Timestamp(init) if pinned else nasa._newest_run()
     specs = [spec for spec in nasa.VARIABLES if spec.name in {"o3", "no2", "so2", "pm25"}]
     output.mkdir(parents=True, exist_ok=True)
-    for offset in range(4):
+    for offset in range(1 if pinned else 4):
         init = newest - pd.Timedelta(days=offset)
         run_id = nasa.run_id_for(init)
         # Dated endpoint metadata can lag the live alias. Its data remain safe to

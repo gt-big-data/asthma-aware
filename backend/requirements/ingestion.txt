@@ -1,9 +1,10 @@
 httpx>=0.27,<1
 numpy>=1.26,<3
 rasterio>=1.3,<2
-xarray
-netCDF4
-pandas
+# These versions are verified against NASA's year-1 time encoding and Zarr v2.
+xarray==2026.7.0
+netCDF4==1.7.5
+pandas==3.0.6
 python-dotenv>=1,<2
 zarr<3  # GEOS-CF analysis cloud copy; zarr 3 requires Python 3.11+
 fsspec

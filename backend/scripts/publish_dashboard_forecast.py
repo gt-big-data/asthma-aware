@@ -3,7 +3,7 @@ import argparse
 import logging
 import os
 import shutil
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from math import isfinite
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -78,14 +78,42 @@ def main():
     parser.add_argument("--models", nargs="+", choices=("temperature", "dewpoint", "no2", "o3"),
                         help="Select checkpoints; defaults to available supported models")
     parser.add_argument("--model-threads", type=int, default=2, help="CPU threads for optional model inference")
+    parser.add_argument("--only-newer", action="store_true", help="Skip unchanged/unready runs before downloading models or forecast fields")
+    parser.add_argument("--run-date", type=date.fromisoformat, default=os.getenv("FORECAST_RUN_DATE") or None,
+                        help="Pin downloads to this date's 09 UTC initialization; never fall back")
     args = parser.parse_args()
     if args.models and args.model_dir is None:
         parser.error("--models requires --model-dir")
     if args.model_threads < 1:
         parser.error("--model-threads must be positive")
+    if args.model_prefix and (args.model_dir is None or not Settings.from_env().forecast_gcs_bucket):
+        parser.error("--model-prefix requires --model-dir and FORECAST_GCS_BUCKET")
+    if args.only_newer:
+        if args.input is not None or not Settings.from_env().forecast_gcs_bucket:
+            parser.error("--only-newer requires GCS and cannot be combined with --input")
+        from app.services.gcs_forecast import get_bucket
+        from app.services.forecast_publication_guard import publication_lease
+        from scripts.check_forecast_update import current_publication, ready_run
+        bucket = get_bucket(Settings.from_env().forecast_gcs_bucket)
+        with publication_lease(bucket) as acquired:
+            if not acquired:
+                print("publisher status=busy")
+                return
+            candidate = ready_run(current_publication(bucket), datetime.now(timezone.utc))
+            if candidate is None:
+                print("publisher status=skipped unchanged-or-not-ready")
+                return
+            if args.run_date is not None and candidate.date() != args.run_date:
+                print("publisher status=skipped requested-run-no-longer-latest")
+                return
+            args.run_date = candidate.date()
+            _publish(args)
+    else:
+        _publish(args)
+
+
+def _publish(args):
     if args.model_prefix:
-        if args.model_dir is None or not Settings.from_env().forecast_gcs_bucket:
-            parser.error("--model-prefix requires --model-dir and FORECAST_GCS_BUCKET")
         from scripts.fetch_checkpoints import download as download_checkpoints
         from app.services.gcs_forecast import get_bucket
         download_checkpoints(get_bucket(Settings.from_env().forecast_gcs_bucket), args.model_prefix, args.model_dir, args.models)
@@ -94,9 +122,9 @@ def main():
         source = args.input
     elif args.model_dir is not None or args.reference is not None or reference_object:
         from scripts.fetch_risk_forecast import download
-        source = download()
+        source = download(init=pd.Timestamp(args.run_date) + pd.Timedelta(hours=9)) if args.run_date else download()
     else:
-        source = run(region_area("georgia"), Path("data/geos_cf"))
+        source = run(region_area("georgia"), Path("data/geos_cf"), run_date=args.run_date)
     if args.model_dir is not None:
         import torch
         from scripts.downscale_forecast import required_variables
