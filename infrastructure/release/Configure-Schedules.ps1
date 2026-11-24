@@ -1,8 +1,12 @@
 param(
-    [string]$Release = "b280f2d-availability1",
+    [string]$Release = "no2-20261124-v1",
     [string]$Project = "asthma-aware",
     [string]$Account = "asthmaaware26@gmail.com",
-    [switch]$JobsOnly
+    [switch]$JobsOnly,
+    [string[]]$Models = @("o3", "no2"),
+    [string]$ModelPrefix = "models/checkpoints/o3-no2-9444d777-92c80408",
+    [string]$ReferenceObject = "reference/392bcd9ad4365b3cf4ed6745f3c005f3bb904cc1e68ed2fda7517644ff4e2d16.npz",
+    [double]$AnalysisLeadHours = 0.5
 )
 $ErrorActionPreference = "Stop"
 $region = "us-east1"
@@ -23,12 +27,13 @@ if ($LASTEXITCODE -ne 0) { throw "Checker bucket access failed" }
 gcloud run jobs add-iam-policy-binding asthmaaware-forecast "--region=$region" "--member=serviceAccount:$checker" --role=roles/run.jobsExecutorWithOverrides @common | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Checker publisher invocation access failed" }
 
-# Existing checkpoint/reference settings remain on the publisher. Guard before
-# model downloads; the checker supplies a date using execution-local overrides.
+# Versioned checkpoint/reference settings travel with the model selection.
+# The checker supplies a date using execution-local overrides.
 $publisherFlags = Join-Path $repo "backend/data/release-publisher.json"
 @{
     "--image" = "us-east1-docker.pkg.dev/$Project/asthma-forecast-job/integration-ml:$Release"
-    "--args" = @("--model-dir", "data/models", "--models", "o3", "--model-threads", "4", "--only-newer")
+    "--args" = @("--model-dir", "data/models", "--models") + $Models + @("--model-threads", "4", "--only-newer", "--analysis-lead-hours", $AnalysisLeadHours.ToString([Globalization.CultureInfo]::InvariantCulture))
+    "--update-env-vars" = "MODEL_GCS_PREFIX=$ModelPrefix,RISK_REFERENCE_OBJECT=$ReferenceObject"
     "--region" = $region
 } | ConvertTo-Json -Depth 4 | Set-Content $publisherFlags
 gcloud run jobs update asthmaaware-forecast "--flags-file=$publisherFlags" @common
