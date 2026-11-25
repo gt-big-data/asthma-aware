@@ -26,6 +26,7 @@ downscaling checkpoints, and live cloud deployment remain separate work.
 | `app/data/` | Demo JSON fixtures, not collected environmental data |
 | `ingestion/geos_cf/` | Shared NASA forecast acquisition and validation |
 | `ingestion/air_quality/` | EPA AirNow observation client and normalization |
+| `ingestion/pm25/` | Daily PM2.5 grid from the GEOS-CF analysis and its 1 km downscaling |
 | `ingestion/satellite/` | Optional Earth Engine research collector |
 | `ingestion/socioeconomic/` | Optional Census ACS research collector |
 | `ingestion/grid_definition.py` | Historical raster grid, not the future forecast grid |
@@ -95,6 +96,10 @@ uses public upstream access. These commands perform external downloads; the
 test suite uses local fixtures instead. AirNow currently archives JSON only;
 it has no database writer. GEOS-CF currently archives NetCDF and metadata;
 it has no GCS publication or dashboard adapter.
+
+PM2.5 products (daily grid, gap filling, 1 km downscaling) build on the GEOS-CF
+analysis and need `requirements/pm25.txt`; see
+[ingestion/pm25/README.md](ingestion/pm25/README.md) for the four-step recipe.
 
 Satellite collection additionally needs `requirements/satellite.txt`, Earth
 Engine credentials, and `EE_PROJECT_ID`. Census collection needs
